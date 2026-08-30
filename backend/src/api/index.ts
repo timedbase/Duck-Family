@@ -9,6 +9,12 @@ import platformRouter from "./routes/platform.js";
 import uploadRouter from "./routes/upload.js";
 
 const app = express();
+// Render puts one reverse proxy in front of this service, which sets
+// X-Forwarded-For -- without this, express-rate-limit refuses to trust that
+// header (correctly, as a default anti-spoofing guard) and throws on every
+// request instead of rate-limiting by real client IP. Trusting exactly one
+// hop matches Render's actual topology.
+app.set("trust proxy", 1);
 app.use(cors());
 app.use(express.json());
 app.use(rateLimit({
