@@ -1,7 +1,7 @@
 import { parseAbi } from "viem";
 
 // Every signature here was generated mechanically from
-// `forge inspect <Contract> abi --json` against ../../../contracts/ (or, for
+// `forge inspect <Contract> abi --json` against the Duck-Family-Contract repo (or, for
 // Permit2/UniversalRouter/V4Quoter, verified against their real deployed +
 // verified source on Ink) — not hand-typed. Keep in sync if the contracts
 // are ever redeployed/upgraded.

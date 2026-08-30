@@ -39,7 +39,7 @@ export default function PortfolioPage({ v }) {
     <div>
       <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink);margin-bottom:18px")}>
         <div style={cs("padding:24px 22px 20px;border-bottom:2px solid var(--ink)")}>
-          <h1 style={cs("margin:0 0 8px;font-size:36px;letter-spacing:-.045em;font-weight:700;line-height:1")}>Portfolio</h1>
+          <h1 style={cs(`margin:0 0 8px;font-size:${v.isMobile ? "26px" : "36px"};letter-spacing:-.045em;font-weight:700;line-height:1.05`)}>Portfolio</h1>
           <div style={cs("font-family:'DM Mono',monospace;font-size:12.5px;color:var(--mute)")}>{v.accountShort} · INK</div>
         </div>
         <div style={cs("display:flex;flex-wrap:wrap")}>

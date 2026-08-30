@@ -7,14 +7,14 @@ export default function CampaignPage({ v }) {
     <div>
       <button onClick={v.goHome} style={cs("border:0;background:transparent;font-family:'DM Mono',monospace;font-size:11.5px;letter-spacing:.1em;color:var(--mute);cursor:pointer;padding:0 0 14px")}>← DISCOVER</button>
 
-      <div style={cs("display:grid;grid-template-columns:minmax(0,1fr) 366px;gap:16px;align-items:start")}>
+      <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 366px"};gap:16px;align-items:start`)}>
         <div style={cs("display:flex;flex-direction:column;gap:16px;min-width:0")}>
           <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink)")}>
             <div style={cs("display:flex;align-items:stretch;border-bottom:2px solid var(--ink);flex-wrap:wrap")}>
-              <div style={cs("width:84px;flex:none;border-right:2px solid var(--ink);background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;letter-spacing:-.03em")}>{camp.initials}</div>
+              <div style={cs(`width:${v.isMobile ? "56px" : "84px"};flex:none;border-right:2px solid var(--ink);background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:${v.isMobile ? "18px" : "26px"};font-weight:700;letter-spacing:-.03em`)}>{camp.initials}</div>
               <div style={cs("flex:1;min-width:260px;padding:16px 20px")}>
                 <div style={cs("display:flex;align-items:baseline;gap:11px;flex-wrap:wrap")}>
-                  <h1 style={cs("margin:0;font-size:28px;font-weight:700;letter-spacing:-.04em")}>{camp.name}</h1>
+                  <h1 style={cs(`margin:0;font-size:${v.isMobile ? "20px" : "28px"};font-weight:700;letter-spacing:-.04em`)}>{camp.name}</h1>
                   <span style={cs("font-family:'DM Mono',monospace;font-size:14px;color:var(--mute)")}>{camp.symbol}</span>
                   <span style={cs(`font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;padding:3px 9px;border:2px solid var(--ink);background:${camp.stBg};color:${camp.stFg}`)}>{camp.status}</span>
                 </div>
@@ -47,7 +47,7 @@ export default function CampaignPage({ v }) {
             </div>
           </div>
 
-          <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink)")}>
+          <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink);overflow-x:auto")}>
             <div style={cs("padding:13px 18px;border-bottom:2px solid var(--ink);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap")}>
               <span style={cs("font-size:15px;font-weight:700;letter-spacing:-.02em")}>Contributions</span>
               <span style={cs("font-family:'DM Mono',monospace;font-size:11px;color:var(--mute)")}>pro-rata · nothing transfers until finalize</span>
@@ -66,7 +66,7 @@ export default function CampaignPage({ v }) {
           </div>
         </div>
 
-        <div style={cs("display:flex;flex-direction:column;gap:16px;position:sticky;top:80px")}>
+        <div style={cs(`display:flex;flex-direction:column;gap:16px;${v.isMobile ? "" : "position:sticky;top:80px"}`)}>
           <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink)")}>
             <div style={cs("padding:16px 18px;border-bottom:2px solid var(--ink)")}>
               <div style={cs("font-size:17px;font-weight:700;letter-spacing:-.03em")}>{camp.actionTitle}</div>

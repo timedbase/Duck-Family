@@ -463,33 +463,38 @@ export default function App() {
     claimCreatorFees, claimAllCreatorFees, loadCreatorData, claimCreatorAndHookFees, claimCurveFeeAction, saveFeeSplits, buyTakeover,
   });
 
+  const m = v.isMobile;
   return (
     <div style={cs("min-height:100vh;display:flex;flex-direction:column;background:var(--paper)")}>
-      <header style={cs("position:sticky;top:0;z-index:40;background:var(--paper);border-bottom:2px solid var(--ink)")}>
-        <div style={cs("max-width:1420px;margin:0 auto;padding:0 20px;display:flex;align-items:stretch;height:58px")}>
-          <div onClick={v.goHome} style={cs("display:flex;align-items:center;gap:11px;cursor:pointer;padding-right:26px")}>
-            <div style={cs("width:26px;height:26px;border:2px solid var(--ink);background:var(--lime);position:relative;flex:none")}>
-              <div style={cs("position:absolute;left:5px;top:6px;width:5px;height:5px;background:var(--ink)")}></div>
-              <div style={cs("position:absolute;left:12px;top:11px;width:10px;height:4px;background:var(--orange)")}></div>
+      <header style={cs(`position:sticky;top:0;z-index:40;background:var(--paper);border-bottom:2px solid var(--ink)`)}>
+        <div style={cs(`max-width:1420px;margin:0 auto;padding:0 ${m ? "12px" : "20px"};display:flex;align-items:stretch;height:${m ? "52px" : "58px"}`)}>
+          <div onClick={v.goHome} style={cs(`display:flex;align-items:center;gap:${m ? "8px" : "11px"};cursor:pointer;padding-right:${m ? "10px" : "26px"};min-width:0`)}>
+            <div style={cs("width:24px;height:24px;border:2px solid var(--ink);background:var(--lime);position:relative;flex:none")}>
+              <div style={cs("position:absolute;left:4px;top:5px;width:5px;height:5px;background:var(--ink)")}></div>
+              <div style={cs("position:absolute;left:11px;top:10px;width:9px;height:4px;background:var(--orange)")}></div>
             </div>
-            <span style={cs("font-size:17px;font-weight:700;letter-spacing:-.03em")}>duckfun<span style={cs("color:var(--mute);font-weight:500")}>.family</span></span>
+            <span style={cs(`font-size:${m ? "15px" : "17px"};font-weight:700;letter-spacing:-.03em;white-space:nowrap`)}>duckfun<span style={cs("color:var(--mute);font-weight:500")}>.family</span></span>
           </div>
-          <nav style={cs("display:flex;align-items:center;gap:0")}>
-            {v.nav.map((n, i) => (
-              <button key={i} onClick={n.go} style={cs(`height:58px;padding:0 18px;border:0;border-bottom:3px solid ${n.u};background:transparent;color:${n.c};font-size:14px;font-weight:${n.w};letter-spacing:-.01em;cursor:pointer`)}>{n.label}</button>
-            ))}
-          </nav>
-          <div style={cs("flex:1")}></div>
-          <div style={cs("display:flex;align-items:center;gap:10px")}>
-            <div style={cs("display:flex;align-items:center;gap:7px;padding:6px 11px;border:2px solid var(--ink);background:var(--lime);font-family:'DM Mono',monospace;font-size:11.5px")}>
-              <span style={cs("width:6px;height:6px;background:var(--ink)")}></span>INK 57073
-            </div>
-            <button onClick={v.toggleWallet} style={cs(`padding:8px 15px;border:2px solid var(--ink);background:${v.walletBg};color:${v.walletFg};font-size:12.5px;font-weight:700;cursor:pointer;font-family:${v.walletFont}`)}>{v.walletLabel}</button>
+          {!m && (
+            <nav style={cs("display:flex;align-items:center;gap:0")}>
+              {v.nav.map((n, i) => (
+                <button key={i} onClick={n.go} style={cs(`height:58px;padding:0 18px;border:0;border-bottom:3px solid ${n.u};background:transparent;color:${n.c};font-size:14px;font-weight:${n.w};letter-spacing:-.01em;cursor:pointer`)}>{n.label}</button>
+              ))}
+            </nav>
+          )}
+          <div style={cs("flex:1;min-width:0")}></div>
+          <div style={cs("display:flex;align-items:center;gap:8px;flex:none")}>
+            {!m && (
+              <div style={cs("display:flex;align-items:center;gap:7px;padding:6px 11px;border:2px solid var(--ink);background:var(--lime);font-family:'DM Mono',monospace;font-size:11.5px;white-space:nowrap")}>
+                <span style={cs("width:6px;height:6px;background:var(--ink);flex:none")}></span>INK 57073
+              </div>
+            )}
+            <button onClick={v.toggleWallet} style={cs(`padding:${m ? "7px 11px" : "8px 15px"};border:2px solid var(--ink);background:${v.walletBg};color:${v.walletFg};font-size:${m ? "11.5px" : "12.5px"};font-weight:700;cursor:pointer;font-family:${v.walletFont};white-space:nowrap`)}>{v.walletLabel}</button>
           </div>
         </div>
       </header>
 
-      <main style={cs("flex:1;max-width:1420px;width:100%;margin:0 auto;padding:22px 20px 72px")}>
+      <main style={cs(`flex:1;max-width:1420px;width:100%;margin:0 auto;padding:${m ? "14px 12px 84px" : "22px 20px 72px"};min-width:0`)}>
         {v.isHome && <DiscoverPage v={v} />}
         {v.isToken && <TokenPage v={v} />}
         {v.isCreate && <CreateChooserPage v={v} />}
@@ -498,17 +503,27 @@ export default function App() {
         {v.isPortfolio && <PortfolioPage v={v} />}
       </main>
 
-      <footer style={cs("border-top:2px solid var(--ink);background:var(--card)")}>
-        <div style={cs("max-width:1420px;margin:0 auto;padding:16px 20px;display:flex;gap:20px;flex-wrap:wrap;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--mute)")}>
-          <span>DUCKFUN.FAMILY</span>
-          <span>INK 57073</span>
-          <a href="https://explorer.inkonchain.com" target="_blank" rel="noreferrer">BLOCKSCOUT</a>
-          <span style={cs("margin-left:auto")}>SUBGRAPH DUCKFUN-INK 1.0.0 · SYNCED</span>
-        </div>
-      </footer>
+      {!m && (
+        <footer style={cs("border-top:2px solid var(--ink);background:var(--card)")}>
+          <div style={cs("max-width:1420px;margin:0 auto;padding:16px 20px;display:flex;gap:20px;flex-wrap:wrap;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--mute)")}>
+            <span>DUCKFUN.FAMILY</span>
+            <span>INK 57073</span>
+            <a href="https://explorer.inkonchain.com" target="_blank" rel="noreferrer">BLOCKSCOUT</a>
+            <span style={cs("margin-left:auto")}>SUBGRAPH DUCKFUN-INK 1.0.0 · SYNCED</span>
+          </div>
+        </footer>
+      )}
+
+      {m && (
+        <nav style={cs("position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;border-top:2px solid var(--ink);background:var(--card)")}>
+          {v.nav.map((n, i) => (
+            <button key={i} onClick={n.go} style={cs(`flex:1;min-height:56px;border:0;border-top:3px solid ${n.u};background:transparent;color:${n.c};font-size:12.5px;font-weight:${n.w};cursor:pointer`)}>{n.label}</button>
+          ))}
+        </nav>
+      )}
 
       {v.txOpen && (
-        <div style={cs("position:fixed;inset:0;z-index:95;background:rgba(17,17,16,.5);display:flex;align-items:center;justify-content:center;padding:24px")}>
+        <div style={cs("position:fixed;inset:0;z-index:95;background:rgba(17,17,16,.5);display:flex;align-items:center;justify-content:center;padding:20px")}>
           <div style={cs("width:100%;max-width:400px;border:2px solid var(--ink);background:var(--card);box-shadow:5px 5px 0 var(--ink)")}>
             <div style={cs(`padding:26px 22px;border-bottom:2px solid var(--ink);text-align:center;background:${v.tx.headBg}`)}>
               <div style={cs(`width:46px;height:46px;margin:0 auto 16px;border:3px solid var(--ink);border-top-color:${v.tx.ringTop};animation:${v.tx.anim};display:flex;align-items:center;justify-content:center;font-size:19px`)}>{v.tx.glyph}</div>
@@ -525,7 +540,7 @@ export default function App() {
       )}
 
       {v.toast && (
-        <div style={cs("position:fixed;z-index:60;left:50%;bottom:28px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:13px 20px;border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink);animation:slidein .22s ease both;max-width:90vw")}>
+        <div style={cs(`position:fixed;z-index:60;left:50%;bottom:${m ? "68px" : "28px"};transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:13px 20px;border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink);animation:slidein .22s ease both;max-width:90vw`)}>
           <span style={cs("width:7px;height:7px;background:var(--ink);flex:none")}></span>
           <span style={cs("font-size:13px")}>{v.toast}</span>
         </div>

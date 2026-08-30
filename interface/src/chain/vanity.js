@@ -2,7 +2,7 @@ import { keccak256, encodeAbiParameters, concat, getAddress, pad, toHex } from "
 
 // DuckIncubation, DuckLauncher and DuckRaise all clone their token template
 // via CREATE2 with the identical derivation (confirmed directly against
-// ../../../contracts/ source, not just the shared test helper's comment):
+// the Duck-Family-Contract repo's source, not just the shared test helper's comment):
 //   realSalt = keccak256(abi.encode(msg.sender, userSalt))
 //   predicted = last20Bytes(keccak256(0xff ++ deployer ++ realSalt ++ initCodeHash))
 //   initCodeHash = keccak256(EIP-1167 minimal-proxy bytecode for `impl`)

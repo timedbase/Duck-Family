@@ -4,15 +4,17 @@ export default function DiscoverPage({ v }) {
   return (
     <div>
       <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink);margin-bottom:18px")}>
-        <div style={cs("display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:24px 22px 20px;border-bottom:2px solid var(--ink)")}>
+        <div style={cs(`display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:${v.isMobile ? "18px 16px 16px" : "24px 22px 20px"};border-bottom:2px solid var(--ink)`)}>
           <div style={cs("max-width:60ch")}>
-            <h1 style={cs("margin:0 0 8px;font-size:36px;letter-spacing:-.04em;font-weight:700;line-height:1")}>Launches on Ink</h1>
+            <h1 style={cs(`margin:0 0 8px;font-size:${v.isMobile ? "26px" : "36px"};letter-spacing:-.04em;font-weight:700;line-height:1.05`)}>Launches on Ink</h1>
             <p style={cs("margin:0;color:var(--mute);font-size:14px;line-height:1.55")}>Bonding curves, instant V4 launches and crowdfund raises. One anti-MEV hook, one permanent LP vault, no oracle anywhere.</p>
           </div>
-          <div style={cs("display:flex;gap:0;border:2px solid var(--ink)")}>
-            <button onClick={v.setLayoutCards} style={cs(`padding:8px 15px;border:0;background:${v.lcBg};color:${v.lcFg};font-size:12.5px;font-weight:600;cursor:pointer`)}>Cards</button>
-            <button onClick={v.setLayoutTable} style={cs(`padding:8px 15px;border:0;border-left:2px solid var(--ink);background:${v.ltBg};color:${v.ltFg};font-size:12.5px;font-weight:600;cursor:pointer`)}>Table</button>
-          </div>
+          {!v.isMobile && (
+            <div style={cs("display:flex;gap:0;border:2px solid var(--ink)")}>
+              <button onClick={v.setLayoutCards} style={cs(`padding:8px 15px;border:0;background:${v.lcBg};color:${v.lcFg};font-size:12.5px;font-weight:600;cursor:pointer`)}>Cards</button>
+              <button onClick={v.setLayoutTable} style={cs(`padding:8px 15px;border:0;border-left:2px solid var(--ink);background:${v.ltBg};color:${v.ltFg};font-size:12.5px;font-weight:600;cursor:pointer`)}>Table</button>
+            </div>
+          )}
         </div>
         <div style={cs("display:flex;flex-wrap:wrap")}>
           {v.stats.map((st, i) => (
@@ -38,8 +40,8 @@ export default function DiscoverPage({ v }) {
         </div>
       </div>
 
-      {v.layoutCards && (
-        <div style={cs("display:grid;grid-template-columns:repeat(auto-fill,minmax(336px,1fr));gap:16px")}>
+      {(v.layoutCards || v.isMobile) && (
+        <div style={cs(`display:grid;grid-template-columns:repeat(auto-fill,minmax(${v.isMobile ? "100%" : "336px"},1fr));gap:16px`)}>
           {v.feed.map((t) => (
             <div key={t.id} onClick={t.open} style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink);cursor:pointer")}>
               <div style={cs("display:flex;align-items:stretch;border-bottom:2px solid var(--ink)")}>
@@ -81,7 +83,7 @@ export default function DiscoverPage({ v }) {
         </div>
       )}
 
-      {v.layoutTable && (
+      {v.layoutTable && !v.isMobile && (
         <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink);overflow-x:auto")}>
           <div style={cs("display:grid;min-width:760px;grid-template-columns:2.2fr .9fr .8fr .9fr .9fr 1.4fr;gap:14px;padding:11px 18px;border-bottom:2px solid var(--ink);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>
             <span>TOKEN</span><span style={cs("text-align:right")}>PRICE</span><span style={cs("text-align:right")}>24H</span><span style={cs("text-align:right")}>MCAP</span><span style={cs("text-align:right")}>VOLUME</span><span>PROGRESS</span>

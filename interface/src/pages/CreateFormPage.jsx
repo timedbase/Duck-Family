@@ -75,14 +75,14 @@ export default function CreateFormPage({ v }) {
     <div style={cs("max-width:1060px;margin:0 auto")}>
       <button onClick={v.backToChooser} style={cs("border:0;background:transparent;font-family:'DM Mono',monospace;font-size:11.5px;letter-spacing:.1em;color:var(--mute);cursor:pointer;padding:0 0 14px")}>← ALL LAUNCH TYPES</button>
 
-      <div style={cs("display:grid;grid-template-columns:minmax(0,1fr) 336px;gap:16px;align-items:start")}>
+      <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 336px"};gap:16px;align-items:start`)}>
         <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink)")}>
-          <div style={cs(`padding:22px 24px;border-bottom:2px solid var(--ink);background:${FORM.accent};color:${FORM.accentFg}`)}>
-            <div style={cs("font-size:26px;font-weight:700;letter-spacing:-.04em;line-height:1.05")}>{FORM.title}</div>
+          <div style={cs(`padding:${v.isMobile ? "18px" : "22px 24px"};border-bottom:2px solid var(--ink);background:${FORM.accent};color:${FORM.accentFg}`)}>
+            <div style={cs(`font-size:${v.isMobile ? "21px" : "26px"};font-weight:700;letter-spacing:-.04em;line-height:1.05`)}>{FORM.title}</div>
             <div style={cs("font-size:13.5px;line-height:1.55;margin-top:10px;max-width:66ch;opacity:.85")}>{FORM.sub}</div>
           </div>
 
-          <div style={cs("padding:24px;display:flex;flex-direction:column;gap:18px")}>
+          <div style={cs(`padding:${v.isMobile ? "18px" : "24px"};display:flex;flex-direction:column;gap:18px`)}>
             {family === "incubation" && (
               <>
                 <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px")}>
@@ -92,7 +92,7 @@ export default function CreateFormPage({ v }) {
                 <Field label="QUOTE ASSET" hint="Only USDC/USDT0 have a real ETH route for buyWithNative — pick ETH if unsure">
                   <QuoteChips options={v.quoteOptions} value={v.draftCurve.quoteToken} onPick={(a) => v.setCurve({ quoteToken: a })} />
                 </Field>
-                <div style={cs("display:grid;grid-template-columns:1fr 1fr;gap:18px")}>
+                <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "1fr" : "1fr 1fr"};gap:18px`)}>
                   <Field label={`START TARGET (${labelFor(v.quoteOptions, v.draftCurve.quoteToken)})`} hint="Raw quote amount where the curve opens">
                     <TextInput value={v.draftCurve.startVirtualQuote} onChange={(e) => v.setCurve({ startVirtualQuote: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="8000" />
                   </Field>
@@ -139,7 +139,7 @@ export default function CreateFormPage({ v }) {
                 <Field label="QUOTE AT FINALIZE" hint="Raised ETH swaps into this to seed the pool">
                   <QuoteChips options={v.raiseQuoteOptions} value={v.draftCampaign.dexQuoteAsset} onPick={(a) => v.setCampaign({ dexQuoteAsset: a })} />
                 </Field>
-                <div style={cs("display:grid;grid-template-columns:1fr 1fr;gap:18px")}>
+                <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "1fr" : "1fr 1fr"};gap:18px`)}>
                   <Field label="DEADLINE (PLATFORM SETTING)"><LockedInput value={v.raiseDefaults ? Math.round(Number(v.raiseDefaults.duration) / 3600) + " hours from launch" : "loading…"} /></Field>
                   <Field label="SUPPLY TO BACKERS (PLATFORM SETTING)"><LockedInput value={v.raiseDefaults ? (Number(v.raiseDefaults.contributorBps) / 100) + "% — remainder seeds the pool" : "loading…"} /></Field>
                 </div>
@@ -172,7 +172,7 @@ export default function CreateFormPage({ v }) {
           </div>
         </div>
 
-        <div style={cs("display:flex;flex-direction:column;gap:16px;position:sticky;top:80px")}>
+        <div style={cs(`display:flex;flex-direction:column;gap:16px;${v.isMobile ? "" : "position:sticky;top:80px"}`)}>
           <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink)")}>
             <div style={cs("padding:11px 15px;border-bottom:2px solid var(--ink);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>ON SUBMIT</div>
             {ON_SUBMIT[family].map((t, i) => (

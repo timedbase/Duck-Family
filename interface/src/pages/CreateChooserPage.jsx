@@ -16,7 +16,7 @@ export default function CreateChooserPage({ v }) {
   return (
     <div style={cs("max-width:1120px;margin:0 auto")}>
       <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink);padding:26px 24px;margin-bottom:18px")}>
-        <h1 style={cs("margin:0 0 9px;font-size:38px;letter-spacing:-.045em;font-weight:700;line-height:1")}>Launch a token</h1>
+        <h1 style={cs(`margin:0 0 9px;font-size:${v.isMobile ? "26px" : "38px"};letter-spacing:-.045em;font-weight:700;line-height:1.05`)}>Launch a token</h1>
         <p style={cs("margin:0;color:var(--mute);font-size:14.5px;line-height:1.55;max-width:66ch")}>Three families. All of them mint EIP-1167 clones, wire the anti-MEV hook, and lock LP permanently in DuckLocker.</p>
       </div>
 

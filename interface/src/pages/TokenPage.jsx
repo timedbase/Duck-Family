@@ -28,10 +28,10 @@ export default function TokenPage({ v }) {
 
       <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink);margin-bottom:16px")}>
         <div style={cs("display:flex;align-items:stretch;border-bottom:2px solid var(--ink);flex-wrap:wrap")}>
-          <div style={cs(`width:84px;flex:none;border-right:2px solid var(--ink);background:${sel.famBg};color:${sel.famFg};display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;letter-spacing:-.03em`)}>{sel.initials}</div>
+          <div style={cs(`width:${v.isMobile ? "56px" : "84px"};flex:none;border-right:2px solid var(--ink);background:${sel.famBg};color:${sel.famFg};display:flex;align-items:center;justify-content:center;font-size:${v.isMobile ? "18px" : "26px"};font-weight:700;letter-spacing:-.03em`)}>{sel.initials}</div>
           <div style={cs("flex:1;min-width:260px;padding:16px 20px")}>
             <div style={cs("display:flex;align-items:baseline;gap:11px;flex-wrap:wrap")}>
-              <h1 style={cs("margin:0;font-size:28px;font-weight:700;letter-spacing:-.04em")}>{sel.name}</h1>
+              <h1 style={cs(`margin:0;font-size:${v.isMobile ? "20px" : "28px"};font-weight:700;letter-spacing:-.04em`)}>{sel.name}</h1>
               <span style={cs("font-family:'DM Mono',monospace;font-size:14px;color:var(--mute)")}>{sel.symbol}</span>
               <span style={cs(`font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;padding:3px 9px;border:2px solid var(--ink);background:${sel.famBg};color:${sel.famFg}`)}>{sel.family}</span>
             </div>
@@ -55,7 +55,7 @@ export default function TokenPage({ v }) {
         </div>
       </div>
 
-      <div style={cs("display:grid;grid-template-columns:minmax(0,1fr) 366px;gap:16px;align-items:start")}>
+      <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 366px"};gap:16px;align-items:start`)}>
         <div style={cs("display:flex;flex-direction:column;gap:16px;min-width:0")}>
 
           <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink)")}>
@@ -122,13 +122,13 @@ export default function TokenPage({ v }) {
             </div>
 
             {v.tabTrades && (
-              <div>
-                <div style={cs("display:grid;grid-template-columns:86px 1fr 1fr 1.3fr 70px;gap:14px;padding:10px 18px;border-bottom:2px solid var(--ink);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>
+              <div style={cs("overflow-x:auto")}>
+                <div style={cs("display:grid;min-width:460px;grid-template-columns:86px 1fr 1fr 1.3fr 70px;gap:14px;padding:10px 18px;border-bottom:2px solid var(--ink);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>
                   <span>SIDE</span><span style={cs("text-align:right")}>{sel.quote}</span><span style={cs("text-align:right")}>{sel.symbol.replace("$", "")}</span><span>WALLET</span><span style={cs("text-align:right")}>AGE</span>
                 </div>
                 {tok.trades.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No trades yet.</div>}
                 {tok.trades.map((r, i) => (
-                  <div key={i} style={cs("display:grid;grid-template-columns:86px 1fr 1fr 1.3fr 70px;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12.5px;align-items:center")}>
+                  <div key={i} style={cs("display:grid;min-width:460px;grid-template-columns:86px 1fr 1fr 1.3fr 70px;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12.5px;align-items:center")}>
                     <span><span style={cs(`padding:2px 9px;border:2px solid var(--ink);background:${r.bg};color:${r.fg};font-size:10px;letter-spacing:.08em`)}>{r.side}</span></span>
                     <span style={cs("text-align:right")}>{r.quote}</span>
                     <span style={cs("text-align:right")}>{r.amount}</span>
@@ -140,13 +140,13 @@ export default function TokenPage({ v }) {
             )}
 
             {v.tabHolders && (
-              <div>
-                <div style={cs("display:grid;grid-template-columns:44px 1.4fr 1fr .8fr 90px;gap:14px;padding:10px 18px;border-bottom:2px solid var(--ink);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>
+              <div style={cs("overflow-x:auto")}>
+                <div style={cs("display:grid;min-width:460px;grid-template-columns:44px 1.4fr 1fr .8fr 90px;gap:14px;padding:10px 18px;border-bottom:2px solid var(--ink);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>
                   <span>#</span><span>WALLET</span><span style={cs("text-align:right")}>BALANCE</span><span style={cs("text-align:right")}>SHARE</span><span style={cs("text-align:right")}>TAG</span>
                 </div>
                 {tok.holderRows.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No holders indexed yet.</div>}
                 {tok.holderRows.map((h, i) => (
-                  <div key={i} style={cs("display:grid;grid-template-columns:44px 1.4fr 1fr .8fr 90px;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12.5px;align-items:center")}>
+                  <div key={i} style={cs("display:grid;min-width:460px;grid-template-columns:44px 1.4fr 1fr .8fr 90px;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12.5px;align-items:center")}>
                     <span style={cs("color:var(--mute)")}>{h.rank}</span>
                     <a href={`https://explorer.inkonchain.com/address/${h.full}`} target="_blank" rel="noreferrer" title={h.full}>{h.who}</a>
                     <span style={cs("text-align:right")}>{h.balance}</span>
@@ -272,7 +272,7 @@ export default function TokenPage({ v }) {
           </div>
         </div>
 
-        <div style={cs("display:flex;flex-direction:column;gap:16px;position:sticky;top:80px")}>
+        <div style={cs(`display:flex;flex-direction:column;gap:16px;${v.isMobile ? "" : "position:sticky;top:80px"}`)}>
           <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink)")}>
             <div style={cs("display:flex;border-bottom:2px solid var(--ink)")}>
               <button onClick={v.setBuy} style={cs(`flex:1;padding:14px;border:0;border-right:2px solid var(--ink);background:${v.buyBg};color:${v.buyFg};font-size:15px;font-weight:700;letter-spacing:-.01em;cursor:pointer`)}>Buy</button>
