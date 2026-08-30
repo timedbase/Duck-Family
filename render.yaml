@@ -8,8 +8,11 @@ services:
     buildCommand: npm install --include=dev && npm run build
     startCommand: npm run api
     envVars:
+      # "current" is a Goldsky tag (see subgraph/package.json's tag:goldsky
+      # script), not a version -- it always points at whichever version was
+      # last tagged, so a future subgraph deploy doesn't need this changed.
       - key: SUBGRAPH_URL
-        value: https://api.goldsky.com/api/public/project_cmhtxnzpqm81001w94ksmgira/subgraphs/duckfun-ink/1.0.0/gn
+        value: https://api.goldsky.com/api/public/project_cmhtxnzpqm81001w94ksmgira/subgraphs/duckfun-ink/current/gn
       - key: INK_RPC_URL
         sync: false
       - key: PORT
