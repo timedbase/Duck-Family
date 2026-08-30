@@ -1,0 +1,198 @@
+specVersion: 0.0.9
+description: duckfun.family — bonding curve, instant launch, and crowdfund activity on Ink chain.
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  - kind: ethereum
+    name: DuckIncubation
+    network: ink
+    source:
+      address: "0x5c4f0938FC434b60b57209BbC971544b73876675"
+      abi: DuckIncubation
+      startBlock: 54557753
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - Trade
+        - Migration
+        - CurveFeeClaim
+      abis:
+        - name: DuckIncubation
+          file: ./abis/DuckIncubation.json
+      eventHandlers:
+        - event: TokenCreated(indexed address,indexed address,address,uint256,uint256,uint256,bool,uint256)
+          handler: handleTokenCreated
+        - event: TokenBought(indexed address,indexed address,uint256,uint256,uint256,uint256)
+          handler: handleTokenBought
+        - event: TokenSold(indexed address,indexed address,uint256,uint256,uint256)
+          handler: handleTokenSold
+        - event: TokenMigrated(indexed address,bytes32,uint256,uint256)
+          handler: handleTokenMigrated
+        - event: EmergencyMigrated(indexed address,indexed address,uint256,uint256)
+          handler: handleEmergencyMigrated
+        - event: CurveFeeClaimed(indexed address,indexed address,uint256,uint256)
+          handler: handleCurveFeeClaimed
+      file: ./src/duck-incubation.ts
+
+  - kind: ethereum
+    name: DuckLauncher
+    network: ink
+    source:
+      address: "0x2A84711A5c0Ee62118CEee1A37C0dA46a6980353"
+      abi: DuckLauncher
+      startBlock: 54557753
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Token
+      abis:
+        - name: DuckLauncher
+          file: ./abis/DuckLauncher.json
+      eventHandlers:
+        - event: TokenLaunched(indexed address,indexed address,indexed address,address,address,bytes32,uint256)
+          handler: handleTokenLaunched
+      file: ./src/duck-launcher.ts
+
+  - kind: ethereum
+    name: DuckRaise
+    network: ink
+    source:
+      address: "0x39D17950BaaD5737d08b027F0494E2C261B37Cf2"
+      abi: DuckRaise
+      startBlock: 54557753
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - Campaign
+        - Contribution
+      abis:
+        - name: DuckRaise
+          file: ./abis/DuckRaise.json
+      eventHandlers:
+        - event: CampaignCreated(indexed uint256,indexed address,indexed address,string,string,address,uint256,uint256,uint256)
+          handler: handleCampaignCreated
+        - event: Contributed(indexed uint256,indexed address,uint256)
+          handler: handleContributed
+        - event: CampaignSucceeded(indexed uint256,indexed address,uint256)
+          handler: handleCampaignSucceeded
+        - event: CampaignFailed(indexed uint256,uint256,uint256)
+          handler: handleCampaignFailed
+        - event: Claimed(indexed uint256,indexed address,uint256)
+          handler: handleClaimed
+        - event: Refunded(indexed uint256,indexed address,uint256)
+          handler: handleRefunded
+      file: ./src/duck-raise.ts
+
+  - kind: ethereum
+    name: DuckLocker
+    network: ink
+    source:
+      address: "0x74738a87e4D4E0eB2706724a9314d1b4452ecdFE"
+      abi: DuckLocker
+      startBlock: 54557753
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Position
+        - LPFeeClaim
+      abis:
+        - name: DuckLocker
+          file: ./abis/DuckLocker.json
+      eventHandlers:
+        - event: PositionRegistered(indexed address,indexed uint256,bytes32,address,address)
+          handler: handlePositionRegistered
+        - event: FeesClaimed(indexed address,uint256,uint256)
+          handler: handleFeesClaimed
+      file: ./src/duck-locker.ts
+
+  - kind: ethereum
+    name: DuckHookV4
+    network: ink
+    source:
+      address: "0xA547E097bCcA60737b8264C4dDB9bC3bE74880C4"
+      abi: DuckHookV4
+      startBlock: 54557753
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Pool
+        - HookFeeClaim
+        - CTOApplication
+      abis:
+        - name: DuckHookV4
+          file: ./abis/DuckHookV4.json
+      eventHandlers:
+        - event: PoolRegistered(indexed bytes32,indexed address,indexed address,uint256)
+          handler: handlePoolRegistered
+        - event: FeesClaimed(indexed bytes32,uint256)
+          handler: handleFeesClaimed
+        - event: CTOApplied(indexed bytes32,indexed address,address,uint256)
+          handler: handleCTOApplied
+        - event: CTOApproved(indexed bytes32,address)
+          handler: handleCTOApproved
+        - event: CTORejected(indexed bytes32,indexed address)
+          handler: handleCTORejected
+      file: ./src/duck-hook.ts
+
+  # Shared Uniswap V4 singleton -- emits Swap/ModifyLiquidity for every pool
+  # on Ink, not just this platform's. The mapping loads the Pool entity by
+  # poolId and returns early if it's not one of ours (see PoolRegistered
+  # above, which always fires before any Swap/ModifyLiquidity can occur on
+  # a freshly-created pool, so the Pool entity is guaranteed to exist by
+  # then for pools this platform created).
+  - kind: ethereum
+    name: PoolManager
+    network: ink
+    source:
+      address: "0x360E68faCcca8cA495c1B759Fd9EEe466db9FB32"
+      abi: PoolManager
+      startBlock: 54557753
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - PoolSwap
+        - PoolLiquidityChange
+      abis:
+        - name: PoolManager
+          file: ./abis/PoolManager.json
+      eventHandlers:
+        - event: Swap(indexed bytes32,indexed address,int128,int128,uint160,uint128,int24,uint24)
+          handler: handleSwap
+        - event: ModifyLiquidity(indexed bytes32,indexed address,int24,int24,int256,bytes32)
+          handler: handleModifyLiquidity
+      file: ./src/pool-manager.ts
+
+templates:
+  - kind: ethereum
+    name: DuckToken
+    network: ink
+    source:
+      abi: ERC20
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Holder
+      abis:
+        - name: ERC20
+          file: ./abis/ERC20.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
+      file: ./src/token.ts

@@ -1,0 +1,131 @@
+import { BigInt } from "@graphprotocol/graph-ts";
+import {
+  TokenCreated,
+  TokenBought,
+  TokenSold,
+  TokenMigrated,
+  EmergencyMigrated,
+  CurveFeeClaimed,
+} from "../generated/DuckIncubation/DuckIncubation";
+import { Token, Trade, Migration, CurveFeeClaim } from "../generated/schema";
+import { DuckToken } from "../generated/templates";
+
+export function handleTokenCreated(event: TokenCreated): void {
+  let token = new Token(event.params.token.toHexString());
+  token.family = "CURVE";
+  token.creator = event.params.creator;
+  token.quoteToken = event.params.quoteToken;
+  token.totalSupply = event.params.totalSupply;
+  token.createdAt = event.block.timestamp;
+  token.createdAtBlock = event.block.number;
+  token.createdAtTx = event.transaction.hash;
+
+  token.virtualQuote = event.params.virtualQuote;
+  token.migrationTarget = event.params.migrationTarget;
+  token.antibotEnabled = event.params.antibotEnabled;
+  token.tradingBlock = event.params.tradingBlock;
+  token.migrated = false;
+  token.bcTokensSold = BigInt.zero();
+  token.raisedQuote = BigInt.zero();
+
+  token.save();
+
+  DuckToken.create(event.params.token);
+}
+
+export function handleTokenBought(event: TokenBought): void {
+  let token = Token.load(event.params.token.toHexString());
+  if (token == null) return;
+  token.bcTokensSold = token.bcTokensSold!.plus(event.params.tokensOut);
+  token.raisedQuote = event.params.raisedQuote;
+  token.save();
+
+  let trade = new Trade(event.transaction.hash.toHexString() + "-" + event.logIndex.toString());
+  trade.token = token.id;
+  trade.trader = event.params.buyer;
+  trade.side = "BUY";
+  trade.quoteAmount = event.params.quoteIn;
+  trade.tokenAmount = event.params.tokensOut;
+  trade.tokensToDead = event.params.tokensToDead;
+  trade.raisedQuoteAfter = event.params.raisedQuote;
+  trade.timestamp = event.block.timestamp;
+  trade.blockNumber = event.block.number;
+  trade.txHash = event.transaction.hash;
+  trade.save();
+}
+
+export function handleTokenSold(event: TokenSold): void {
+  let token = Token.load(event.params.token.toHexString());
+  if (token == null) return;
+  token.bcTokensSold = token.bcTokensSold!.minus(event.params.tokensIn);
+  token.raisedQuote = event.params.raisedQuote;
+  token.save();
+
+  let trade = new Trade(event.transaction.hash.toHexString() + "-" + event.logIndex.toString());
+  trade.token = token.id;
+  trade.trader = event.params.seller;
+  trade.side = "SELL";
+  trade.quoteAmount = event.params.quoteOut;
+  trade.tokenAmount = event.params.tokensIn;
+  trade.tokensToDead = null;
+  trade.raisedQuoteAfter = event.params.raisedQuote;
+  trade.timestamp = event.block.timestamp;
+  trade.blockNumber = event.block.number;
+  trade.txHash = event.transaction.hash;
+  trade.save();
+}
+
+export function handleTokenMigrated(event: TokenMigrated): void {
+  let token = Token.load(event.params.token.toHexString());
+  if (token == null) return;
+  token.migrated = true;
+  token.raisedQuote = BigInt.zero();
+  token.save();
+
+  let migration = new Migration(token.id);
+  migration.token = token.id;
+  migration.poolId = event.params.poolId;
+  migration.liquidityQuote = event.params.liquidityQuote;
+  migration.liquidityTokens = event.params.liquidityTokens;
+  migration.emergency = false;
+  migration.timestamp = event.block.timestamp;
+  migration.blockNumber = event.block.number;
+  migration.txHash = event.transaction.hash;
+  migration.save();
+}
+
+export function handleEmergencyMigrated(event: EmergencyMigrated): void {
+  let token = Token.load(event.params.token.toHexString());
+  if (token == null) return;
+  token.migrated = true;
+  token.raisedQuote = BigInt.zero();
+  token.save();
+
+  let migration = new Migration(token.id);
+  migration.token = token.id;
+  // No real V4 pool exists for an emergency migration -- that's precisely
+  // why it was needed (initAndMintFullRange reverted PoolAlreadyExists).
+  migration.poolId = null;
+  migration.liquidityQuote = event.params.quoteAmount;
+  migration.liquidityTokens = event.params.tokenAmount;
+  migration.emergency = true;
+  migration.timestamp = event.block.timestamp;
+  migration.blockNumber = event.block.number;
+  migration.txHash = event.transaction.hash;
+  migration.save();
+}
+
+export function handleCurveFeeClaimed(event: CurveFeeClaimed): void {
+  let token = Token.load(event.params.token.toHexString());
+  if (token == null) return;
+
+  let claim = new CurveFeeClaim(event.transaction.hash.toHexString() + "-" + event.logIndex.toString());
+  claim.token = token.id;
+  claim.creator = event.params.creator;
+  claim.creatorAmount = event.params.creatorAmount;
+  claim.platformAmount = event.params.platformAmount;
+  claim.timestamp = event.block.timestamp;
+  claim.blockNumber = event.block.number;
+  claim.txHash = event.transaction.hash;
+  claim.save();
+}

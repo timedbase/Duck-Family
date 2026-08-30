@@ -1,0 +1,13 @@
+html, body { margin: 0; padding: 0; background: #06060A; }
+* { box-sizing: border-box; }
+a { color: #D9D9D9; text-decoration: none; }
+a:hover { color: #fff; }
+::selection { background: #6600FF; color: #fff; }
+input, button, textarea { font-family: inherit; }
+input:focus, textarea:focus { outline: none; box-shadow: 0 0 0 1px #D9D9D9 inset; }
+input::placeholder, textarea::placeholder { color: #56566A; }
+@keyframes tape { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+@keyframes popin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes slidein { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes flashrow { from { background: rgba(217,217,217,.14); } to { background: transparent; } }

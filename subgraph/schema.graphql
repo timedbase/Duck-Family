@@ -1,0 +1,248 @@
+# duckfun.family subgraph schema — Ink chain (57073).
+#
+# Scoped to lifecycle/activity events, not governance/admin config
+# (DexAdded, PlatformWalletSet, Timelock*, rescue events, etc. are left
+# unindexed — they're rarely-changing owner-only config, cheaper to read
+# directly via a `cast call`/RPC read when needed than to maintain entities
+# for). Token.family distinguishes which of the three launcher contracts
+# created a given token; DuckHookV4's Pool applies to tokens from any family
+# once they have a live V4 pool (immediately for CURVE, at launch for
+# INSTANT, at campaign success for CAMPAIGN).
+
+enum Family {
+  CURVE
+  INSTANT
+  CAMPAIGN
+}
+
+enum TradeSide {
+  BUY
+  SELL
+}
+
+enum CTOStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+type Token @entity(immutable: false) {
+  id: ID! # token contract address
+  family: Family!
+  creator: Bytes!
+  quoteToken: Bytes
+  totalSupply: BigInt!
+  createdAt: BigInt!
+  createdAtBlock: BigInt!
+  createdAtTx: Bytes!
+
+  # CURVE only (DuckIncubation)
+  virtualQuote: BigInt
+  migrationTarget: BigInt
+  antibotEnabled: Boolean
+  tradingBlock: BigInt
+  migrated: Boolean
+  bcTokensSold: BigInt
+  raisedQuote: BigInt
+
+  # INSTANT only (DuckLauncher) -- CAMPAIGN tokens also get these once their
+  # campaign succeeds and DuckRaise seeds their pool.
+  positionManager: Bytes
+  hook: Bytes
+  tokenId: BigInt
+
+  # CAMPAIGN only (DuckRaise)
+  campaign: Campaign
+
+  # Pool/Position/Migration are keyed by this same token address -- query
+  # them directly by id (they aren't back-referenced here to avoid a
+  # cross-contract event-ordering dependency: PositionRegistered/
+  # PoolRegistered can fire before this Token entity exists yet for
+  # INSTANT/CAMPAIGN tokens, since the locker/hook registration happens
+  # before TokenLaunched/CampaignSucceeded is emitted in those contracts).
+  trades: [Trade!]! @derivedFrom(field: "token")
+  curveFeeClaims: [CurveFeeClaim!]! @derivedFrom(field: "token")
+  holders: [Holder!]! @derivedFrom(field: "token")
+}
+
+type Trade @entity(immutable: true) {
+  id: ID! # txHash-logIndex
+  token: Token!
+  trader: Bytes!
+  side: TradeSide!
+  quoteAmount: BigInt!
+  tokenAmount: BigInt!
+  tokensToDead: BigInt
+  raisedQuoteAfter: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+# One per CURVE token -- migrate()/emergencyMigrate() can only ever succeed once.
+type Migration @entity(immutable: true) {
+  id: ID! # token address
+  token: Token!
+  poolId: Bytes
+  liquidityQuote: BigInt!
+  liquidityTokens: BigInt!
+  emergency: Boolean!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type CurveFeeClaim @entity(immutable: true) {
+  id: ID! # txHash-logIndex
+  token: Token!
+  creator: Bytes!
+  creatorAmount: BigInt!
+  platformAmount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type Campaign @entity(immutable: false) {
+  id: ID! # DuckRaise-internal campaignId
+  token: Token
+  creator: Bytes!
+  name: String!
+  symbol: String!
+  dexQuoteAsset: Bytes!
+  goal: BigInt!
+  startTime: BigInt!
+  deadline: BigInt!
+  totalRaised: BigInt!
+  succeeded: Boolean!
+  failed: Boolean!
+  createdAt: BigInt!
+  createdAtBlock: BigInt!
+  createdAtTx: Bytes!
+  resolvedAt: BigInt
+  resolvedAtBlock: BigInt
+  contributions: [Contribution!]! @derivedFrom(field: "campaign")
+}
+
+type Contribution @entity(immutable: false) {
+  id: ID! # campaignId-contributor
+  campaign: Campaign!
+  contributor: Bytes!
+  amount: BigInt!
+  claimed: Boolean!
+  claimedAmount: BigInt!
+  refunded: Boolean!
+  refundedAmount: BigInt!
+  firstContributedAt: BigInt!
+  lastContributedAt: BigInt!
+}
+
+# One per token with a locked LP position (shared DuckLocker, all three families).
+type Position @entity(immutable: false) {
+  id: ID! # token address
+  token: Token!
+  tokenId: BigInt!
+  poolId: Bytes!
+  hook: Bytes!
+  positionManager: Bytes!
+  registeredAt: BigInt!
+  registeredAtBlock: BigInt!
+  registeredAtTx: Bytes!
+  totalBurned: BigInt!
+  totalToPlatform: BigInt!
+  feeClaims: [LPFeeClaim!]! @derivedFrom(field: "position")
+}
+
+type LPFeeClaim @entity(immutable: true) {
+  id: ID! # txHash-logIndex
+  position: Position!
+  burned: BigInt!
+  toPlatform: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+# One per token registered with the shared DuckHookV4 (same set of tokens as
+# Position, keyed by the hook's own poolId instead).
+type Pool @entity(immutable: false) {
+  id: ID! # poolId (bytes32)
+  token: Token!
+  creator: Bytes!
+  hookFeeBps: BigInt!
+  registeredAt: BigInt!
+  registeredAtBlock: BigInt!
+  swapCount: BigInt!
+  # Tracks the currently-pending application's id (only one can be pending
+  # at a time -- a second application while one is pending reverts on-chain)
+  # so CTOApproved/CTORejected, which don't carry a fresh application id
+  # themselves, can find the right CTOApplication entity to resolve.
+  pendingCTO: String
+  ctoApplications: [CTOApplication!]! @derivedFrom(field: "pool")
+  feeClaims: [HookFeeClaim!]! @derivedFrom(field: "pool")
+  swaps: [PoolSwap!]! @derivedFrom(field: "pool")
+  liquidityChanges: [PoolLiquidityChange!]! @derivedFrom(field: "pool")
+}
+
+# Raw Uniswap V4 PoolManager activity for pools this platform created --
+# filtered in the mapping (Pool.load(id) != null) since PoolManager is a
+# shared singleton emitting Swap/ModifyLiquidity for every pool on Ink, not
+# just ours.
+type PoolSwap @entity(immutable: true) {
+  id: ID! # txHash-logIndex
+  pool: Pool!
+  sender: Bytes!
+  amount0: BigInt!
+  amount1: BigInt!
+  sqrtPriceX96: BigInt!
+  liquidity: BigInt!
+  tick: Int!
+  fee: Int!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type PoolLiquidityChange @entity(immutable: true) {
+  id: ID! # txHash-logIndex
+  pool: Pool!
+  sender: Bytes!
+  tickLower: Int!
+  tickUpper: Int!
+  liquidityDelta: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type HookFeeClaim @entity(immutable: true) {
+  id: ID! # txHash-logIndex
+  pool: Pool!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type CTOApplication @entity(immutable: false) {
+  id: ID! # poolId-txHash-logIndex (a rejected applicant can re-apply)
+  pool: Pool!
+  applicant: Bytes!
+  newCreator: Bytes!
+  paid: BigInt!
+  status: CTOStatus!
+  appliedAt: BigInt!
+  appliedAtBlock: BigInt!
+  appliedAtTx: Bytes!
+  resolvedAt: BigInt
+  resolvedAtBlock: BigInt
+}
+
+type Holder @entity(immutable: false) {
+  id: ID! # token-account
+  token: Token!
+  account: Bytes!
+  balance: BigInt!
+  updatedAt: BigInt!
+  updatedAtBlock: BigInt!
+}

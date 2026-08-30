@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: duckfun-family-api
+    runtime: node
+    plan: starter
+    region: oregon
+    rootDir: backend
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run api
+    envVars:
+      - key: SUBGRAPH_URL
+        value: https://api.goldsky.com/api/public/project_cmhtxnzpqm81001w94ksmgira/subgraphs/duckfun-ink/1.0.0/gn
+      - key: INK_RPC_URL
+        sync: false
+      - key: PORT
+        value: "3000"
+      - key: PINATA_JWT
+        sync: false
