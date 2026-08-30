@@ -409,7 +409,7 @@ export default function App() {
           enableAntibot: false, antibotBlocks: 0n, metaURI,
           buyAmountWei: isNativeQuoted ? earlyBuyAmount : 0n, earlyBuyAmount: isNativeQuoted ? 0n : earlyBuyAmount,
         });
-        createdAddress = r.tokenAddress;
+        createdAddress = r.tokenAddress.toLowerCase();
         return r.hash;
       });
       if (hash) {
@@ -430,7 +430,7 @@ export default function App() {
         const r = await launchInstant({
           account: acct, name: d.name.trim(), symbol, metaURI, quoteToken: d.quoteToken, launchMarketCap, quoteAmountWei: buyWei,
         });
-        createdAddress = r.tokenAddress;
+        createdAddress = r.tokenAddress.toLowerCase();
         return r.hash;
       });
       if (hash) {
@@ -450,7 +450,7 @@ export default function App() {
         const r = await createCampaign({
           account: acct, name: d.name.trim(), symbol, metaURI, dexQuoteAsset: d.dexQuoteAsset, goalNativeWei,
         });
-        createdAddress = r.tokenAddress; createdCampaignId = r.campaignId;
+        createdAddress = r.tokenAddress.toLowerCase(); createdCampaignId = r.campaignId;
         return r.hash;
       });
       if (hash) {
