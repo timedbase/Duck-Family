@@ -589,6 +589,11 @@ function buildViewModel(ctx) {
     open: () => ctx.openToken(c.id),
   });
   const feed = list.map(shape);
+  // Hero slider: the 5 most recently active launches across every family,
+  // unfiltered by the Discover page's own filter/search -- "most recent
+  // activity" is honestly the most recent on-chain launch event (ageMin),
+  // since no cross-token recent-trades feed exists to rank by actual trades.
+  const recentTokens = s.coins.slice().sort((a, b) => a.ageMin - b.ageMin).slice(0, 5).map(shape);
 
   const c = s.coins.find((x) => x.id === s.tokenId);
   const buying = s.side === "buy";
@@ -628,9 +633,8 @@ function buildViewModel(ctx) {
       { label: "TOKENS LISTED", value: String(s.coins.length), sub: "across three families", bg: CARD },
       { label: "MIGRATED", value: String(s.coins.filter((x) => x.migrated).length), sub: "curves → V4 pools", bg: CARD },
       { label: "ACTIVE RAISES", value: String(s.coins.filter((x) => x.family === "CAMPAIGN" && !x.campaignSucceeded && !x.campaignFailed).length), sub: "crowdfund campaigns", bg: LIME },
-      { label: "CONNECTED", value: account ? "YOU" : "NO", sub: account ? shortAddress(account) : "connect to trade", bg: CARD },
     ],
-    filters, feed, isEmpty: feed.length === 0,
+    filters, feed, isEmpty: feed.length === 0, recentTokens,
     layoutCards: s.layout === "cards", layoutTable: s.layout === "table",
     setLayoutCards: () => set({ layout: "cards" }), setLayoutTable: () => set({ layout: "table" }),
     lcBg: block(s.layout === "cards").bg, lcFg: block(s.layout === "cards").fg,

@@ -1,20 +1,70 @@
+import { useState, useEffect } from "react";
 import { cs } from "../cs.js";
 
+function RecentSlider({ v }) {
+  const items = v.recentTokens;
+  const [i, setI] = useState(0);
+  const n = items.length;
+  useEffect(() => { if (i >= n) setI(0); }, [n, i]);
+  useEffect(() => {
+    if (n < 2) return;
+    const t = setInterval(() => setI((x) => (x + 1) % n), 4000);
+    return () => clearInterval(t);
+  }, [n]);
+  if (n === 0) return null;
+  const t = items[i];
+  return (
+    <div style={cs("padding:18px;display:flex;flex-direction:column;gap:11px;background:var(--paper)")}>
+      <div style={cs("display:flex;justify-content:space-between;align-items:baseline")}>
+        <span style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>LAST ACTIVITY · ACROSS ALL LAUNCHES</span>
+        <span style={cs("font-family:'DM Mono',monospace;font-size:9.5px;color:var(--mute)")}>{i + 1}/{n}</span>
+      </div>
+      <div onClick={t.open} style={cs("display:flex;align-items:stretch;border:2px solid var(--ink);background:var(--card);cursor:pointer")}>
+        <div style={cs(`width:50px;flex:none;border-right:2px solid var(--ink);background:${t.famBg};color:${t.famFg};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700`)}>{t.initials}</div>
+        <div style={cs("flex:1;min-width:0;padding:10px 12px")}>
+          <div style={cs("font-size:15px;font-weight:700;letter-spacing:-.02em")}>{t.symbol}</div>
+          <div style={cs("font-size:11px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.name}</div>
+        </div>
+        <div style={cs("border-left:2px solid var(--ink);padding:10px 12px;text-align:right;flex:none")}>
+          <div style={cs("font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--mute)")}>{t.family}</div>
+          <div style={cs("font-family:'DM Mono',monospace;font-size:12px;font-weight:500;margin-top:2px")}>{t.mcap}</div>
+        </div>
+      </div>
+      <div style={cs("display:flex;gap:2px;height:14px;border:2px solid var(--ink);padding:2px;background:var(--card)")}>
+        {t.ticks.map((c2, ci) => <div key={ci} style={cs(`flex:1;background:${c2}`)}></div>)}
+      </div>
+      <div style={cs("display:flex;gap:6px;justify-content:center")}>
+        {items.map((_, di) => (
+          <button key={di} onClick={() => setI(di)} aria-label={`Slide ${di + 1}`} style={cs(`width:${di === i ? "18px" : "8px"};height:8px;border:2px solid var(--ink);padding:0;cursor:pointer;background:${di === i ? "var(--ink)" : "var(--card)"};transition:width .15s`)}></button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function DiscoverPage({ v }) {
+  const hasSlider = v.recentTokens.length > 0;
   return (
     <div>
       <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink);margin-bottom:18px")}>
-        <div style={cs(`display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:${v.isMobile ? "18px 16px 16px" : "24px 22px 20px"};border-bottom:2px solid var(--ink)`)}>
-          <div style={cs("max-width:60ch")}>
-            <h1 style={cs(`margin:0 0 8px;font-size:${v.isMobile ? "26px" : "36px"};letter-spacing:-.04em;font-weight:700;line-height:1.05`)}>Launches on Ink</h1>
-            <p style={cs("margin:0;color:var(--mute);font-size:14px;line-height:1.55")}>Bonding curves, instant V4 launches and crowdfund raises. One anti-MEV hook, one permanent LP vault, no oracle anywhere.</p>
-          </div>
-          {!v.isMobile && (
-            <div style={cs("display:flex;gap:0;border:2px solid var(--ink)")}>
-              <button onClick={v.setLayoutCards} style={cs(`padding:8px 15px;border:0;background:${v.lcBg};color:${v.lcFg};font-size:12.5px;font-weight:600;cursor:pointer`)}>Cards</button>
-              <button onClick={v.setLayoutTable} style={cs(`padding:8px 15px;border:0;border-left:2px solid var(--ink);background:${v.ltBg};color:${v.ltFg};font-size:12.5px;font-weight:600;cursor:pointer`)}>Table</button>
+        <div style={cs(`display:grid;grid-template-columns:${v.isMobile || !hasSlider ? "1fr" : "1.3fr .7fr"};gap:0;border-bottom:2px solid var(--ink)`)}>
+          <div style={cs(`padding:${v.isMobile ? "18px 16px" : "28px 26px"};display:flex;flex-direction:column;gap:14px;${!v.isMobile && hasSlider ? "border-right:2px solid var(--ink)" : ""}`)}>
+            <div>
+              <h1 style={cs(`margin:0 0 9px;font-size:${v.isMobile ? "26px" : "38px"};letter-spacing:-.04em;font-weight:700;line-height:1.05`)}>Launches on Ink</h1>
+              <p style={cs("margin:0;color:var(--mute);font-size:14px;line-height:1.55;max-width:52ch")}>Bonding curves, instant V4 launches and crowdfund raises. One anti-MEV hook, one permanent LP vault, no oracle anywhere.</p>
             </div>
-          )}
+            <div style={cs("display:flex;gap:10px;flex-wrap:wrap;align-items:center")}>
+              <button onClick={v.goCreate} style={cs("border:2px solid var(--ink);cursor:pointer;font-size:13.5px;font-weight:700;background:var(--lime);color:var(--ink);padding:12px 20px;box-shadow:3px 3px 0 var(--ink)")}>Launch a token →</button>
+              {!v.isMobile && (
+                <div style={cs("display:flex;gap:0;border:2px solid var(--ink)")}>
+                  <button onClick={v.setLayoutCards} style={cs(`padding:11px 15px;border:0;background:${v.lcBg};color:${v.lcFg};font-size:12.5px;font-weight:600;cursor:pointer`)}>Cards</button>
+                  <button onClick={v.setLayoutTable} style={cs(`padding:11px 15px;border:0;border-left:2px solid var(--ink);background:${v.ltBg};color:${v.ltFg};font-size:12.5px;font-weight:600;cursor:pointer`)}>Table</button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {!v.isMobile && hasSlider && <RecentSlider v={v} />}
         </div>
         <div style={cs("display:flex;flex-wrap:wrap")}>
           {v.stats.map((st, i) => (
