@@ -518,7 +518,7 @@ export default function App() {
   const v = buildViewModel({
     s, set, account, isConnected, disconnect, openConnectModal,
     loadCoins, loadPortfolio, loadTokenDetail, openToken, flash, requireWallet,
-    buy, sell, submitCreate, onImagePick, clearImage,
+    buy, sell, submitCreate, onImagePick, clearImage, setSocial,
     contribute, claimCampaignTokens, claimCampaignRefundAction, finalizeCampaignAction,
     claimCreatorFees, claimAllCreatorFees, loadCreatorData, claimCreatorAndHookFees, claimCurveFeeAction, saveFeeSplits, buyTakeover,
   });
@@ -796,7 +796,7 @@ function buildViewModel(ctx) {
     draftInstant: s.draftInstant, setInstant: (patch) => set({ draftInstant: { ...s.draftInstant, ...patch } }),
     draftCampaign: s.draftCampaign, setCampaign: (patch) => set({ draftCampaign: { ...s.draftCampaign, ...patch } }),
     socials: (s.family === "incubation" ? s.draftCurve : s.family === "launcher" ? s.draftInstant : s.draftCampaign).socials,
-    setSocial,
+    setSocial: ctx.setSocial,
     raiseDefaults: s.raiseDefaults,
     loadRaiseDefaults: () => {
       if (s.raiseDefaults) return;
