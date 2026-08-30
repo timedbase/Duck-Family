@@ -23,9 +23,9 @@ import {
 import { buyOnPoolWithNative, sellOnPoolForNative } from "./chain/dex.js";
 import { previewCurveBuy, previewCurveSell, previewCurveBuyWithNative, previewPoolBuyWithNative, previewPoolSellForNative, applySlippage } from "./chain/quotes.js";
 import { ZERO_ADDRESS, DEFAULT_QUOTE_TOKENS, RAISE_DEFAULT_QUOTE_ASSETS, DUCK_HOOK } from "./chain/addresses.js";
-import { fetchTokenMeta } from "./chain/tokenMeta.js";
+import { fetchTokenMeta, fetchTokenMetaUri } from "./chain/tokenMeta.js";
 import { findBlockedTerm } from "./moderation.js";
-import { resolveTokenImage } from "./ipfs.js";
+import { resolveTokenImage, resolveTokenSocials, resolveTokenDescription } from "./ipfs.js";
 
 const REFRESH_MS = 15000;
 const GAS_RESERVE_WEI = parseEther("0.005");
@@ -56,6 +56,7 @@ function decimalsFor(address, platformTokens = []) {
   return t ? t.decimals : 18;
 }
 
+const EMPTY_SOCIALS = { twitter: "", telegram: "", website: "" };
 const EMPTY_IMAGE = { file: null, previewUrl: "", uploading: false, ipfsUri: "", gatewayUrl: "", error: "" };
 const EMPTY_PORTFOLIO = { created: [], holdings: [], contributions: [] };
 const block = (active) => (active ? { bg: INK, fg: CARD } : { bg: CARD, fg: INK });
@@ -72,9 +73,9 @@ export default function App() {
     family: null, contribAmount: "0.5", slippageBps: 100,
     nativeBalance: 0n, txPending: false, tx: null, toast: "",
     portfolio: EMPTY_PORTFOLIO, coins: [], coinsLoading: true, coinsError: "",
-    draftCurve: { name: "", ticker: "", desc: "", quoteToken: ZERO_ADDRESS, startVirtualQuote: "8000", migrationTargetQuote: "60000", earlyBuyAmount: "0" },
-    draftInstant: { name: "", ticker: "", desc: "", quoteToken: ZERO_ADDRESS, launchMarketCap: "10", buyAmountHype: "0" },
-    draftCampaign: { name: "", ticker: "", desc: "", dexQuoteAsset: ZERO_ADDRESS, goalNative: "50" },
+    draftCurve: { name: "", ticker: "", desc: "", quoteToken: ZERO_ADDRESS, startVirtualQuote: "8000", migrationTargetQuote: "60000", earlyBuyAmount: "0", socials: EMPTY_SOCIALS },
+    draftInstant: { name: "", ticker: "", desc: "", quoteToken: ZERO_ADDRESS, launchMarketCap: "10", buyAmountHype: "0", socials: EMPTY_SOCIALS },
+    draftCampaign: { name: "", ticker: "", desc: "", dexQuoteAsset: ZERO_ADDRESS, goalNative: "50", socials: EMPTY_SOCIALS },
     draftImage: EMPTY_IMAGE,
     raiseDefaults: null, platformTokens: { incubation: null, launcher: null, raise: null },
     creatorData: null, creatorLoading: false, ctoFee: null,
@@ -153,7 +154,24 @@ export default function App() {
     return () => clearInterval(t);
   }, [account, refreshBalance, loadPortfolio, set]);
 
+  // Shared by loadTokenDetail (CURVE/INSTANT) and loadCampaignDetail (RAISE)
+  // -- metaURI() is the same ERC20 field on every family's token clone.
+  const loadTokenMeta = useCallback(async (address) => {
+    try {
+      const uri = await fetchTokenMetaUri(address);
+      if (!uri) return;
+      const [desc, imageUrl, socials] = await Promise.all([
+        resolveTokenDescription(uri), resolveTokenImage(uri), resolveTokenSocials(uri),
+      ]);
+      setS((st) => ({
+        ...st,
+        coins: st.coins.map((c) => (c.id === address ? { ...c, metaUri: uri, desc: desc || c.desc, imageUrl: imageUrl || c.imageUrl, socials } : c)),
+      }));
+    } catch (e) { console.error("failed to load token metadata", e); }
+  }, []);
+
   const loadTokenDetail = useCallback(async (address) => {
+    loadTokenMeta(address);
     try {
       const [trades, holders] = await Promise.all([api.trades(address), api.holders(address)]);
       setS((st) => {
@@ -200,6 +218,7 @@ export default function App() {
     if (coin && coin.family === "CAMPAIGN") {
       set({ screen: "campaign", tokenId: id, campaignDetail: null });
       if (coin.campaignId) loadCampaignDetail(coin.campaignId);
+      loadTokenMeta(id);
       getRaiseDefaults().then((d) => set({ raiseDefaults: d })).catch(() => {});
     } else {
       set({ screen: "token", tokenId: id, tab: "Trades", side: "buy", amount: "250" });
@@ -315,16 +334,20 @@ export default function App() {
     if (s.draftImage.previewUrl) URL.revokeObjectURL(s.draftImage.previewUrl);
     set({ draftImage: EMPTY_IMAGE });
   }
-  async function buildMetaURI(name, symbol, desc) {
+  async function buildMetaURI(name, symbol, desc, socials) {
     try {
       const res = await fetch(API_BASE + "/upload/metadata", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, symbol, description: desc, image: s.draftImage.ipfsUri || "" }),
+        body: JSON.stringify({ name, symbol, description: desc, image: s.draftImage.ipfsUri || "", socials: socials || {} }),
       });
       if (!res.ok) throw new Error("metadata upload failed");
       const { ipfsUri } = await res.json();
       return ipfsUri;
     } catch { return desc; }
+  }
+  function setSocial(field, value) {
+    const key = s.family === "incubation" ? "draftCurve" : s.family === "launcher" ? "draftInstant" : "draftCampaign";
+    set({ [key]: { ...s[key], socials: { ...s[key].socials, [field]: value } } });
   }
 
   async function submitCreate() {
@@ -339,41 +362,65 @@ export default function App() {
       const startVirtualQuote = parseUnits(d.startVirtualQuote || "1", decimals);
       const migrationTargetQuote = parseUnits(d.migrationTargetQuote || "10", decimals);
       if (startVirtualQuote === 0n || migrationTargetQuote <= startVirtualQuote) return flash("Migration target must exceed the start target.");
-      const metaURI = await buildMetaURI(d.name.trim(), symbol, d.desc.trim());
+      const metaURI = await buildMetaURI(d.name.trim(), symbol, d.desc.trim(), d.socials);
       const isNativeQuoted = d.quoteToken.toLowerCase() === ZERO_ADDRESS;
       const earlyBuyAmount = d.earlyBuyAmount && Number(d.earlyBuyAmount) > 0 ? parseUnits(String(d.earlyBuyAmount), decimals) : 0n;
-      const hash = await runTx("Launch", () => createCurveToken({
-        account: acct, name: d.name.trim(), symbol, totalSupply: parseUnits("1000000000", 18),
-        curveBps: 8000n, liquidityBps: 2000n, quoteToken: d.quoteToken, startVirtualQuote, migrationTargetQuote,
-        enableAntibot: false, antibotBlocks: 0n, metaURI,
-        buyAmountWei: isNativeQuoted ? earlyBuyAmount : 0n, earlyBuyAmount: isNativeQuoted ? 0n : earlyBuyAmount,
-      }));
-      if (hash) { set({ screen: "portfolio", draftImage: EMPTY_IMAGE }); flash("Launch submitted."); setTimeout(loadCoins, 6000); }
+      let createdAddress;
+      const hash = await runTx("Launch", async () => {
+        const r = await createCurveToken({
+          account: acct, name: d.name.trim(), symbol, totalSupply: parseUnits("1000000000", 18),
+          curveBps: 8000n, liquidityBps: 2000n, quoteToken: d.quoteToken, startVirtualQuote, migrationTargetQuote,
+          enableAntibot: false, antibotBlocks: 0n, metaURI,
+          buyAmountWei: isNativeQuoted ? earlyBuyAmount : 0n, earlyBuyAmount: isNativeQuoted ? 0n : earlyBuyAmount,
+        });
+        createdAddress = r.tokenAddress;
+        return r.hash;
+      });
+      if (hash) {
+        set({ screen: "token", tokenId: createdAddress, tab: "Trades", side: "buy", amount: "250", draftImage: EMPTY_IMAGE });
+        flash("Launch submitted."); loadTokenMeta(createdAddress); setTimeout(loadCoins, 6000);
+      }
     } else if (family === "launcher") {
       const d = s.draftInstant;
       if (!d.name.trim() || !d.ticker.trim()) return flash("Name and ticker are required.");
       if (findBlockedTerm(d.name, d.ticker, d.desc)) return flash("That name, ticker, or description isn't allowed.");
       const symbol = d.ticker.trim().toUpperCase().slice(0, 9);
-      const metaURI = await buildMetaURI(d.name.trim(), symbol, d.desc.trim());
+      const metaURI = await buildMetaURI(d.name.trim(), symbol, d.desc.trim(), d.socials);
       const decimals = decimalsFor(d.quoteToken, [s.platformTokens.launcher]);
       const launchMarketCap = parseUnits(d.launchMarketCap || "10", decimals);
       const buyWei = d.buyAmountHype && Number(d.buyAmountHype) > 0 ? parseEther(String(d.buyAmountHype)) : 0n;
-      const hash = await runTx("Launch", () => launchInstant({
-        account: acct, name: d.name.trim(), symbol, metaURI, quoteToken: d.quoteToken, launchMarketCap, quoteAmountWei: buyWei,
-      }));
-      if (hash) { set({ screen: "portfolio", draftImage: EMPTY_IMAGE }); flash("Launch submitted."); setTimeout(loadCoins, 6000); }
+      let createdAddress;
+      const hash = await runTx("Launch", async () => {
+        const r = await launchInstant({
+          account: acct, name: d.name.trim(), symbol, metaURI, quoteToken: d.quoteToken, launchMarketCap, quoteAmountWei: buyWei,
+        });
+        createdAddress = r.tokenAddress;
+        return r.hash;
+      });
+      if (hash) {
+        set({ screen: "token", tokenId: createdAddress, tab: "Trades", side: "buy", amount: "250", draftImage: EMPTY_IMAGE });
+        flash("Launch submitted."); loadTokenMeta(createdAddress); setTimeout(loadCoins, 6000);
+      }
     } else {
       const d = s.draftCampaign;
       if (!d.name.trim() || !d.ticker.trim()) return flash("Name and ticker are required.");
       if (findBlockedTerm(d.name, d.ticker, d.desc)) return flash("That name, ticker, or description isn't allowed.");
       const symbol = d.ticker.trim().toUpperCase().slice(0, 9);
-      const metaURI = await buildMetaURI(d.name.trim(), symbol, d.desc.trim());
+      const metaURI = await buildMetaURI(d.name.trim(), symbol, d.desc.trim(), d.socials);
       const goalNativeWei = parseEther(d.goalNative || "1");
       if (goalNativeWei === 0n) return flash("Enter a funding goal greater than zero.");
-      const hash = await runTx("Create campaign", () => createCampaign({
-        account: acct, name: d.name.trim(), symbol, metaURI, dexQuoteAsset: d.dexQuoteAsset, goalNativeWei,
-      }));
-      if (hash) { set({ screen: "portfolio", draftImage: EMPTY_IMAGE }); flash("Campaign submitted."); setTimeout(loadCoins, 6000); }
+      let createdAddress, createdCampaignId;
+      const hash = await runTx("Create campaign", async () => {
+        const r = await createCampaign({
+          account: acct, name: d.name.trim(), symbol, metaURI, dexQuoteAsset: d.dexQuoteAsset, goalNativeWei,
+        });
+        createdAddress = r.tokenAddress; createdCampaignId = r.campaignId;
+        return r.hash;
+      });
+      if (hash) {
+        set({ screen: "campaign", tokenId: createdAddress, campaignDetail: null, draftImage: EMPTY_IMAGE });
+        flash("Campaign submitted."); loadTokenMeta(createdAddress); loadCampaignDetail(createdCampaignId); setTimeout(loadCoins, 6000);
+      }
     }
   }
 
@@ -509,10 +556,10 @@ export default function App() {
 
       <main style={cs(`flex:1;max-width:1420px;width:100%;margin:0 auto;padding:${m ? "14px 12px 84px" : "22px 20px 72px"};min-width:0`)}>
         {v.isHome && <DiscoverPage v={v} />}
-        {v.isToken && <TokenPage v={v} />}
+        {v.isToken && (v.coin ? <TokenPage v={v} /> : <PendingLaunchPanel v={v} />)}
         {v.isCreate && <CreateChooserPage v={v} />}
         {v.isCreateForm && <CreateFormPage v={v} />}
-        {v.isCampaign && <CampaignPage v={v} />}
+        {v.isCampaign && (v.camp ? <CampaignPage v={v} /> : <PendingLaunchPanel v={v} />)}
         {v.isPortfolio && <PortfolioPage v={v} />}
       </main>
 
@@ -580,7 +627,8 @@ function buildViewModel(ctx) {
 
   const filters = ["All", "CURVE", "INSTANT", "CAMPAIGN", "Migrated"].map((key) => {
     const label = key === "CURVE" ? "Incubation" : key === "INSTANT" ? "Launcher" : key === "CAMPAIGN" ? "Raise" : key;
-    return Object.assign({ key, label, dv: key === "All" ? "0" : "2px solid var(--ink)", go: () => set({ filter: key }) }, block(s.filter === key));
+    const shortLabel = key === "CURVE" ? "Curve" : key === "INSTANT" ? "Launch" : label;
+    return Object.assign({ key, label: s.mobile ? shortLabel : label, dv: key === "All" ? "0" : "2px solid var(--ink)", go: () => set({ filter: key }) }, block(s.filter === key));
   });
 
   let list = s.coins.slice();
@@ -747,6 +795,8 @@ function buildViewModel(ctx) {
     draftCurve: s.draftCurve, setCurve: (patch) => set({ draftCurve: { ...s.draftCurve, ...patch } }),
     draftInstant: s.draftInstant, setInstant: (patch) => set({ draftInstant: { ...s.draftInstant, ...patch } }),
     draftCampaign: s.draftCampaign, setCampaign: (patch) => set({ draftCampaign: { ...s.draftCampaign, ...patch } }),
+    socials: (s.family === "incubation" ? s.draftCurve : s.family === "launcher" ? s.draftInstant : s.draftCampaign).socials,
+    setSocial,
     raiseDefaults: s.raiseDefaults,
     loadRaiseDefaults: () => {
       if (s.raiseDefaults) return;
@@ -780,6 +830,20 @@ function buildViewModel(ctx) {
   };
 }
 
+// Shown right after a launch tx confirms, for the few seconds before the
+// subgraph indexes the new token/campaign and it shows up in s.coins --
+// TokenPage/CampaignPage both render null until then, which would otherwise
+// be a blank screen.
+function PendingLaunchPanel({ v }) {
+  return (
+    <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink);padding:40px 24px;text-align:center")}>
+      <div style={cs("font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.1em;color:var(--mute)")}>CONFIRMING YOUR LAUNCH</div>
+      <div style={cs("font-size:15px;margin-top:10px")}>This'll appear here as soon as it's indexed — usually just a few seconds.</div>
+      <button onClick={v.goHome} style={cs("margin-top:18px;padding:10px 20px;border:2px solid var(--ink);background:var(--paper);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer")}>Back to Discover</button>
+    </div>
+  );
+}
+
 function buildCampaignModel(c, s, myContribution) {
   const detail = s.campaignDetail;
   const goal = Number(c.campaignGoal || 0) / 1e18;
@@ -809,7 +873,8 @@ function buildCampaignModel(c, s, myContribution) {
   }
 
   return {
-    initials: c.initials, name: c.name, symbol: c.ticker, token: shortAddress(c.id), status, stBg, stFg,
+    initials: c.initials, name: c.name, symbol: c.ticker, token: shortAddress(c.id), tokenAddress: c.id, status, stBg, stFg,
+    desc: c.desc, socials: c.socials,
     raised: raised.toFixed(4), goal: goal.toFixed(4), pct: Math.round(pct) + "%",
     backers: detail ? String(detail.contributions?.length ?? 0) : "…",
     deadline: resolved ? (c.campaignSucceeded ? "FINALIZED" : "FINALIZED — MISSED") : deadlinePassed ? "DEADLINE PASSED" : "RAISING",

@@ -38,7 +38,11 @@ export default function TokenPage({ v }) {
             <div style={cs("display:flex;gap:15px;margin-top:10px;font-family:'DM Mono',monospace;font-size:11.5px;color:var(--mute);flex-wrap:wrap")}>
               <span>{sel.address}</span>
               <a href={`https://explorer.inkonchain.com/address/${tok.id}`} target="_blank" rel="noreferrer">Blockscout</a>
+              {tok.socials?.website && <a href={tok.socials.website} target="_blank" rel="noreferrer noopener">Website</a>}
+              {tok.socials?.twitter && <a href={tok.socials.twitter} target="_blank" rel="noreferrer noopener">X / Twitter</a>}
+              {tok.socials?.telegram && <a href={tok.socials.telegram} target="_blank" rel="noreferrer noopener">Telegram</a>}
             </div>
+            {tok.desc && <div style={cs("font-size:13px;color:var(--mute);margin-top:10px;max-width:60ch;line-height:1.5")}>{tok.desc}</div>}
           </div>
           <div style={cs("border-left:2px solid var(--ink);padding:16px 22px;text-align:right;flex:none")}>
             <div style={cs("font-family:'DM Mono',monospace;font-size:34px;font-weight:500;letter-spacing:-.04em;line-height:1")}>{sel.price}</div>

@@ -14,11 +14,29 @@ export function ipfsToHttp(uri) {
   return null;
 }
 
-const cache = new Map();
+// Only http(s) links are ever rendered as an href -- metadata JSON is
+// attacker-controlled (anyone can mint a token and point its metaURI at
+// arbitrary content), so a bare string here could otherwise carry a
+// javascript: URI. Bare handles/domains are treated as https:// for
+// convenience.
+export function normalizeSocialUrl(raw) {
+  const trimmed = (raw || "").trim();
+  if (!trimmed) return null;
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(withScheme);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
 
-export function resolveTokenImage(metaUri) {
+const metaCache = new Map();
+
+function resolveTokenMeta(metaUri) {
   if (!metaUri) return Promise.resolve(null);
-  if (cache.has(metaUri)) return cache.get(metaUri);
+  if (metaCache.has(metaUri)) return metaCache.get(metaUri);
 
   const promise = (async () => {
     try {
@@ -26,13 +44,34 @@ export function resolveTokenImage(metaUri) {
       if (!url) return null;
       const res = await fetch(url);
       if (!res.ok) return null;
-      const data = await res.json();
-      return ipfsToHttp(data?.image) || null;
+      return await res.json();
     } catch {
       return null;
     }
   })();
 
-  cache.set(metaUri, promise);
+  metaCache.set(metaUri, promise);
   return promise;
+}
+
+export function resolveTokenImage(metaUri) {
+  return resolveTokenMeta(metaUri).then((data) => ipfsToHttp(data?.image) || null);
+}
+
+// { twitter, telegram, website } -> null entries dropped, each normalized/
+// validated as an http(s) URL. Returns null (not {}) when nothing usable.
+export function resolveTokenSocials(metaUri) {
+  return resolveTokenMeta(metaUri).then((data) => {
+    if (!data?.socials || typeof data.socials !== "object") return null;
+    const out = {};
+    for (const key of ["twitter", "telegram", "website"]) {
+      const url = normalizeSocialUrl(data.socials[key]);
+      if (url) out[key] = url;
+    }
+    return Object.keys(out).length ? out : null;
+  });
+}
+
+export function resolveTokenDescription(metaUri) {
+  return resolveTokenMeta(metaUri).then((data) => (typeof data?.description === "string" ? data.description : ""));
 }

@@ -76,17 +76,45 @@ router.post("/image", uploadLimiter, upload.single("file"), async (req, res) => 
   }
 });
 
+// Only http(s) links are ever rendered as an href on the frontend -- this
+// JSON is attacker-controlled (anyone can mint a token and point its
+// metaURI here), so reject anything else at write time too, not just on
+// display. Bare handles/domains are treated as https:// for convenience.
+function sanitizeSocialUrl(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const trimmed = raw.trim().slice(0, 200);
+  if (!trimmed) return undefined;
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(withScheme);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function sanitizeSocials(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Record<string, string> = {};
+  for (const key of ["twitter", "telegram", "website"]) {
+    const url = sanitizeSocialUrl((raw as Record<string, unknown>)[key]);
+    if (url) out[key] = url;
+  }
+  return out;
+}
+
 router.post("/metadata", uploadLimiter, async (req, res) => {
   try {
     const jwt = requirePinata();
-    const { name, symbol, description, image } = req.body ?? {};
+    const { name, symbol, description, image, socials } = req.body ?? {};
     if (!name || !symbol) return res.status(400).json({ error: "name and symbol are required" });
 
     const pinataRes = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
       method: "POST",
       headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        pinataContent: { name, symbol, description: description ?? "", image: image ?? "" },
+        pinataContent: { name, symbol, description: description ?? "", image: image ?? "", socials: sanitizeSocials(socials) },
         pinataMetadata: { name: `${symbol}-metadata` },
       }),
     });

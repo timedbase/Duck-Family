@@ -1,6 +1,6 @@
 import { publicClient } from "./client.js";
 import { mineVanitySalt } from "./vanity.js";
-import { simulateAndSend } from "./tx.js";
+import { simulateAndSend, simulateAndSendWithResult } from "./tx.js";
 import {
   DUCK_INCUBATION_ABI, DUCK_LAUNCHER_ABI, DUCK_RAISE_ABI, DUCK_LOCKER_ABI, DUCK_HOOK_ABI, ERC20_ABI,
 } from "./abis.js";
@@ -83,7 +83,7 @@ export async function createCurveToken({
     await approveToken({ account, token: quoteToken, spender: DUCK_INCUBATION, amount: earlyBuyAmount });
   }
 
-  return simulateAndSend({
+  const { hash, result: tokenAddress } = await simulateAndSendWithResult({
     address: DUCK_INCUBATION,
     abi: DUCK_INCUBATION_ABI,
     functionName: "createToken",
@@ -97,6 +97,7 @@ export async function createCurveToken({
     value: isNativeQuoted ? fee + buyAmountWei : fee,
     account,
   });
+  return { hash, tokenAddress };
 }
 
 export async function buyCurve({ account, token, quoteToken = ZERO_ADDRESS, amountIn, minOut = 0n, deadlineSeconds = 1800 }) {
@@ -166,7 +167,7 @@ export async function launchInstant({
 }) {
   const { userSalt } = mineVanitySalt({ deployer: DUCK_LAUNCHER, impl: DUCK_LAUNCHER_TOKEN_IMPL, caller: account });
   const fee = await getLaunchFee();
-  return simulateAndSend({
+  const { hash, result } = await simulateAndSendWithResult({
     address: DUCK_LAUNCHER,
     abi: DUCK_LAUNCHER_ABI,
     functionName: "launch",
@@ -177,6 +178,7 @@ export async function launchInstant({
     value: fee + quoteAmountWei,
     account,
   });
+  return { hash, tokenAddress: result[0] };
 }
 
 export async function isLauncherQuoteTokenAllowed(token) {
@@ -208,7 +210,7 @@ export async function createCampaign({ account, name, symbol, metaURI, dexQuoteA
   const { userSalt } = mineVanitySalt({ deployer: DUCK_RAISE, impl: DUCK_RAISE_TOKEN_IMPL, caller: account });
   const fee = await getCampaignFee();
   const startTime = BigInt(startTimeSeconds ?? Math.floor(Date.now() / 1000));
-  return simulateAndSend({
+  const { hash, result } = await simulateAndSendWithResult({
     address: DUCK_RAISE,
     abi: DUCK_RAISE_ABI,
     functionName: "launch",
@@ -216,6 +218,7 @@ export async function createCampaign({ account, name, symbol, metaURI, dexQuoteA
     value: fee,
     account,
   });
+  return { hash, campaignId: result[0], tokenAddress: result[1] };
 }
 
 export async function contributeCampaign({ account, campaignId, amountWei }) {

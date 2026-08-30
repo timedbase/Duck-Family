@@ -20,8 +20,12 @@ export default function CampaignPage({ v }) {
                 </div>
                 <div style={cs("display:flex;gap:15px;margin-top:10px;font-family:'DM Mono',monospace;font-size:11.5px;color:var(--mute);flex-wrap:wrap")}>
                   <span>{camp.token}</span>
-                  <a href="https://explorer.inkonchain.com" target="_blank" rel="noreferrer">Blockscout</a>
+                  <a href={`https://explorer.inkonchain.com/address/${camp.tokenAddress}`} target="_blank" rel="noreferrer">Blockscout</a>
+                  {camp.socials?.website && <a href={camp.socials.website} target="_blank" rel="noreferrer noopener">Website</a>}
+                  {camp.socials?.twitter && <a href={camp.socials.twitter} target="_blank" rel="noreferrer noopener">X / Twitter</a>}
+                  {camp.socials?.telegram && <a href={camp.socials.telegram} target="_blank" rel="noreferrer noopener">Telegram</a>}
                 </div>
+                {camp.desc && <div style={cs("font-size:13px;color:var(--mute);margin-top:10px;max-width:60ch;line-height:1.5")}>{camp.desc}</div>}
               </div>
             </div>
 

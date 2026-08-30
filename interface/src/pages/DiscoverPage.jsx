@@ -50,8 +50,7 @@ export default function DiscoverPage({ v }) {
         <div style={cs(`display:grid;grid-template-columns:${v.isMobile || !hasSlider ? "1fr" : "1.3fr .7fr"};gap:0;border-bottom:2px solid var(--ink)`)}>
           <div style={cs(`padding:${v.isMobile ? "18px 16px" : "28px 26px"};display:flex;flex-direction:column;gap:14px;${!v.isMobile && hasSlider ? "border-right:2px solid var(--ink)" : ""}`)}>
             <div>
-              <h1 style={cs(`margin:0 0 9px;font-size:${v.isMobile ? "26px" : "38px"};letter-spacing:-.04em;font-weight:700;line-height:1.05`)}>Launches on Ink</h1>
-              <p style={cs("margin:0;color:var(--mute);font-size:14px;line-height:1.55;max-width:52ch")}>Bonding curves, instant V4 launches and crowdfund raises. One anti-MEV hook, one permanent LP vault, no oracle anywhere.</p>
+              <h1 style={cs(`margin:0;font-size:${v.isMobile ? "26px" : "38px"};letter-spacing:-.04em;font-weight:700;line-height:1.05`)}>Launches on Ink</h1>
             </div>
             <div style={cs("display:flex;gap:10px;flex-wrap:wrap;align-items:center")}>
               <button onClick={v.goCreate} style={cs("border:2px solid var(--ink);cursor:pointer;font-size:13.5px;font-weight:700;background:var(--lime);color:var(--ink);padding:12px 20px;box-shadow:3px 3px 0 var(--ink)")}>Launch a token →</button>
@@ -78,13 +77,13 @@ export default function DiscoverPage({ v }) {
       </div>
 
       <div style={cs("display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px")}>
-        <div style={cs("display:flex;border:2px solid var(--ink);flex-wrap:wrap")}>
+        <div style={cs(`display:flex;border:2px solid var(--ink);${v.isMobile ? "width:100%" : "flex-wrap:wrap"}`)}>
           {v.filters.map((f, i) => (
-            <button key={i} onClick={f.go} style={cs(`padding:8px 15px;border:0;border-left:${f.dv};background:${f.bg};color:${f.fg};font-size:12.5px;font-weight:600;cursor:pointer`)}>{f.label}</button>
+            <button key={i} onClick={f.go} style={cs(`flex:${v.isMobile ? "1" : "none"};padding:${v.isMobile ? "7px 4px" : "8px 15px"};border:0;border-left:${f.dv};background:${f.bg};color:${f.fg};font-size:${v.isMobile ? "10.5px" : "12.5px"};font-weight:600;cursor:pointer;white-space:nowrap`)}>{f.label}</button>
           ))}
         </div>
-        <div style={cs("flex:1")}></div>
-        <div style={cs("display:flex;align-items:center;gap:9px;padding:8px 13px;border:2px solid var(--ink);background:var(--card);min-width:230px")}>
+        {!v.isMobile && <div style={cs("flex:1")}></div>}
+        <div style={cs(`display:flex;align-items:center;gap:9px;padding:8px 13px;border:2px solid var(--ink);background:var(--card);min-width:${v.isMobile ? "0" : "230px"};width:${v.isMobile ? "100%" : "auto"}`)}>
           <span style={cs("color:var(--mute);font-size:13px")}>⌕</span>
           <input value={v.query} onChange={v.setQuery} placeholder="Name, symbol or address" style={cs("border:0;outline:0;background:transparent;font-size:13px;width:100%")} />
         </div>

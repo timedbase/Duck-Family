@@ -103,7 +103,7 @@ export default function CreateFormPage({ v }) {
                     <TextInput value={v.draftCurve.migrationTargetQuote} onChange={(e) => v.setCurve({ migrationTargetQuote: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="60000" />
                   </Field>
                 </div>
-                <Field label={`CREATOR FIRST BUY (${labelFor(v.quoteOptions, v.draftCurve.quoteToken)})`} hint="Optional — bought off the curve in the same transaction">
+                <Field label={`OPTIONAL INSTANT BUY (${labelFor(v.quoteOptions, v.draftCurve.quoteToken)})`} hint="Bought off the curve in the same transaction as creation">
                   <TextInput value={v.draftCurve.earlyBuyAmount} onChange={(e) => v.setCurve({ earlyBuyAmount: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="0" />
                 </Field>
                 <Field label="SUPPLY / SPLIT (THIS APP'S DEFAULT)"><LockedInput value="1,000,000,000 — 80% curve / 20% liquidity" /></Field>
@@ -155,6 +155,15 @@ export default function CreateFormPage({ v }) {
                 onChange={(e) => (family === "incubation" ? v.setCurve({ desc: e.target.value.slice(0, 140) }) : family === "launcher" ? v.setInstant({ desc: e.target.value.slice(0, 140) }) : v.setCampaign({ desc: e.target.value.slice(0, 140) }))}
                 style={cs("padding:12px;border:2px solid var(--ink);background:var(--paper);font-size:14px;outline:0;resize:vertical")} />
             </label>
+
+            <div>
+              <span style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>SOCIALS (OPTIONAL)</span>
+              <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:7px")}>
+                <TextInput value={v.socials.website} onChange={(e) => v.setSocial("website", e.target.value)} placeholder="Website URL" />
+                <TextInput value={v.socials.twitter} onChange={(e) => v.setSocial("twitter", e.target.value)} placeholder="X / Twitter URL" />
+                <TextInput value={v.socials.telegram} onChange={(e) => v.setSocial("telegram", e.target.value)} placeholder="Telegram URL" />
+              </div>
+            </div>
           </div>
 
           <div style={cs("border-top:2px solid var(--ink);padding:20px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap")}>
