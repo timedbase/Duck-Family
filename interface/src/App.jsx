@@ -134,6 +134,22 @@ export default function App() {
     }, 2500);
   }
 
+  // Only start polling for the new token/campaign once the launch tx is
+  // actually confirmed on-chain -- a sim-then-send can still revert at
+  // execution time (state moved between the two), and polling for
+  // something that will never exist would otherwise strand the user on
+  // PendingLaunchPanel forever with no explanation. On revert, bounce back
+  // to the create form so they can see the error (surfaced via the tx
+  // modal / runTx's own reverted-stage handling) and retry.
+  function confirmAndPoll(hash, address) {
+    waitForTx(hash)
+      .then((receipt) => {
+        if (receipt.status === "success") pollUntilFound(address);
+        else { flash("Launch reverted on-chain — nothing was created."); set({ screen: "createForm" }); }
+      })
+      .catch(() => flash("Could not confirm the launch transaction."));
+  }
+
   function resolveCoinImages() {
     setS((st) => {
       for (const coin of st.coins) {
@@ -258,7 +274,10 @@ export default function App() {
     try {
       const hash = await fn();
       set({ tx: { stage: "pending", hash } });
-      waitForTx(hash).then(() => set((st) => (st.tx ? { tx: { stage: "success", hash } } : {}))).catch(() => {}).finally(refreshBalance);
+      waitForTx(hash)
+        .then((receipt) => set((st) => (st.tx ? { tx: { stage: receipt.status === "success" ? "success" : "reverted", hash } } : {})))
+        .catch(() => set((st) => (st.tx ? { tx: { stage: "reverted", hash } } : {})))
+        .finally(refreshBalance);
       return hash;
     } catch (e) {
       flash(errorText(e, label + " failed."));
@@ -395,7 +414,7 @@ export default function App() {
       });
       if (hash) {
         set({ screen: "token", tokenId: createdAddress, tab: "Trades", side: "buy", amount: "250", draftImage: EMPTY_IMAGE });
-        flash("Launch submitted."); loadTokenMeta(createdAddress); pollUntilFound(createdAddress);
+        flash("Launch submitted."); loadTokenMeta(createdAddress); confirmAndPoll(hash, createdAddress);
       }
     } else if (family === "launcher") {
       const d = s.draftInstant;
@@ -416,7 +435,7 @@ export default function App() {
       });
       if (hash) {
         set({ screen: "token", tokenId: createdAddress, tab: "Trades", side: "buy", amount: "250", draftImage: EMPTY_IMAGE });
-        flash("Launch submitted."); loadTokenMeta(createdAddress); pollUntilFound(createdAddress);
+        flash("Launch submitted."); loadTokenMeta(createdAddress); confirmAndPoll(hash, createdAddress);
       }
     } else {
       const d = s.draftCampaign;
@@ -436,7 +455,7 @@ export default function App() {
       });
       if (hash) {
         set({ screen: "campaign", tokenId: createdAddress, campaignDetail: null, draftImage: EMPTY_IMAGE });
-        flash("Campaign submitted."); loadTokenMeta(createdAddress); loadCampaignDetail(createdCampaignId); pollUntilFound(createdAddress);
+        flash("Campaign submitted."); loadTokenMeta(createdAddress); loadCampaignDetail(createdCampaignId); confirmAndPoll(hash, createdAddress);
       }
     }
   }
@@ -602,10 +621,10 @@ export default function App() {
       {v.txOpen && (
         <div style={cs("position:fixed;inset:0;z-index:95;background:rgba(17,17,16,.5);display:flex;align-items:center;justify-content:center;padding:20px")}>
           <div style={cs("width:100%;max-width:400px;border:2px solid var(--ink);background:var(--card);box-shadow:5px 5px 0 var(--ink)")}>
-            <div style={cs(`padding:26px 22px;border-bottom:2px solid var(--ink);text-align:center;background:${v.tx.headBg}`)}>
+            <div style={cs(`padding:26px 22px;border-bottom:2px solid var(--ink);text-align:center;background:${v.tx.headBg};color:${v.tx.headFg}`)}>
               <div style={cs(`width:46px;height:46px;margin:0 auto 16px;border:3px solid var(--ink);border-top-color:${v.tx.ringTop};animation:${v.tx.anim};display:flex;align-items:center;justify-content:center;font-size:19px`)}>{v.tx.glyph}</div>
               <div style={cs("font-size:19px;font-weight:700;letter-spacing:-.03em")}>{v.tx.title}</div>
-              <div style={cs("font-size:12.5px;color:var(--mute);margin-top:7px;line-height:1.5")}>{v.tx.sub}</div>
+              <div style={cs(`font-size:12.5px;margin-top:7px;line-height:1.5;opacity:${v.tx.headFg === "#fff" ? ".9" : "1"};color:${v.tx.headFg === "#fff" ? "#fff" : "var(--mute)"}`)}>{v.tx.sub}</div>
             </div>
             <div style={cs("padding:14px 18px;border-bottom:2px solid var(--ink);font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);word-break:break-all;line-height:1.5")}>{v.tx.hash}</div>
             <div style={cs("display:flex")}>
@@ -936,12 +955,18 @@ function buildTxModel(s, account) {
   if (!s.tx) return null;
   if (s.tx.stage === "success") {
     return {
-      title: "Confirmed", sub: "Included on Ink.", glyph: "✓", headBg: LIME, ringTop: INK, anim: "none", cta: "Done",
+      title: "Confirmed", sub: "Included on Ink.", glyph: "✓", headBg: LIME, headFg: INK, ringTop: INK, anim: "none", cta: "Done",
+      hash: s.tx.hash, explorerUrl: `https://explorer.inkonchain.com/tx/${s.tx.hash}`,
+    };
+  }
+  if (s.tx.stage === "reverted") {
+    return {
+      title: "Transaction reverted", sub: "Included on Ink, but it reverted on-chain — nothing happened.", glyph: "✕", headBg: "var(--neg)", headFg: "#fff", ringTop: INK, anim: "none", cta: "Dismiss",
       hash: s.tx.hash, explorerUrl: `https://explorer.inkonchain.com/tx/${s.tx.hash}`,
     };
   }
   return {
-    title: "Confirm in your wallet", sub: "Broadcasting to Ink (57073).", glyph: "", headBg: CARD, ringTop: LIME,
+    title: "Confirm in your wallet", sub: "Broadcasting to Ink (57073).", glyph: "", headBg: CARD, headFg: INK, ringTop: LIME,
     anim: "spin .9s linear infinite", cta: "Hide",
     hash: s.tx.hash || "awaiting hash…",
     explorerUrl: s.tx.hash ? `https://explorer.inkonchain.com/tx/${s.tx.hash}` : "https://explorer.inkonchain.com",
