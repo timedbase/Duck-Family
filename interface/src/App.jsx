@@ -106,7 +106,7 @@ export default function App() {
         const coins = rows.map((t, i) => {
           const next = tokenToCoin(t, i, meta[t.id.toLowerCase()]);
           const prev = byId.get(next.id);
-          return prev ? { ...next, trades: prev.trades, holderRows: prev.holderRows, rawTrades: prev.rawTrades, chat: prev.chat, imageUrl: prev.imageUrl } : next;
+          return prev ? { ...next, trades: prev.trades, holderRows: prev.holderRows, rawTrades: prev.rawTrades, chat: prev.chat, imageUrl: prev.imageUrl, desc: prev.desc, metaUri: prev.metaUri, socials: prev.socials } : next;
         });
         return { ...st, coins, coinsLoading: false, coinsError: "" };
       });
@@ -116,6 +116,23 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A freshly-launched token isn't visible until (a) the tx is actually
+  // mined on Ink and (b) the subgraph indexes it -- both take real seconds
+  // that this can't shortcut. What it CAN shortcut is the frontend's own
+  // polling gap: the ambient loadCoins loop only runs every REFRESH_MS
+  // (15s), so a single blind refresh could otherwise leave the user
+  // staring at PendingLaunchPanel for up to another 15s after the real
+  // work is already done. Poll tighter for a short window right after a
+  // launch instead, and stop as soon as the token actually shows up.
+  function pollUntilFound(address, attemptsLeft = 8) {
+    setTimeout(async () => {
+      await loadCoins();
+      let found = false;
+      setS((st) => { found = st.coins.some((c) => c.id.toLowerCase() === address.toLowerCase()); return st; });
+      if (!found && attemptsLeft > 1) pollUntilFound(address, attemptsLeft - 1);
+    }, 2500);
+  }
 
   function resolveCoinImages() {
     setS((st) => {
@@ -378,7 +395,7 @@ export default function App() {
       });
       if (hash) {
         set({ screen: "token", tokenId: createdAddress, tab: "Trades", side: "buy", amount: "250", draftImage: EMPTY_IMAGE });
-        flash("Launch submitted."); loadTokenMeta(createdAddress); setTimeout(loadCoins, 6000);
+        flash("Launch submitted."); loadTokenMeta(createdAddress); pollUntilFound(createdAddress);
       }
     } else if (family === "launcher") {
       const d = s.draftInstant;
@@ -399,7 +416,7 @@ export default function App() {
       });
       if (hash) {
         set({ screen: "token", tokenId: createdAddress, tab: "Trades", side: "buy", amount: "250", draftImage: EMPTY_IMAGE });
-        flash("Launch submitted."); loadTokenMeta(createdAddress); setTimeout(loadCoins, 6000);
+        flash("Launch submitted."); loadTokenMeta(createdAddress); pollUntilFound(createdAddress);
       }
     } else {
       const d = s.draftCampaign;
@@ -419,7 +436,7 @@ export default function App() {
       });
       if (hash) {
         set({ screen: "campaign", tokenId: createdAddress, campaignDetail: null, draftImage: EMPTY_IMAGE });
-        flash("Campaign submitted."); loadTokenMeta(createdAddress); loadCampaignDetail(createdCampaignId); setTimeout(loadCoins, 6000);
+        flash("Campaign submitted."); loadTokenMeta(createdAddress); loadCampaignDetail(createdCampaignId); pollUntilFound(createdAddress);
       }
     }
   }
