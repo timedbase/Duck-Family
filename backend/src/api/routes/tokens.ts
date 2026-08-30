@@ -81,13 +81,14 @@ type PoolSwapRow = {
 function poolSwapToTrade(swap: PoolSwapRow, tokenIsCurrency0: boolean): SubgraphTrade {
   const rawTokenAmount = BigInt(tokenIsCurrency0 ? swap.amount0 : swap.amount1);
   const rawQuoteAmount = BigInt(tokenIsCurrency0 ? swap.amount1 : swap.amount0);
-  // Swap event amounts are the POOL's balance delta (verified against
-  // Uniswap V4's real IPoolManager.sol doc comments) -- positive = pool
-  // received it (the trader gave it away), negative = pool paid it out (the
-  // trader received it). This is the opposite framing from a hook's
-  // afterSwap BalanceDelta, which is the swapper's own delta -- don't reuse
-  // that sign convention here.
-  const side: "BUY" | "SELL" = rawTokenAmount < 0n ? "BUY" : "SELL";
+  // IPoolManager.sol's doc comment reads "the delta of the currencyN
+  // balance of the pool", which reads as positive=pool-receives -- that
+  // turned out to be backwards in practice. Verified against two real,
+  // independent transactions on this exact pool by checking the token's
+  // actual ERC20 Transfer log in each: a positive token-side amount here
+  // corresponds to the pool sending the token OUT to the trader (a BUY);
+  // negative corresponds to the trader sending it IN to the pool (a SELL).
+  const side: "BUY" | "SELL" = rawTokenAmount > 0n ? "BUY" : "SELL";
   return {
     id: swap.id,
     trader: swap.sender,
