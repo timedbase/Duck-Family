@@ -3,12 +3,19 @@ import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { getWalletClient as wagmiGetWalletClient } from "wagmi/actions";
 import { INK_CHAIN_ID, PUBLIC_RPC_URL, BLOCK_EXPLORER_URL } from "./addresses.js";
 
+// Without a `contracts.multicall3` entry, viem has nowhere to send a
+// multicall aggregate3 call and throws on every publicClient.multicall(...)
+// -- used by fetchTokenMeta (name/symbol batching, loadCoins' hard
+// dependency) and getPlatformTokens. Verified deployed at the standard
+// canonical address on Ink (real bytecode present), same as almost every
+// EVM chain via the deterministic deployment proxy.
 export const ink = defineChain({
   id: INK_CHAIN_ID,
   name: "Ink",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: [PUBLIC_RPC_URL] } },
   blockExplorers: { default: { name: "Ink Explorer", url: BLOCK_EXPLORER_URL } },
+  contracts: { multicall3: { address: "0xcA11bde05977b3631167028862bE2a173976CA11" } },
 });
 
 // Reads always go through the public RPC (works with no wallet connected).
