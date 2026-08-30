@@ -202,10 +202,10 @@ export default function TokenPage({ v }) {
                       <div style={cs("font-size:17px;font-weight:700;letter-spacing:-.03em;margin-bottom:14px")}>Creator fees</div>
                       <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;align-items:start")}>
                         <div style={cs("border:2px solid var(--ink);background:var(--lime);padding:18px")}>
-                          <div style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>HOOK SELL-FEE ACCRUED</div>
+                          <div style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>HOOK SELL-FEE ACCRUED (YOURS)</div>
                           <div style={cs("font-family:'DM Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-.04em;margin:7px 0 3px")}>{v.hookAccrued.toFixed(5)} {sel.quote}</div>
-                          <div style={cs("font-family:'DM Mono',monospace;font-size:11.5px;margin-bottom:16px")}>LP-side fee amount is only known at claim time (V4 has no pending-fee view)</div>
-                          <button onClick={v.claimCreatorAndHookFees} disabled={v.txPending} style={cs("width:100%;padding:13px;border:2px solid var(--ink);background:var(--ink);color:var(--card);font-size:14px;font-weight:700;cursor:pointer")}>Claim LP + hook fees</button>
+                          <div style={cs("font-family:'DM Mono',monospace;font-size:11.5px;margin-bottom:16px")}>This same claim also sweeps the LP position's trading fee — that side is always burned (token) / sent to the platform (quote), never paid to you</div>
+                          <button onClick={v.claimCreatorAndHookFees} disabled={v.txPending} style={cs("width:100%;padding:13px;border:2px solid var(--ink);background:var(--ink);color:var(--card);font-size:14px;font-weight:700;cursor:pointer")}>Claim your hook fee</button>
                         </div>
                         {tok.family === "CURVE" && (
                           <div style={cs("border:2px solid var(--ink);background:var(--card);padding:18px")}>
@@ -293,7 +293,7 @@ export default function TokenPage({ v }) {
               </div>
               <div style={cs("display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:16px")}><span>YOUR BALANCE</span><span style={cs("color:var(--ink)")}>{v.myBalanceTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })} {sel.symbol.replace("$", "")}</span></div>
               <button onClick={v.submitTx} disabled={v.txPending} style={cs(`width:100%;padding:16px;margin-top:14px;border:2px solid var(--ink);background:${v.ctaBg};color:${v.ctaFg};font-size:16px;font-weight:700;letter-spacing:-.01em;cursor:pointer;box-shadow:3px 3px 0 var(--ink)`)}>{v.ctaLabel}</button>
-              <div style={cs("font-size:12px;color:var(--mute);line-height:1.55;margin-top:14px")}>{tok.family === "CURVE" && !tok.migrated ? "Buys route native ETH in automatically for ERC20-quoted curves. Sell proceeds land in the quote asset directly." : "Routes through the real Uniswap V4 pool via the Universal Router. Both buy and sell settle in native ETH. Anti-MEV blocks same-block buy/sell pairs from one address."}</div>
+              <div style={cs("font-size:12px;color:var(--mute);line-height:1.55;margin-top:14px")}>{tok.family === "CURVE" && !tok.migrated ? "Buys route native ETH in automatically for ERC20-quoted curves. Sell proceeds land in the quote asset directly." : "Routes through the real Uniswap V4 pool via the Universal Router. Both buy and sell settle in native ETH. Anti-MEV blocks a second swap, either direction, from the same address in the same block."}</div>
             </div>
           </div>
         </div>

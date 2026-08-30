@@ -39,7 +39,7 @@ const ON_SUBMIT = {
   ],
   launcher: [
     "Clone DuckLauncherToken and mint the full supply.",
-    "V4Minting initialises the pool and mints a full-range position.",
+    "The launcher initializes the pool directly and mints a full-range position.",
     "The position transfers into DuckLocker — permanently locked.",
     "Optional instant buy routes via LaunchRouting's bounded fallback.",
   ],
@@ -66,7 +66,7 @@ export default function CreateFormPage({ v }) {
   }[family];
 
   const costs = {
-    incubation: [{ k: "SELL FEE", v: "1.00% (curve trading fee)" }],
+    incubation: [{ k: "TRADING FEE", v: "1.00% (curve trading fee, charged on both buys and sells)" }],
     launcher: [{ k: "POOL FEE / TICK SPACING", v: "10000 / 200 (1%)" }],
     raise: [
       { k: "CREATION FEE", v: v.raiseDefaults ? `${Number(v.raiseDefaults.campaignFee) / 1e18} ETH, paid on launch (waived if quoted in the platform token)` : "loading…" },
@@ -106,7 +106,7 @@ export default function CreateFormPage({ v }) {
                 <Field label={`CREATOR FIRST BUY (${labelFor(v.quoteOptions, v.draftCurve.quoteToken)})`} hint="Optional — bought off the curve in the same transaction">
                   <TextInput value={v.draftCurve.earlyBuyAmount} onChange={(e) => v.setCurve({ earlyBuyAmount: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="0" />
                 </Field>
-                <Field label="FIXED SUPPLY / SPLIT"><LockedInput value="1,000,000,000 — 80% curve / 20% liquidity" /></Field>
+                <Field label="SUPPLY / SPLIT (THIS APP'S DEFAULT)"><LockedInput value="1,000,000,000 — 80% curve / 20% liquidity" /></Field>
               </>
             )}
 

@@ -439,8 +439,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.screen, s.tab, s.tokenId]);
 
-  // Claims both the 1% LP-position fee and (best-effort, same call) the
-  // hook's separate sell-fee skim -- see DuckLocker.claimFees.
+  // Triggers DuckLocker.claimFees, which collects the LP-position's trading
+  // fee and (same call, best-effort) the hook's separate sell-fee skim --
+  // but only the hook's sell-fee skim actually pays the creator. The
+  // LP-position fee itself always goes token-side-burned / quote-side-to-
+  // platform-wallet (DuckLocker._collectAndDistribute) -- the creator is
+  // just the address permitted to trigger the collection, not a recipient.
   async function claimCreatorAndHookFees(coin) {
     const hash = await runTx("Claim fees", () => claimFees({ account, token: coin.id }));
     if (hash) { await Promise.all([loadPortfolio(), loadCreatorData(coin)]); flash("Fees claimed."); }
