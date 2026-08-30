@@ -41,7 +41,11 @@ router.get("/:address", async (req, res) => {
     const data = await querySubgraph<{
       token: Record<string, unknown> | null;
       position: Record<string, unknown> | null;
-      pool: Record<string, unknown> | null;
+      // Pool.id is the poolId (bytes32), never the token address -- unlike
+      // Position.id, which really is the token address -- so this has to be
+      // a filtered plural query, not pool(id: $id) (that would always
+      // return null; a token address can never equal a poolId).
+      pools: Record<string, unknown>[];
     }>(
       `query TokenDetail($id: ID!) {
         token(id: $id) {
@@ -51,13 +55,13 @@ router.get("/:address", async (req, res) => {
         position(id: $id) {
           tokenId poolId hook positionManager registeredAt registeredAtBlock registeredAtTx totalBurned totalToPlatform
         }
-        pool(id: $id) { id creator hookFeeBps registeredAt registeredAtBlock swapCount }
+        pools(where: { token: $id }, first: 1) { id creator hookFeeBps registeredAt registeredAtBlock swapCount }
       }`,
       { id: address }
     );
 
     if (data.token == null) return res.status(404).json({ error: "not found" });
-    res.json({ ...data.token, position: data.position, pool: data.pool });
+    res.json({ ...data.token, position: data.position, pool: data.pools[0] ?? null });
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }

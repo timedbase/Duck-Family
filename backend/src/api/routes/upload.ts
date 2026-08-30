@@ -18,7 +18,11 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith("image/")) return cb(new Error("Only image uploads are allowed"));
+    if (!file.mimetype.startsWith("image/")) {
+      const err = new Error("Only image uploads are allowed") as Error & { status: number };
+      err.status = 400;
+      return cb(err);
+    }
     cb(null, true);
   },
 });
@@ -104,17 +108,32 @@ function sanitizeSocials(raw: unknown): Record<string, string> {
   return out;
 }
 
+// This becomes permanent, unfixable on-chain metadata the moment a launch
+// transaction lands (DuckLauncher-family tokens have their owner renounced
+// immediately at launch, permanently locking setMetaURI) -- a non-string or
+// oversized value here isn't just a cosmetic issue, it can wedge a real
+// launch's metadata forever. Only a plain, reasonably-sized string passes.
+function sanitizeText(raw: unknown, maxLen: number): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const trimmed = raw.trim();
+  return trimmed ? trimmed.slice(0, maxLen) : undefined;
+}
+
 router.post("/metadata", uploadLimiter, async (req, res) => {
   try {
     const jwt = requirePinata();
-    const { name, symbol, description, image, socials } = req.body ?? {};
+    const { socials } = req.body ?? {};
+    const name = sanitizeText(req.body?.name, 64);
+    const symbol = sanitizeText(req.body?.symbol, 16);
+    const description = sanitizeText(req.body?.description, 500) ?? "";
+    const image = sanitizeText(req.body?.image, 500) ?? "";
     if (!name || !symbol) return res.status(400).json({ error: "name and symbol are required" });
 
     const pinataRes = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
       method: "POST",
       headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        pinataContent: { name, symbol, description: description ?? "", image: image ?? "", socials: sanitizeSocials(socials) },
+        pinataContent: { name, symbol, description, image, socials: sanitizeSocials(socials) },
         pinataMetadata: { name: `${symbol}-metadata` },
       }),
     });

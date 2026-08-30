@@ -1,7 +1,8 @@
 import "dotenv/config";
-import express from "express";
+import express, { type ErrorRequestHandler } from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
+import multer from "multer";
 import tokensRouter from "./routes/tokens.js";
 import campaignsRouter from "./routes/campaigns.js";
 import portfolioRouter from "./routes/portfolio.js";
@@ -31,6 +32,25 @@ app.use("/campaigns", campaignsRouter);
 app.use("/portfolio", portfolioRouter);
 app.use("/upload", uploadRouter);
 app.use("/", platformRouter);
+
+// Every route handler's own try/catch returns a uniform { error } JSON body
+// -- but multer's fileFilter/size-limit rejection and express.json()'s
+// malformed-body parsing both throw/next(err) from middleware that runs
+// BEFORE any route handler, bypassing those try/catches entirely. Without
+// this, both fall through to Express's default HTML error page with the
+// wrong status code, which a frontend expecting { error } either can't
+// parse or mishandles.
+const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  if (err instanceof multer.MulterError) {
+    const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+    return res.status(status).json({ error: err.message });
+  }
+  if (err instanceof SyntaxError && "body" in err) {
+    return res.status(400).json({ error: "malformed request body" });
+  }
+  res.status(err?.status ?? 500).json({ error: err instanceof Error ? err.message : "internal error" });
+};
+app.use(errorHandler);
 
 const port = Number(process.env.PORT ?? 3000);
 app.listen(port, () => {

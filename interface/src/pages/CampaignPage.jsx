@@ -62,7 +62,7 @@ export default function CampaignPage({ v }) {
             {camp.contribs.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No contributions yet.</div>}
             {camp.contribs.map((c, i) => (
               <div key={i} style={cs("display:grid;min-width:520px;grid-template-columns:1.4fr 1fr 1fr;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12.5px;align-items:center")}>
-                <a href="https://explorer.inkonchain.com" target="_blank" rel="noreferrer">{c.wallet}</a>
+                <a href={`https://explorer.inkonchain.com/address/${c.full}`} target="_blank" rel="noreferrer">{c.wallet}</a>
                 <span style={cs("text-align:right;font-weight:500")}>{c.eth} ETH</span>
                 <span style={cs("text-align:right;color:var(--mute)")}>{c.status}</span>
               </div>

@@ -32,7 +32,3 @@ export async function simulateAndSendWithResult({ address, abi, functionName, ar
   const hash = await wallet.writeContract(gas ? { ...request, gas } : request);
   return { hash, result };
 }
-
-export async function waitForTx(hash) {
-  return publicClient.waitForTransactionReceipt({ hash });
-}

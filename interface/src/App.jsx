@@ -115,6 +115,11 @@ export default function App() {
         });
       }
 
+      // `coins` (below) is already the complete, freshly-fetched list at
+      // this point -- returned as-is so callers like pollUntilFound can
+      // check it directly instead of reading back through setS, whose
+      // updater isn't guaranteed to have run yet by the time a caller reads
+      // it right after this call returns.
       setS((st) => {
         const byId = new Map(st.coins.map((c) => [c.id, c]));
         const merged = coins.map((next) => {
@@ -124,8 +129,10 @@ export default function App() {
         return { ...st, coins: merged, coinsLoading: false, coinsError: "" };
       });
       resolveCoinImages();
+      return coins;
     } catch (e) {
       set({ coinsLoading: false, coinsError: String(e.message || e) });
+      return null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -140,9 +147,8 @@ export default function App() {
   // launch instead, and stop as soon as the token actually shows up.
   function pollUntilFound(address, attemptsLeft = 8) {
     setTimeout(async () => {
-      await loadCoins();
-      let found = false;
-      setS((st) => { found = st.coins.some((c) => c.id.toLowerCase() === address.toLowerCase()); return st; });
+      const coins = await loadCoins();
+      const found = coins?.some((c) => c.id.toLowerCase() === address.toLowerCase());
       if (!found && attemptsLeft > 1) pollUntilFound(address, attemptsLeft - 1);
     }, 2500);
   }
@@ -515,7 +521,7 @@ export default function App() {
       let pool = null, ctoApp = null, hookAccrued = 0n, hookSplits = [], ctoFee = null;
       if (hasPool) {
         [pool, ctoApp, hookAccrued, hookSplits, ctoFee] = await Promise.all([
-          getPool(poolId, coin.hook), getCtoApplication(poolId, coin.hook), getHookAccruedFees(poolId, coin.hook).catch(() => 0n),
+          getPool(poolId, coin.hook).catch(() => null), getCtoApplication(poolId, coin.hook).catch(() => null), getHookAccruedFees(poolId, coin.hook).catch(() => 0n),
           getHookFeeSplits(poolId, coin.hook).catch(() => []), getCtoFee(coin.hook).catch(() => null),
         ]);
       }
@@ -801,6 +807,7 @@ function buildViewModel(ctx) {
       label: String(label), dv: i === 0 ? "0" : "2px solid var(--ink)",
       go: () => {
         if (label === "MAX") {
+          if (!buying) return set({ amount: String(myBalanceTokens) });
           const spendable = s.nativeBalance > GAS_RESERVE_WEI ? s.nativeBalance - GAS_RESERVE_WEI : 0n;
           return set({ amount: truncateDecimals(formatEther(spendable), 4) });
         }
@@ -939,7 +946,7 @@ function buildCampaignModel(c, s, myContribution) {
       { k: "TRADEABLE", v: c.campaignSucceeded ? "yes" : "no" },
     ],
     contribs: (detail?.contributions || []).map((ct) => ({
-      wallet: shortAddress(ct.contributor), eth: (Number(ct.amount) / 1e18).toFixed(4),
+      wallet: shortAddress(ct.contributor), full: ct.contributor, eth: (Number(ct.amount) / 1e18).toFixed(4),
       status: ct.claimed ? "claimed" : ct.refunded ? "refunded" : "pending", age: "",
     })),
     custody: [
