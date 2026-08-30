@@ -14,6 +14,47 @@ export async function waitForTx(hash) {
   return publicClient.waitForTransactionReceipt({ hash });
 }
 
+// Each family's platformToken() is independently owner-settable and starts
+// at address(0) (unset). When set, fee-waived trading/creation routes
+// through it -- see DuckRaise.launch's feeWaived check for one example.
+// Fetched live rather than hardcoded since it can change and has no event
+// to index. Returns null per family when unset.
+export async function getPlatformTokens() {
+  const [incubation, launcher, raise] = await publicClient.multicall({
+    contracts: [
+      { address: DUCK_INCUBATION, abi: DUCK_INCUBATION_ABI, functionName: "platformToken" },
+      { address: DUCK_LAUNCHER, abi: DUCK_LAUNCHER_ABI, functionName: "platformToken" },
+      { address: DUCK_RAISE, abi: DUCK_RAISE_ABI, functionName: "platformToken" },
+    ],
+    allowFailure: true,
+  });
+  const clean = (r) => (r.status === "success" && r.result !== ZERO_ADDRESS ? r.result : null);
+  const tokens = { incubation: clean(incubation), launcher: clean(launcher), raise: clean(raise) };
+
+  const addresses = [...new Set(Object.values(tokens).filter(Boolean))];
+  if (addresses.length === 0) return { incubation: null, launcher: null, raise: null };
+
+  const metaResults = await publicClient.multicall({
+    contracts: addresses.flatMap((address) => [
+      { address, abi: ERC20_ABI, functionName: "symbol" },
+      { address, abi: ERC20_ABI, functionName: "decimals" },
+    ]),
+    allowFailure: true,
+  });
+  const metaByAddress = {};
+  addresses.forEach((address, i) => {
+    const symbolResult = metaResults[i * 2];
+    const decimalsResult = metaResults[i * 2 + 1];
+    metaByAddress[address.toLowerCase()] = {
+      symbol: symbolResult.status === "success" ? symbolResult.result : "???",
+      decimals: decimalsResult.status === "success" ? decimalsResult.result : 18,
+    };
+  });
+
+  const withMeta = (address) => (address ? { address, ...metaByAddress[address.toLowerCase()] } : null);
+  return { incubation: withMeta(tokens.incubation), launcher: withMeta(tokens.launcher), raise: withMeta(tokens.raise) };
+}
+
 // ---------- DuckIncubation (bonding curve family) ----------
 
 export async function getCurveCreationFee() {
@@ -151,12 +192,13 @@ export async function getCampaignFee() {
 // Global, owner-configured -- not a per-campaign creator choice, so the
 // create form shows these read-only rather than as editable inputs.
 export async function getRaiseDefaults() {
-  const [duration, contributorBps, lpBps] = await Promise.all([
+  const [duration, contributorBps, lpBps, campaignFee] = await Promise.all([
     publicClient.readContract({ address: DUCK_RAISE, abi: DUCK_RAISE_ABI, functionName: "campaignDuration" }),
     publicClient.readContract({ address: DUCK_RAISE, abi: DUCK_RAISE_ABI, functionName: "contributorBps" }),
     publicClient.readContract({ address: DUCK_RAISE, abi: DUCK_RAISE_ABI, functionName: "lpBps" }),
+    publicClient.readContract({ address: DUCK_RAISE, abi: DUCK_RAISE_ABI, functionName: "campaignFee" }),
   ]);
-  return { duration, contributorBps, lpBps };
+  return { duration, contributorBps, lpBps, campaignFee };
 }
 
 // goalNativeWei: creator-specified soft floor, in native wei -- contribute()

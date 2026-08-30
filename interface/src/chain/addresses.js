@@ -35,33 +35,25 @@ export const V4_TICK_SPACING = 200;
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
-// The 15 tokens DuckIncubation/DuckLauncher default-allow as quote assets
-// (see contracts/common/DuckIncubationMigration.sol's seedDefaultQuoteTokens)
-// -- only USDC and USDT0 have real Ink liquidity today, but all 15 are valid
-// to trade against directly on the bonding curve / at instant-launch time.
+// Deliberately narrow: ETH, USDC, and USDT0 are the only quote assets with
+// real Ink liquidity (verified on-chain -- see
+// contracts/deploy/deployments/ink.json's notes), and the only ones with a
+// real buyWithNative/early-buy route wired up. DuckIncubation/DuckLauncher
+// used to default-allow 12 more (LINK, tokenized-equity "xStock" assets,
+// etc.) with no real liquidity behind them -- disabled on-chain via
+// setQuoteTokenAllowed/disableQuoteToken, this list follows suit rather than
+// offering a quote asset the create form can't actually route ETH into.
+// A platform token, once DuckIncubation/DuckLauncher/DuckRaise's
+// `platformToken()` is set to a nonzero address, is fetched live and added
+// on top of this list -- see App.jsx's platformToken state.
 export const DEFAULT_QUOTE_TOKENS = [
   { address: getAddress("0x2D270e6886d130D724215A266106e6832161EAEd"), symbol: "USDC", decimals: 6 },
-  { address: getAddress("0x71052BAe71C25C78E37fD12E5ff1101A71d9018F"), symbol: "LINK", decimals: 18 },
   { address: getAddress("0x0200C29006150606B650577BBE7B6248F58470c1"), symbol: "USD₮0", decimals: 6 },
-  { address: getAddress("0xe343167631d89B6Ffc58B88d6b7fB0228795491D"), symbol: "USDG", decimals: 6 },
-  { address: getAddress("0x142cdc44890978B506e745bB3Bd11607B7f7faEf"), symbol: "PYUSD", decimals: 6 },
-  { address: getAddress("0xc3eACf0612346366Db554C991D7858716db09f58"), symbol: "rsETH", decimals: 18 },
-  { address: getAddress("0xF50258D3c1dd88946C567920B986A12e65b50dAc"), symbol: "XAUt0", decimals: 6 },
-  { address: getAddress("0xc845b2894dBddd03858fd2D643B4eF725fE0849d"), symbol: "NVDAx", decimals: 18 },
-  { address: getAddress("0xb63EFBc28860c8097e341DE1fCF59456161E9D98"), symbol: "SNDKx", decimals: 18 },
-  { address: getAddress("0x53Ad50D3B6FCaCB8965d3A49cB722917C7DAE1F3"), symbol: "ACRED", decimals: 18 },
-  { address: getAddress("0x6F75AC3b1b6Fbe8Bb5F948e25aF03620f26Ae838"), symbol: "XLEx", decimals: 18 },
-  { address: getAddress("0xeFD30445A4ec1f4b3E0a6f4d9bDbd215F805047F"), symbol: "MRNAx", decimals: 18 },
-  { address: getAddress("0xBca703C64f616A17b4f2763F34f93400Dbe20F17"), symbol: "ETNx", decimals: 18 },
-  { address: getAddress("0x7636244Bab612264e1B2dFd4bA6E26d0311b1Eb7"), symbol: "CEGx", decimals: 18 },
-  { address: getAddress("0x06A0138F8c3e5110fd98e34a4473Fb08F1304b87"), symbol: "MOOx", decimals: 18 },
 ];
 
-// DuckRaise's quoteAssetAllowed is deliberately narrower -- only assets a
-// campaign's raised ETH can actually be swapped into at finalize.
-export const RAISE_DEFAULT_QUOTE_ASSETS = DEFAULT_QUOTE_TOKENS.filter(
-  (t) => t.symbol === "USDC" || t.symbol === "USD₮0"
-);
+// DuckRaise's quoteAssetAllowed is the same narrow set -- every asset above
+// already has a real ETH route, which a raise's dexQuoteAsset requires.
+export const RAISE_DEFAULT_QUOTE_ASSETS = DEFAULT_QUOTE_TOKENS;
 
 // USDC/USDT0 are the only two of the 15 with real Ink liquidity today (see
 // contracts/deploy/deployments/ink.json's notes) -- the ones buyWithNative/

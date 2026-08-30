@@ -18,7 +18,7 @@ import {
   createCampaign, contributeCampaign, claimCampaign, claimCampaignRefund, finalizeCampaign, getRaiseDefaults,
   claimFees, claimAllFees, getPosition, getPositionCreator, getPool, getCtoApplication,
   applyForCTO, getCtoFee, setHookFeeSplits, getHookFeeSplits, getHookAccruedFees,
-  getNativeBalance, waitForTx,
+  getNativeBalance, waitForTx, getPlatformTokens,
 } from "./chain/actions.js";
 import { buyOnPoolWithNative, sellOnPoolForNative } from "./chain/dex.js";
 import { previewCurveBuy, previewCurveSell, previewCurveBuyWithNative, previewPoolBuyWithNative, previewPoolSellForNative, applySlippage } from "./chain/quotes.js";
@@ -37,18 +37,22 @@ function truncateDecimals(numStr, decimals) {
 }
 
 // ETH first (always tradeable directly), then the platform's default-allowed
-// quote tokens. DuckRaise's own list is narrower (see RAISE_DEFAULT_QUOTE_ASSETS).
-const QUOTE_OPTIONS = [
-  { label: "ETH", address: ZERO_ADDRESS },
-  ...DEFAULT_QUOTE_TOKENS.map((t) => ({ label: t.symbol, address: t.address })),
-];
-const RAISE_QUOTE_OPTIONS = [
-  { label: "ETH", address: ZERO_ADDRESS },
-  ...RAISE_DEFAULT_QUOTE_ASSETS.map((t) => ({ label: t.symbol, address: t.address })),
-];
-function decimalsFor(address) {
+// quote tokens, then that family's platformToken() (if the owner has set
+// one) -- fetched live, see getPlatformTokens.
+function quoteOptionsFor(base, platformToken) {
+  const options = [
+    { label: "ETH", address: ZERO_ADDRESS },
+    ...base.map((t) => ({ label: t.symbol, address: t.address, decimals: t.decimals })),
+  ];
+  if (platformToken && !options.some((o) => o.address.toLowerCase() === platformToken.address.toLowerCase())) {
+    options.push({ label: platformToken.symbol, address: platformToken.address, decimals: platformToken.decimals });
+  }
+  return options;
+}
+function decimalsFor(address, platformTokens = []) {
   if (address.toLowerCase() === ZERO_ADDRESS) return 18;
-  const t = DEFAULT_QUOTE_TOKENS.find((q) => q.address.toLowerCase() === address.toLowerCase());
+  const all = [...DEFAULT_QUOTE_TOKENS, ...platformTokens.filter(Boolean)];
+  const t = all.find((q) => q.address.toLowerCase() === address.toLowerCase());
   return t ? t.decimals : 18;
 }
 
@@ -72,7 +76,7 @@ export default function App() {
     draftInstant: { name: "", ticker: "", desc: "", quoteToken: ZERO_ADDRESS, launchMarketCap: "10", buyAmountHype: "0" },
     draftCampaign: { name: "", ticker: "", desc: "", dexQuoteAsset: ZERO_ADDRESS, goalNative: "50" },
     draftImage: EMPTY_IMAGE,
-    raiseDefaults: null,
+    raiseDefaults: null, platformTokens: { incubation: null, launcher: null, raise: null },
     creatorData: null, creatorLoading: false, ctoFee: null,
     campaignDetail: null,
   });
@@ -85,6 +89,10 @@ export default function App() {
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
+  }, [set]);
+
+  useEffect(() => {
+    getPlatformTokens().then((tokens) => set({ platformTokens: tokens })).catch(() => {});
   }, [set]);
 
   const loadCoins = useCallback(async () => {
@@ -326,7 +334,7 @@ export default function App() {
       if (!d.name.trim() || !d.ticker.trim()) return flash("Name and ticker are required.");
       if (findBlockedTerm(d.name, d.ticker, d.desc)) return flash("That name, ticker, or description isn't allowed.");
       const symbol = d.ticker.trim().toUpperCase().slice(0, 9);
-      const decimals = decimalsFor(d.quoteToken);
+      const decimals = decimalsFor(d.quoteToken, [s.platformTokens.incubation]);
       const startVirtualQuote = parseUnits(d.startVirtualQuote || "1", decimals);
       const migrationTargetQuote = parseUnits(d.migrationTargetQuote || "10", decimals);
       if (startVirtualQuote === 0n || migrationTargetQuote <= startVirtualQuote) return flash("Migration target must exceed the start target.");
@@ -346,7 +354,7 @@ export default function App() {
       if (findBlockedTerm(d.name, d.ticker, d.desc)) return flash("That name, ticker, or description isn't allowed.");
       const symbol = d.ticker.trim().toUpperCase().slice(0, 9);
       const metaURI = await buildMetaURI(d.name.trim(), symbol, d.desc.trim());
-      const decimals = decimalsFor(d.quoteToken);
+      const decimals = decimalsFor(d.quoteToken, [s.platformTokens.launcher]);
       const launchMarketCap = parseUnits(d.launchMarketCap || "10", decimals);
       const buyWei = d.buyAmountHype && Number(d.buyAmountHype) > 0 ? parseEther(String(d.buyAmountHype)) : 0n;
       const hash = await runTx("Launch", () => launchInstant({
@@ -739,7 +747,8 @@ function buildViewModel(ctx) {
       if (s.raiseDefaults) return;
       getRaiseDefaults().then((d) => set({ raiseDefaults: d })).catch(() => {});
     },
-    quoteOptions: QUOTE_OPTIONS, raiseQuoteOptions: RAISE_QUOTE_OPTIONS,
+    quoteOptions: quoteOptionsFor(DEFAULT_QUOTE_TOKENS, s.platformTokens[s.family === "launcher" ? "launcher" : "incubation"]),
+    raiseQuoteOptions: quoteOptionsFor(RAISE_DEFAULT_QUOTE_ASSETS, s.platformTokens.raise),
     createCta: !account ? "Connect wallet to launch" : s.txPending ? "Confirming…" : "Launch",
     submitCreate: ctx.submitCreate,
     draftImage: s.draftImage, onImagePick: ctx.onImagePick, clearImage: ctx.clearImage,

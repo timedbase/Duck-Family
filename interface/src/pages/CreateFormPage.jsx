@@ -68,7 +68,10 @@ export default function CreateFormPage({ v }) {
   const costs = {
     incubation: [{ k: "SELL FEE", v: "1.00% (curve trading fee)" }],
     launcher: [{ k: "POOL FEE / TICK SPACING", v: "10000 / 200 (1%)" }],
-    raise: [{ k: "PLATFORM CUT", v: "on success only" }, { k: "REFUND IF MISSED", v: "100%" }],
+    raise: [
+      { k: "CREATION FEE", v: v.raiseDefaults ? `${Number(v.raiseDefaults.campaignFee) / 1e18} ETH, paid on launch (waived if quoted in the platform token)` : "loading…" },
+      { k: "REFUND IF MISSED", v: "100%" },
+    ],
   }[family];
 
   return (
