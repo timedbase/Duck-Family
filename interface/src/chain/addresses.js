@@ -1,7 +1,7 @@
 import { getAddress } from "viem";
 
 // Mirrors ../../../backend/src/chain/addresses.ts and
-// the Duck-Family-Contract repo's deploy/deployments/ink.json — same deployment, cross-repo consumers.
+// ../../../contracts/deploy/deployments/ink.json — same deployment, three consumers.
 
 export const INK_CHAIN_ID = 57073;
 export const PUBLIC_RPC_URL = "https://rpc-gel.inkonchain.com";

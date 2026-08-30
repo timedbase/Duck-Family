@@ -1,7 +1,7 @@
 import { parseAbi } from "viem";
 
 // Every signature here was generated mechanically from
-// `forge inspect <Contract> abi --json` against the Duck-Family-Contract repo (or, for
+// `forge inspect <Contract> abi --json` against ../../../contracts/ (or, for
 // Permit2/UniversalRouter/V4Quoter, verified against their real deployed +
 // verified source on Ink) — not hand-typed. Keep in sync if the contracts
 // are ever redeployed/upgraded.
@@ -53,6 +53,9 @@ export const DUCK_LAUNCHER_ABI = parseAbi([
 
 export const DUCK_RAISE_ABI = parseAbi([
   "function campaignFee() view returns (uint256)",
+  "function campaignDuration() view returns (uint256)",
+  "function contributorBps() view returns (uint256)",
+  "function lpBps() view returns (uint256)",
   "function platformToken() view returns (address)",
   "function quoteAssetAllowed(address) view returns (bool)",
   "function launch(string name_, string symbol_, string metaURI_, address dexQuoteAsset_, uint256 goalNativeWei_, uint256 startTime_, bytes32 vanitySalt_, uint256 hookFeeBps_) payable returns (uint256 campaignId, address token)",
@@ -82,6 +85,7 @@ export const DUCK_LOCKER_ABI = parseAbi([
 
 export const DUCK_HOOK_ABI = parseAbi([
   "function ctoFee() view returns (uint256)",
+  "function accruedFees(bytes32) view returns (uint256)",
   "function pools(bytes32) view returns (address token, address quoteCurrency, bool tokenIsCurrency0, address creator, uint256 launchTimestamp, bool registered, uint256 hookFeeBps)",
   "function ctoApplications(bytes32) view returns (address applicant, address newCreator, uint256 paid)",
   "function applyForCTO(bytes32 poolId, address newCreator) payable",

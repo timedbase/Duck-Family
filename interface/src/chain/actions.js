@@ -148,6 +148,17 @@ export async function getCampaignFee() {
   return publicClient.readContract({ address: DUCK_RAISE, abi: DUCK_RAISE_ABI, functionName: "campaignFee" });
 }
 
+// Global, owner-configured -- not a per-campaign creator choice, so the
+// create form shows these read-only rather than as editable inputs.
+export async function getRaiseDefaults() {
+  const [duration, contributorBps, lpBps] = await Promise.all([
+    publicClient.readContract({ address: DUCK_RAISE, abi: DUCK_RAISE_ABI, functionName: "campaignDuration" }),
+    publicClient.readContract({ address: DUCK_RAISE, abi: DUCK_RAISE_ABI, functionName: "contributorBps" }),
+    publicClient.readContract({ address: DUCK_RAISE, abi: DUCK_RAISE_ABI, functionName: "lpBps" }),
+  ]);
+  return { duration, contributorBps, lpBps };
+}
+
 // goalNativeWei: creator-specified soft floor, in native wei -- contribute()
 // is always native-only regardless of dexQuoteAsset (that only determines
 // what the raised ETH gets swapped into when seeding the pool at finalize).
@@ -217,6 +228,10 @@ export async function getPool(poolId) {
 
 export async function getCtoFee() {
   return publicClient.readContract({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "ctoFee" });
+}
+
+export async function getHookAccruedFees(poolId) {
+  return publicClient.readContract({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "accruedFees", args: [poolId] });
 }
 
 export async function getCtoApplication(poolId) {

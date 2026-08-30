@@ -2,7 +2,7 @@
 
 A small Express API (Node/TypeScript) for the duckfun.family contracts on
 Ink chain (57073). Meant to run on Render's Starter plan, per
-`render.yaml` in this repo's root.
+`render.yaml` in the Duck-Family repo's root.
 
 ## Architecture
 
@@ -64,7 +64,7 @@ npm run api:dev
 
 ## Deploying
 
-`render.yaml` (this repo's root) defines a single web service (Starter plan). From the
+`render.yaml` (Duck-Family repo root) defines a single web service (Starter plan). From the
 Render dashboard: New → Blueprint → point at this repo → it reads
 `render.yaml` from the repo root. You'll be prompted for `INK_RPC_URL` and
 `PINATA_JWT` (both marked `sync: false`) since those are real

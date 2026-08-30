@@ -1,13 +1,23 @@
-html, body { margin: 0; padding: 0; background: #06060A; }
+:root {
+  --paper: #ece8df;
+  --card: #fffefb;
+  --ink: #111110;
+  --soft: #dcd6c8;
+  --mute: #6b665c;
+  --lime: #c8f169;
+  --orange: #ff5c3a;
+  --pos: #0f8a4f;
+  --neg: #d2331a;
+}
+html, body { margin: 0; padding: 0; background: var(--paper); }
 * { box-sizing: border-box; }
-a { color: #D9D9D9; text-decoration: none; }
-a:hover { color: #fff; }
-::selection { background: #6600FF; color: #fff; }
-input, button, textarea { font-family: inherit; }
-input:focus, textarea:focus { outline: none; box-shadow: 0 0 0 1px #D9D9D9 inset; }
-input::placeholder, textarea::placeholder { color: #56566A; }
-@keyframes tape { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
-@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+body { font-family: 'Space Grotesk', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; text-wrap: pretty; }
+a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--soft); }
+a:hover { border-color: var(--ink); }
+::selection { background: var(--lime); color: var(--ink); }
+input, button, textarea, select { font-family: inherit; color: inherit; }
+input:focus, textarea:focus, select:focus { outline: none; }
+input::placeholder, textarea::placeholder { color: var(--mute); }
+@keyframes spin { to { transform: rotate(360deg); } }
 @keyframes popin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes slidein { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
-@keyframes flashrow { from { background: rgba(217,217,217,.14); } to { background: transparent; } }

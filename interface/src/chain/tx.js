@@ -19,7 +19,7 @@ export async function simulateAndSend({ address, abi, functionName, args, value,
   }
 
   const gas = estimated !== undefined ? (estimated * 130n) / 100n : undefined;
-  const wallet = getWalletClient();
+  const wallet = await getWalletClient();
   return wallet.writeContract(gas ? { ...request, gas } : request);
 }
 
