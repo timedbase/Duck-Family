@@ -22,7 +22,7 @@ import {
 } from "./chain/actions.js";
 import { buyOnPoolWithNative, sellOnPoolForNative } from "./chain/dex.js";
 import { previewCurveBuy, previewCurveSell, previewCurveBuyWithNative, previewPoolBuyWithNative, previewPoolSellForNative, applySlippage } from "./chain/quotes.js";
-import { ZERO_ADDRESS, DEFAULT_QUOTE_TOKENS, RAISE_DEFAULT_QUOTE_ASSETS, DUCK_HOOK } from "./chain/addresses.js";
+import { ZERO_ADDRESS, DEFAULT_QUOTE_TOKENS, RAISE_DEFAULT_QUOTE_ASSETS } from "./chain/addresses.js";
 import { fetchTokenMeta, fetchTokenMetaUri } from "./chain/tokenMeta.js";
 import { findBlockedTerm } from "./moderation.js";
 import { resolveTokenImage, resolveTokenSocials, resolveTokenDescription } from "./ipfs.js";
@@ -78,7 +78,7 @@ export default function App() {
     draftCampaign: { name: "", ticker: "", desc: "", dexQuoteAsset: ZERO_ADDRESS, goalNative: "50", socials: EMPTY_SOCIALS },
     draftImage: EMPTY_IMAGE,
     raiseDefaults: null, platformTokens: { incubation: null, launcher: null, raise: null },
-    creatorData: null, creatorLoading: false, ctoFee: null,
+    creatorData: null, creatorLoading: false,
     campaignDetail: null,
   });
   const set = useCallback((patch) => setS((st) => ({ ...st, ...(typeof patch === "function" ? patch(st) : patch) })), []);
@@ -300,10 +300,10 @@ export default function App() {
     let hash;
     try {
       if (isPool) {
-        const expected = await previewPoolBuyWithNative({ token: coin.id, hook: DUCK_HOOK, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountInWei: valueWei });
+        const expected = await previewPoolBuyWithNative({ token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountInWei: valueWei });
         if (expected === 0n) return flash("No ETH route available for this pool right now.");
         const minOut = applySlippage(expected, s.slippageBps);
-        hash = await runTx("Buy", () => buyOnPoolWithNative({ account, token: coin.id, hook: DUCK_HOOK, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountInWei: valueWei, minOut }));
+        hash = await runTx("Buy", () => buyOnPoolWithNative({ account, token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountInWei: valueWei, minOut }));
       } else if (isNativeQuote) {
         const expected = await previewCurveBuy(coin.id, valueWei);
         const minOut = applySlippage(expected, s.slippageBps);
@@ -329,10 +329,10 @@ export default function App() {
     let hash;
     try {
       if (isPool) {
-        const expected = await previewPoolSellForNative({ token: coin.id, hook: DUCK_HOOK, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountIn });
+        const expected = await previewPoolSellForNative({ token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountIn });
         if (expected === 0n) return flash("No ETH route available for this pool right now.");
         const minOut = applySlippage(expected, s.slippageBps);
-        hash = await runTx("Sell", () => sellOnPoolForNative({ account, token: coin.id, hook: DUCK_HOOK, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountIn, minOut }));
+        hash = await runTx("Sell", () => sellOnPoolForNative({ account, token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountIn, minOut }));
       } else {
         const expected = await previewCurveSell(coin.id, amountIn);
         const minQuoteOut = applySlippage(expected, s.slippageBps);
@@ -499,23 +499,19 @@ export default function App() {
       const tokenId = position?.[0] ?? 0n;
       const poolId = position?.[3] ?? null;
       const hasPool = !!poolId && poolId !== "0x0000000000000000000000000000000000000000000000000000000000000";
-      let pool = null, ctoApp = null, hookAccrued = 0n, hookSplits = [];
+      let pool = null, ctoApp = null, hookAccrued = 0n, hookSplits = [], ctoFee = null;
       if (hasPool) {
-        [pool, ctoApp, hookAccrued, hookSplits] = await Promise.all([
-          getPool(poolId), getCtoApplication(poolId), getHookAccruedFees(poolId).catch(() => 0n), getHookFeeSplits(poolId).catch(() => []),
+        [pool, ctoApp, hookAccrued, hookSplits, ctoFee] = await Promise.all([
+          getPool(poolId, coin.hook), getCtoApplication(poolId, coin.hook), getHookAccruedFees(poolId, coin.hook).catch(() => 0n),
+          getHookFeeSplits(poolId, coin.hook).catch(() => []), getCtoFee(coin.hook).catch(() => null),
         ]);
       }
-      set({ creatorData: { hasPool, tokenId, poolId, pool, creator, ctoApp, hookAccrued, hookSplits }, creatorLoading: false });
+      set({ creatorData: { hasPool, tokenId, poolId, pool, creator, ctoApp, hookAccrued, hookSplits, ctoFee }, creatorLoading: false });
     } catch (e) {
       console.error("failed to load creator data", e);
       set({ creatorData: null, creatorLoading: false });
     }
   }, [set]);
-
-  useEffect(() => {
-    if (s.ctoFee != null) return;
-    getCtoFee().then((fee) => set({ ctoFee: fee })).catch(() => {});
-  }, [s.ctoFee, set]);
 
   const selectedCoin = s.coins.find((x) => x.id === s.tokenId);
   useEffect(() => {
@@ -541,11 +537,11 @@ export default function App() {
   }
   async function saveFeeSplits(coin, poolId, splits) {
     let hash;
-    if (poolId) hash = await runTx("Save fee settings", () => setHookFeeSplits({ account, poolId, splits }));
+    if (poolId) hash = await runTx("Save fee settings", () => setHookFeeSplits({ account, poolId, splits, hook: coin.hook }));
     if (hash) { await loadCreatorData(coin); flash("Fee settings saved."); }
   }
   async function buyTakeover(coin, poolId, newCreator) {
-    const hash = await runTx("Buy takeover", () => applyForCTO({ account, poolId, newCreator: newCreator || account }));
+    const hash = await runTx("Buy takeover", () => applyForCTO({ account, poolId, newCreator: newCreator || account, hook: coin.hook }));
     if (hash) { await loadCreatorData(coin); flash("CTO application submitted."); }
   }
 
@@ -776,7 +772,7 @@ function buildViewModel(ctx) {
     } : null,
     cto: c && s.creatorData?.hasPool ? {
       status: s.creatorData.ctoApp?.newCreator && s.creatorData.ctoApp.newCreator !== ZERO_ADDRESS ? "PENDING" : "OPEN",
-      price: s.ctoFee != null ? formatEther(s.ctoFee) + " ETH" : "…",
+      price: s.creatorData.ctoFee != null ? formatEther(s.creatorData.ctoFee) + " ETH" : "…",
       creator: s.creatorData.creator ? shortAddress(s.creatorData.creator) : "—",
       applicant: s.creatorData.ctoApp?.applicant && s.creatorData.ctoApp.applicant !== ZERO_ADDRESS ? shortAddress(s.creatorData.ctoApp.applicant) : null,
       blurb: "Anyone can pay the CTO fee to apply to take over the creator fee stream. The owner approves or rejects the application. Metadata, supply and pool can never change — a takeover moves the fee claim, not the token.",

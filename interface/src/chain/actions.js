@@ -266,50 +266,56 @@ export async function getPositionCreator(token) {
 }
 
 // ---------- DuckHookV4 (shared sell-fee skim + CTO, all three families) ----------
+//
+// `hook` defaults to the original DuckHookV4 for back-compat, but every real
+// caller should pass the pool's OWN hook address (coin.hook, indexed by the
+// subgraph per-token) -- a pool's hook is fixed forever at creation, and
+// once a second hook exists, a token registered against it would silently
+// no-op (or revert) against the wrong hook contract otherwise.
 
-export async function getPool(poolId) {
-  return publicClient.readContract({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "pools", args: [poolId] });
+export async function getPool(poolId, hook = DUCK_HOOK) {
+  return publicClient.readContract({ address: hook, abi: DUCK_HOOK_ABI, functionName: "pools", args: [poolId] });
 }
 
-export async function getCtoFee() {
-  return publicClient.readContract({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "ctoFee" });
+export async function getCtoFee(hook = DUCK_HOOK) {
+  return publicClient.readContract({ address: hook, abi: DUCK_HOOK_ABI, functionName: "ctoFee" });
 }
 
-export async function getHookAccruedFees(poolId) {
-  return publicClient.readContract({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "accruedFees", args: [poolId] });
+export async function getHookAccruedFees(poolId, hook = DUCK_HOOK) {
+  return publicClient.readContract({ address: hook, abi: DUCK_HOOK_ABI, functionName: "accruedFees", args: [poolId] });
 }
 
-export async function getCtoApplication(poolId) {
-  return publicClient.readContract({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "ctoApplications", args: [poolId] });
+export async function getCtoApplication(poolId, hook = DUCK_HOOK) {
+  return publicClient.readContract({ address: hook, abi: DUCK_HOOK_ABI, functionName: "ctoApplications", args: [poolId] });
 }
 
-export async function applyForCTO({ account, poolId, newCreator }) {
-  const fee = await getCtoFee();
+export async function applyForCTO({ account, poolId, newCreator, hook = DUCK_HOOK }) {
+  const fee = await getCtoFee(hook);
   return simulateAndSend({
-    address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "applyForCTO", args: [poolId, newCreator], value: fee, account,
+    address: hook, abi: DUCK_HOOK_ABI, functionName: "applyForCTO", args: [poolId, newCreator], value: fee, account,
   });
 }
 
-export async function approveCTO({ account, poolId }) {
-  return simulateAndSend({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "approveCTO", args: [poolId], account });
+export async function approveCTO({ account, poolId, hook = DUCK_HOOK }) {
+  return simulateAndSend({ address: hook, abi: DUCK_HOOK_ABI, functionName: "approveCTO", args: [poolId], account });
 }
 
-export async function rejectCTO({ account, poolId }) {
-  return simulateAndSend({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "rejectCTO", args: [poolId], account });
+export async function rejectCTO({ account, poolId, hook = DUCK_HOOK }) {
+  return simulateAndSend({ address: hook, abi: DUCK_HOOK_ABI, functionName: "rejectCTO", args: [poolId], account });
 }
 
-export async function claimHookFees({ account, poolId }) {
-  return simulateAndSend({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "claimFees", args: [poolId], account });
+export async function claimHookFees({ account, poolId, hook = DUCK_HOOK }) {
+  return simulateAndSend({ address: hook, abi: DUCK_HOOK_ABI, functionName: "claimFees", args: [poolId], account });
 }
 
 // splits: [{ wallet, bps }, ...] -- bps must sum to 10000 (or be empty to
 // reset to "creator receives it all directly").
-export async function setHookFeeSplits({ account, poolId, splits }) {
-  return simulateAndSend({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "setFeeSplits", args: [poolId, splits], account });
+export async function setHookFeeSplits({ account, poolId, splits, hook = DUCK_HOOK }) {
+  return simulateAndSend({ address: hook, abi: DUCK_HOOK_ABI, functionName: "setFeeSplits", args: [poolId, splits], account });
 }
 
-export async function getHookFeeSplits(poolId) {
-  return publicClient.readContract({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "getFeeSplits", args: [poolId] });
+export async function getHookFeeSplits(poolId, hook = DUCK_HOOK) {
+  return publicClient.readContract({ address: hook, abi: DUCK_HOOK_ABI, functionName: "getFeeSplits", args: [poolId] });
 }
 
 // ---------- ERC20 (approve/allowance/balance for any launched or quote token) ----------
