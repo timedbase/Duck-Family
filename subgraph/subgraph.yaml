@@ -23,6 +23,8 @@ dataSources:
       abis:
         - name: DuckIncubation
           file: ./abis/DuckIncubation.json
+        - name: TokenMetadata
+          file: ./abis/TokenMetadata.json
       eventHandlers:
         - event: TokenCreated(indexed address,indexed address,address,uint256,uint256,uint256,bool,uint256)
           handler: handleTokenCreated
@@ -54,6 +56,8 @@ dataSources:
       abis:
         - name: DuckLauncher
           file: ./abis/DuckLauncher.json
+        - name: TokenMetadata
+          file: ./abis/TokenMetadata.json
       eventHandlers:
         - event: TokenLaunched(indexed address,indexed address,indexed address,address,address,bytes32,uint256)
           handler: handleTokenLaunched
@@ -77,6 +81,8 @@ dataSources:
       abis:
         - name: DuckRaise
           file: ./abis/DuckRaise.json
+        - name: TokenMetadata
+          file: ./abis/TokenMetadata.json
       eventHandlers:
         - event: CampaignCreated(indexed uint256,indexed address,indexed address,string,string,address,uint256,uint256,uint256)
           handler: handleCampaignCreated

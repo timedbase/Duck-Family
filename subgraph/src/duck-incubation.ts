@@ -7,6 +7,7 @@ import {
   EmergencyMigrated,
   CurveFeeClaimed,
 } from "../generated/DuckIncubation/DuckIncubation";
+import { TokenMetadata } from "../generated/DuckIncubation/TokenMetadata";
 import { Token, Trade, Migration, CurveFeeClaim } from "../generated/schema";
 import { DuckToken } from "../generated/templates";
 
@@ -19,6 +20,17 @@ export function handleTokenCreated(event: TokenCreated): void {
   token.createdAt = event.block.timestamp;
   token.createdAtBlock = event.block.number;
   token.createdAtTx = event.transaction.hash;
+
+  // The clone is fully initialized in the same transaction before this
+  // event fires, so these calls always succeed in practice -- try_ variants
+  // used defensively so a genuinely-unexpected revert can't fail indexing.
+  let meta = TokenMetadata.bind(event.params.token);
+  let nameResult = meta.try_name();
+  let symbolResult = meta.try_symbol();
+  let metaUriResult = meta.try_metaURI();
+  token.name = nameResult.reverted ? null : nameResult.value;
+  token.symbol = symbolResult.reverted ? null : symbolResult.value;
+  token.metaUri = metaUriResult.reverted ? null : metaUriResult.value;
 
   token.virtualQuote = event.params.virtualQuote;
   token.migrationTarget = event.params.migrationTarget;

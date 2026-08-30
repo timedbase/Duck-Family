@@ -99,16 +99,29 @@ export default function App() {
   const loadCoins = useCallback(async () => {
     try {
       const rows = await api.tokens();
-      const metaIds = rows.filter((t) => t.family !== "CAMPAIGN").map((t) => t.id);
-      const meta = await fetchTokenMeta(metaIds);
+      let coins = rows.map((t, i) => tokenToCoin(t, i));
+
+      // name/symbol are indexed directly on Token now -- this only fires
+      // for a token the subgraph hasn't reindexed yet since that field was
+      // added (or one from right before a redeploy), never in steady state.
+      const missingMeta = coins.filter((c) => c.family !== "CAMPAIGN" && c.symbol === "???").map((c) => c.id);
+      if (missingMeta.length > 0) {
+        const meta = await fetchTokenMeta(missingMeta);
+        coins = coins.map((c) => {
+          const m = meta[c.id.toLowerCase()];
+          if (!m || (!m.name && !m.symbol)) return c;
+          const symbol = m.symbol || c.symbol;
+          return { ...c, name: m.name || c.name, symbol, ticker: "$" + symbol, initials: symbol.slice(0, 2).toUpperCase() };
+        });
+      }
+
       setS((st) => {
         const byId = new Map(st.coins.map((c) => [c.id, c]));
-        const coins = rows.map((t, i) => {
-          const next = tokenToCoin(t, i, meta[t.id.toLowerCase()]);
+        const merged = coins.map((next) => {
           const prev = byId.get(next.id);
           return prev ? { ...next, trades: prev.trades, holderRows: prev.holderRows, rawTrades: prev.rawTrades, chat: prev.chat, imageUrl: prev.imageUrl, desc: prev.desc, metaUri: prev.metaUri, socials: prev.socials } : next;
         });
-        return { ...st, coins, coinsLoading: false, coinsError: "" };
+        return { ...st, coins: merged, coinsLoading: false, coinsError: "" };
       });
       resolveCoinImages();
     } catch (e) {
@@ -189,9 +202,9 @@ export default function App() {
 
   // Shared by loadTokenDetail (CURVE/INSTANT) and loadCampaignDetail (RAISE)
   // -- metaURI() is the same ERC20 field on every family's token clone.
-  const loadTokenMeta = useCallback(async (address) => {
+  const loadTokenMeta = useCallback(async (address, knownUri) => {
     try {
-      const uri = await fetchTokenMetaUri(address);
+      const uri = knownUri || (await fetchTokenMetaUri(address));
       if (!uri) return;
       const [desc, imageUrl, socials] = await Promise.all([
         resolveTokenDescription(uri), resolveTokenImage(uri), resolveTokenSocials(uri),
@@ -203,8 +216,8 @@ export default function App() {
     } catch (e) { console.error("failed to load token metadata", e); }
   }, []);
 
-  const loadTokenDetail = useCallback(async (address) => {
-    loadTokenMeta(address);
+  const loadTokenDetail = useCallback(async (address, knownMetaUri) => {
+    loadTokenMeta(address, knownMetaUri);
     try {
       const [trades, holders] = await Promise.all([api.trades(address), api.holders(address)]);
       setS((st) => {
@@ -251,11 +264,11 @@ export default function App() {
     if (coin && coin.family === "CAMPAIGN") {
       set({ screen: "campaign", tokenId: id, campaignDetail: null });
       if (coin.campaignId) loadCampaignDetail(coin.campaignId);
-      loadTokenMeta(id);
+      loadTokenMeta(id, coin.metaUri);
       getRaiseDefaults().then((d) => set({ raiseDefaults: d })).catch(() => {});
     } else {
       set({ screen: "token", tokenId: id, tab: "Trades", side: "buy", amount: "250" });
-      loadTokenDetail(id);
+      loadTokenDetail(id, coin?.metaUri);
     }
     window.scrollTo(0, 0);
   }

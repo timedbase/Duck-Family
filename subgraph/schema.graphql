@@ -36,6 +36,14 @@ type Token @entity(immutable: false) {
   createdAtBlock: BigInt!
   createdAtTx: Bytes!
 
+  # Read directly off the token contract at creation time (try_name/
+  # try_symbol/try_metaURI -- none of TokenCreated/TokenLaunched carry these,
+  # and CampaignCreated only carries name/symbol, not metaURI). Null only if
+  # the call somehow failed at index time.
+  name: String
+  symbol: String
+  metaUri: String
+
   # CURVE only (DuckIncubation)
   virtualQuote: BigInt
   migrationTarget: BigInt

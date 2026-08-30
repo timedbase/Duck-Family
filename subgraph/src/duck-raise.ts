@@ -7,6 +7,7 @@ import {
   Claimed,
   Refunded,
 } from "../generated/DuckRaise/DuckRaise";
+import { TokenMetadata } from "../generated/DuckRaise/TokenMetadata";
 import { Token, Campaign, Contribution } from "../generated/schema";
 import { DuckToken } from "../generated/templates";
 
@@ -26,6 +27,17 @@ export function handleCampaignCreated(event: CampaignCreated): void {
   token.createdAtBlock = event.block.number;
   token.createdAtTx = event.transaction.hash;
   token.campaign = campaignId;
+
+  // name/symbol are already in the event itself (chosen before the token
+  // exists) -- mirrored onto Token too so every family exposes them the
+  // same way. The token contract does exist by this point (DuckRaise
+  // deploys it immediately at launch(), not at finalize()), so metaURI is
+  // readable now same as the other two families.
+  token.name = event.params.name;
+  token.symbol = event.params.symbol;
+  let metaUriResult = TokenMetadata.bind(event.params.token).try_metaURI();
+  token.metaUri = metaUriResult.reverted ? null : metaUriResult.value;
+
   token.save();
 
   DuckToken.create(event.params.token);

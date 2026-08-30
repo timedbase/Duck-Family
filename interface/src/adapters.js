@@ -54,8 +54,13 @@ export function tokenToCoin(t, i, meta) {
     mc = raised / 1e18;
   }
 
-  const name = t.family === "CAMPAIGN" ? t.campaign?.name : meta?.name;
-  const symbol = t.family === "CAMPAIGN" ? t.campaign?.symbol : meta?.symbol;
+  // Every family's name/symbol is indexed directly on Token now (read off
+  // the token contract at creation time for CURVE/INSTANT; CampaignCreated
+  // already carries them for CAMPAIGN, mirrored onto Token too) -- `meta`
+  // is only ever passed for a token the subgraph hasn't reindexed yet since
+  // this field was added, see loadCoins' gap-fill fallback.
+  const name = t.name || (t.family === "CAMPAIGN" ? t.campaign?.name : meta?.name);
+  const symbol = t.symbol || (t.family === "CAMPAIGN" ? t.campaign?.symbol : meta?.symbol);
   const fam = FAM_COLORS[t.family] || FAM_COLORS.INSTANT;
 
   return {
@@ -86,7 +91,7 @@ export function tokenToCoin(t, i, meta) {
     quote: quoteSymbol(t.quoteToken),
     holders: 0, // see chain/tokenMeta.js's header — not indexed, only fetchable per-token
     mint: shortAddress(t.id),
-    metaUri: null, // fetched lazily per-token detail page — see chain/tokenMeta.js's fetchTokenMetaUri
+    metaUri: t.metaUri || null, // indexed directly now; loadTokenMeta falls back to an on-chain read if still empty (e.g. a token created moments ago, ahead of the subgraph)
     imageUrl: null,
     rawTrades: [],
     holderRows: [],
