@@ -191,7 +191,8 @@ export default function App() {
   }
   function requireWallet() {
     if (account) return true;
-    flash("Connect a wallet first.");
+    if (openConnectModal) openConnectModal();
+    else flash("Connect a wallet first.");
     return false;
   }
   function openToken(id) {
