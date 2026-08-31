@@ -26,9 +26,11 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 // most recent bucket at-or-before the 24h-ago cutoff is "price ~24h ago" --
 // compared against the token's current lastPrice/lastPriceUsd. A 7-day
 // lookback window (not just 24h) gives that comparison something to find
-// even for a token that hasn't traded in the last day; genuinely no prior
-// bucket (too new, or never traded before that point) leaves the change
-// honestly null rather than fabricating 0%.
+// even for a token that hasn't traded in the last day. A token younger than
+// 24h has no such bucket by definition -- rather than showing nothing,
+// falls back to its EARLIEST tracked bucket (i.e. "change since we first
+// saw a price for it"), which is still a real, honest number; only a token
+// with zero trade history at all (no buckets in the window) gets null.
 async function attachDerivedStats<T extends { id: string; lastPrice: string | null; lastPriceUsd: string | null }>(
   tokens: T[]
 ): Promise<
@@ -57,27 +59,35 @@ async function attachDerivedStats<T extends { id: string; lastPrice: string | nu
   const volSums = new Map<string, bigint>();
   const volUsdSums = new Map<string, number>();
   const priceBefore24h = new Map<string, { price: number | null; priceUsd: number | null }>();
+  // Rows arrive newest-first per token, so overwriting this on every row
+  // (rather than only-if-absent) leaves each token's LAST-seen row --
+  // chronologically its oldest -- once the loop finishes.
+  const earliestBucket = new Map<string, { price: number | null; priceUsd: number | null }>();
   for (const row of data.tokenHourDatas) {
     const hourStart = Number(row.hourStartUnix);
     if (hourStart >= cutoff24h) {
       volSums.set(row.token.id, (volSums.get(row.token.id) ?? 0n) + BigInt(row.volumeQuote));
       volUsdSums.set(row.token.id, (volUsdSums.get(row.token.id) ?? 0) + Number(row.volumeUsd));
     }
-    // Rows arrive newest-first; the first one at-or-before the cutoff we
-    // see per token is the closest available "price 24h ago".
+    // The first one at-or-before the cutoff we see per token is the
+    // closest available "price 24h ago".
     if (hourStart <= cutoff24h && !priceBefore24h.has(row.token.id)) {
       priceBefore24h.set(row.token.id, {
         price: row.closePrice != null ? Number(row.closePrice) : null,
         priceUsd: row.closePriceUsd != null ? Number(row.closePriceUsd) : null,
       });
     }
+    earliestBucket.set(row.token.id, {
+      price: row.closePrice != null ? Number(row.closePrice) : null,
+      priceUsd: row.closePriceUsd != null ? Number(row.closePriceUsd) : null,
+    });
   }
 
   const pctChange = (curr: number | null, prev: number | null | undefined) =>
     curr != null && prev != null && prev !== 0 ? ((curr - prev) / prev) * 100 : null;
 
   return tokens.map((t) => {
-    const prev = priceBefore24h.get(t.id);
+    const prev = priceBefore24h.get(t.id) ?? earliestBucket.get(t.id);
     return {
       ...t,
       volume24h: (volSums.get(t.id) ?? 0n).toString(),
