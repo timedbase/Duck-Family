@@ -120,7 +120,13 @@ export function tokenToCoin(t, i, meta) {
     volUsd: t.volume24hUsd != null ? Number(t.volume24hUsd) : null,
     volumeAllTime: Number(t.volumeAllTime || 0) / 10 ** quoteDecimalsFor(t.quoteToken),
     volumeAllTimeUsd: t.volumeAllTimeUsd != null ? Number(t.volumeAllTimeUsd) : null,
-    ageMin, chg: 0, pct,
+    // Real 24h change from the subgraph's hourly close-price snapshots --
+    // null (not 0) when there's no prior bucket to compare against yet
+    // (too new, or hasn't traded before that point), so callers can tell
+    // "genuinely flat" apart from "not enough history".
+    chg: t.priceChange24h != null ? t.priceChange24h : null,
+    chgUsd: t.priceChange24hUsd != null ? t.priceChange24hUsd : null,
+    ageMin, pct,
     desc: "",
     quote: quoteSymbol(t.quoteToken),
     holders: Number(t.holderCount || 0),

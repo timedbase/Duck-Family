@@ -1,7 +1,7 @@
 import { Address, BigInt, BigDecimal } from "@graphprotocol/graph-ts";
 import { Swap, ModifyLiquidity } from "../generated/PoolManager/PoolManager";
 import { Pool, PoolSwap, PoolLiquidityChange, Token } from "../generated/schema";
-import { recordPrice, recordVolume, updateReferencePrice } from "./lib";
+import { recordTrade, updateReferencePrice } from "./lib";
 
 const ZERO_ADDRESS_HEX = Address.zero().toHexString();
 
@@ -74,8 +74,7 @@ export function handleSwap(event: Swap): void {
     // buy/sell sign convention the backend's trade merge does.
     let absTokenAmount = tokenAmount.lt(BigInt.zero()) ? tokenAmount.neg() : tokenAmount;
     let absQuoteAmount = quoteAmount.lt(BigInt.zero()) ? quoteAmount.neg() : quoteAmount;
-    recordPrice(token.id, absQuoteAmount, absTokenAmount, quoteHex);
-    recordVolume(token.id, event.block.timestamp, absQuoteAmount, quoteHex);
+    recordTrade(token.id, event.block.timestamp, absQuoteAmount, absTokenAmount, quoteHex);
   }
 }
 

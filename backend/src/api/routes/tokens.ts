@@ -20,32 +20,72 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 // granularity (the edge bucket can be a few minutes short/over), which is
 // the standard tradeoff for this kind of rollup and far cheaper than
 // re-scanning raw trades on every request.
-async function attach24hVolume<T extends { id: string }>(
+//
+// 24h price change reuses the same query: each bucket's closePrice/
+// closePriceUsd is the token's price as of its last trade that hour, so the
+// most recent bucket at-or-before the 24h-ago cutoff is "price ~24h ago" --
+// compared against the token's current lastPrice/lastPriceUsd. A 7-day
+// lookback window (not just 24h) gives that comparison something to find
+// even for a token that hasn't traded in the last day; genuinely no prior
+// bucket (too new, or never traded before that point) leaves the change
+// honestly null rather than fabricating 0%.
+async function attachDerivedStats<T extends { id: string; lastPrice: string | null; lastPriceUsd: string | null }>(
   tokens: T[]
-): Promise<(T & { volume24h: string; volume24hUsd: string })[]> {
+): Promise<
+  (T & { volume24h: string; volume24hUsd: string; priceChange24h: number | null; priceChange24hUsd: number | null })[]
+> {
   if (tokens.length === 0) return [];
-  const cutoff = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-  const data = await querySubgraph<{ tokenHourDatas: { token: { id: string }; volumeQuote: string; volumeUsd: string }[] }>(
-    `query Volume24h($tokens: [String!]!, $cutoff: BigInt!) {
-      tokenHourDatas(first: 1000, where: { token_in: $tokens, hourStartUnix_gte: $cutoff }) {
+  const now = Math.floor(Date.now() / 1000);
+  const cutoff24h = now - 24 * 60 * 60;
+  const cutoff7d = now - 7 * 24 * 60 * 60;
+  const data = await querySubgraph<{
+    tokenHourDatas: { token: { id: string }; hourStartUnix: string; volumeQuote: string; volumeUsd: string; closePrice: string | null; closePriceUsd: string | null }[];
+  }>(
+    `query DerivedStats($tokens: [String!]!, $cutoff: BigInt!) {
+      tokenHourDatas(first: 1000, orderBy: hourStartUnix, orderDirection: desc, where: { token_in: $tokens, hourStartUnix_gte: $cutoff }) {
         token { id }
+        hourStartUnix
         volumeQuote
         volumeUsd
+        closePrice
+        closePriceUsd
       }
     }`,
-    { tokens: tokens.map((t) => t.id), cutoff: String(cutoff) }
+    { tokens: tokens.map((t) => t.id), cutoff: String(cutoff7d) }
   );
-  const sums = new Map<string, bigint>();
-  const usdSums = new Map<string, number>();
+
+  const volSums = new Map<string, bigint>();
+  const volUsdSums = new Map<string, number>();
+  const priceBefore24h = new Map<string, { price: number | null; priceUsd: number | null }>();
   for (const row of data.tokenHourDatas) {
-    sums.set(row.token.id, (sums.get(row.token.id) ?? 0n) + BigInt(row.volumeQuote));
-    usdSums.set(row.token.id, (usdSums.get(row.token.id) ?? 0) + Number(row.volumeUsd));
+    const hourStart = Number(row.hourStartUnix);
+    if (hourStart >= cutoff24h) {
+      volSums.set(row.token.id, (volSums.get(row.token.id) ?? 0n) + BigInt(row.volumeQuote));
+      volUsdSums.set(row.token.id, (volUsdSums.get(row.token.id) ?? 0) + Number(row.volumeUsd));
+    }
+    // Rows arrive newest-first; the first one at-or-before the cutoff we
+    // see per token is the closest available "price 24h ago".
+    if (hourStart <= cutoff24h && !priceBefore24h.has(row.token.id)) {
+      priceBefore24h.set(row.token.id, {
+        price: row.closePrice != null ? Number(row.closePrice) : null,
+        priceUsd: row.closePriceUsd != null ? Number(row.closePriceUsd) : null,
+      });
+    }
   }
-  return tokens.map((t) => ({
-    ...t,
-    volume24h: (sums.get(t.id) ?? 0n).toString(),
-    volume24hUsd: String(usdSums.get(t.id) ?? 0),
-  }));
+
+  const pctChange = (curr: number | null, prev: number | null | undefined) =>
+    curr != null && prev != null && prev !== 0 ? ((curr - prev) / prev) * 100 : null;
+
+  return tokens.map((t) => {
+    const prev = priceBefore24h.get(t.id);
+    return {
+      ...t,
+      volume24h: (volSums.get(t.id) ?? 0n).toString(),
+      volume24hUsd: String(volUsdSums.get(t.id) ?? 0),
+      priceChange24h: pctChange(t.lastPrice != null ? Number(t.lastPrice) : null, prev?.price),
+      priceChange24hUsd: pctChange(t.lastPriceUsd != null ? Number(t.lastPriceUsd) : null, prev?.priceUsd),
+    };
+  });
 }
 
 router.get("/", async (req, res) => {
@@ -54,7 +94,7 @@ router.get("/", async (req, res) => {
   const offset = Number(req.query.offset ?? 0);
 
   try {
-    const data = await querySubgraph<{ tokens: { id: string }[] }>(
+    const data = await querySubgraph<{ tokens: { id: string; lastPrice: string | null; lastPriceUsd: string | null }[] }>(
       `query Tokens($first: Int!, $skip: Int!, $where: Token_filter) {
         tokens(first: $first, skip: $skip, orderBy: createdAtBlock, orderDirection: desc, where: $where) {
           ${TOKEN_FIELDS}
@@ -62,7 +102,7 @@ router.get("/", async (req, res) => {
       }`,
       { first: limit, skip: offset, where: family ? { family } : {} }
     );
-    res.json(await attach24hVolume(data.tokens));
+    res.json(await attachDerivedStats(data.tokens));
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }
@@ -95,8 +135,8 @@ router.get("/:address", async (req, res) => {
     );
 
     if (data.token == null) return res.status(404).json({ error: "not found" });
-    const [withVolume] = await attach24hVolume([data.token as { id: string }]);
-    res.json({ ...withVolume, position: data.position, pool: data.pools[0] ?? null });
+    const [withStats] = await attachDerivedStats([data.token as { id: string; lastPrice: string | null; lastPriceUsd: string | null }]);
+    res.json({ ...withStats, position: data.position, pool: data.pools[0] ?? null });
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }

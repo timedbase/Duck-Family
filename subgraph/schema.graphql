@@ -301,6 +301,12 @@ type TokenHourData @entity(immutable: false) {
   hourStartUnix: BigInt!
   volumeQuote: BigInt!
   volumeUsd: BigDecimal!
+  # The token's lastPrice/lastPriceUsd as of the most recent trade THIS
+  # hour -- lets 24h price change be computed as (current price / the
+  # nearest bucket at-or-before 24h ago) without tracking a separate
+  # time-series, and without scanning raw trades on every read.
+  closePrice: BigDecimal
+  closePriceUsd: BigDecimal
 }
 
 # Singleton (id: "eth-usd"), updated from the real ETH/USDC and ETH/USDT0

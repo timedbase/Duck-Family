@@ -53,35 +53,38 @@ export function updateReferencePrice(ethUsd: BigDecimal, timestamp: BigInt, bloc
 // PoolSwap handling (pool-manager.ts) -- both real trade paths, quoteAmount/
 // tokenAmount always the absolute RAW magnitudes actually exchanged (token
 // side always 18 decimals -- every token clone this platform creates is a
-// plain 18-decimal ERC20).
-export function recordPrice(tokenId: string, quoteAmountRaw: BigInt, tokenAmountRaw: BigInt, quoteHex: string): void {
-  if (tokenAmountRaw.equals(BigInt.zero())) return;
+// plain 18-decimal ERC20). Updates Token.lastPrice/lastPriceUsd,
+// volumeAllTime/volumeAllTimeUsd, and this hour's TokenHourData bucket
+// (volume + a closePrice/closePriceUsd snapshot -- the last trade's price
+// each hour naturally becomes that hour's "close" as later trades overwrite
+// it) in one pass, avoiding two separate Token.load()/save() round-trips.
+export function recordTrade(tokenId: string, timestamp: BigInt, quoteAmountRaw: BigInt, tokenAmountRaw: BigInt, quoteHex: string): void {
   let token = Token.load(tokenId);
   if (token == null) return;
-  let humanQuote = toHuman(quoteAmountRaw, quoteDecimals(quoteHex));
-  let humanToken = toHuman(tokenAmountRaw, 18);
-  let price = humanQuote.div(humanToken);
-  token.lastPrice = price;
 
-  let usd = resolveUsd(quoteHex, price);
-  if (usd === null) {
-    token.lastPriceUsd = null;
-  } else {
-    let usdValue: BigDecimal = usd;
-    token.lastPriceUsd = usdValue;
+  let price: BigDecimal | null = null;
+  let priceUsd: BigDecimal | null = null;
+  if (!tokenAmountRaw.equals(BigInt.zero())) {
+    let humanQuote = toHuman(quoteAmountRaw, quoteDecimals(quoteHex));
+    let humanToken = toHuman(tokenAmountRaw, 18);
+    let p: BigDecimal = humanQuote.div(humanToken);
+    price = p;
+    token.lastPrice = p;
+    let usd = resolveUsd(quoteHex, p);
+    if (usd === null) {
+      token.lastPriceUsd = null;
+    } else {
+      let usdValue: BigDecimal = usd;
+      priceUsd = usdValue;
+      token.lastPriceUsd = usdValue;
+    }
   }
-  token.save();
-}
 
-export function recordVolume(tokenId: string, timestamp: BigInt, quoteAmountRaw: BigInt, quoteHex: string): void {
-  let token = Token.load(tokenId);
-  if (token == null) return;
-  let humanQuote = toHuman(quoteAmountRaw, quoteDecimals(quoteHex));
-  let usd = resolveUsd(quoteHex, humanQuote);
-
+  let humanQuoteVol = toHuman(quoteAmountRaw, quoteDecimals(quoteHex));
+  let volUsd = resolveUsd(quoteHex, humanQuoteVol);
   token.volumeAllTime = token.volumeAllTime.plus(quoteAmountRaw);
-  if (usd !== null) {
-    let usdValue: BigDecimal = usd;
+  if (volUsd !== null) {
+    let usdValue: BigDecimal = volUsd;
     token.volumeAllTimeUsd = token.volumeAllTimeUsd.plus(usdValue);
   }
   token.save();
@@ -97,9 +100,17 @@ export function recordVolume(tokenId: string, timestamp: BigInt, quoteAmountRaw:
     bucket.volumeUsd = BigDecimal.zero();
   }
   bucket.volumeQuote = bucket.volumeQuote.plus(quoteAmountRaw);
-  if (usd !== null) {
-    let usdValue: BigDecimal = usd;
+  if (volUsd !== null) {
+    let usdValue: BigDecimal = volUsd;
     bucket.volumeUsd = bucket.volumeUsd.plus(usdValue);
+  }
+  if (price !== null) {
+    let p: BigDecimal = price;
+    bucket.closePrice = p;
+  }
+  if (priceUsd !== null) {
+    let p: BigDecimal = priceUsd;
+    bucket.closePriceUsd = p;
   }
   bucket.save();
 }

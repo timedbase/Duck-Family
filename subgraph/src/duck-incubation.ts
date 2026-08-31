@@ -10,7 +10,7 @@ import {
 import { TokenMetadata } from "../generated/DuckIncubation/TokenMetadata";
 import { Token, Trade, Migration, CurveFeeClaim } from "../generated/schema";
 import { DuckToken } from "../generated/templates";
-import { recordPrice, recordVolume, quoteHexOf } from "./lib";
+import { recordTrade, quoteHexOf } from "./lib";
 
 export function handleTokenCreated(event: TokenCreated): void {
   let token = new Token(event.params.token.toHexString());
@@ -71,8 +71,7 @@ export function handleTokenBought(event: TokenBought): void {
   trade.save();
 
   let quoteHex = quoteHexOf(token);
-  recordPrice(token.id, trade.quoteAmount, trade.tokenAmount, quoteHex);
-  recordVolume(token.id, event.block.timestamp, trade.quoteAmount, quoteHex);
+  recordTrade(token.id, event.block.timestamp, trade.quoteAmount, trade.tokenAmount, quoteHex);
 }
 
 export function handleTokenSold(event: TokenSold): void {
@@ -96,8 +95,7 @@ export function handleTokenSold(event: TokenSold): void {
   trade.save();
 
   let quoteHex = quoteHexOf(token);
-  recordPrice(token.id, trade.quoteAmount, trade.tokenAmount, quoteHex);
-  recordVolume(token.id, event.block.timestamp, trade.quoteAmount, quoteHex);
+  recordTrade(token.id, event.block.timestamp, trade.quoteAmount, trade.tokenAmount, quoteHex);
 }
 
 export function handleTokenMigrated(event: TokenMigrated): void {
