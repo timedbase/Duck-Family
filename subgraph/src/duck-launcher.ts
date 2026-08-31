@@ -30,6 +30,8 @@ export function handleTokenLaunched(event: TokenLaunched): void {
   token.hook = event.params.hook;
   token.tokenId = event.params.tokenId;
   token.burnedSupply = BigInt.zero();
+  token.holderCount = 0;
+  token.volumeAllTime = BigInt.zero();
 
   token.save();
 

@@ -6,7 +6,7 @@ const router = Router();
 const TOKEN_FIELDS = `
   id family creator quoteToken totalSupply
   createdAt createdAtBlock createdAtTx
-  name symbol metaUri burnedSupply
+  name symbol metaUri burnedSupply holderCount lastPrice volumeAllTime
   virtualQuote migrationTarget antibotEnabled tradingBlock migrated bcTokensSold raisedQuote
   positionManager hook tokenId
   campaign { id name symbol goal totalRaised deadline succeeded failed }
@@ -14,13 +14,38 @@ const TOKEN_FIELDS = `
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
+// "Last 24 hours from now" is a moving target TokenHourData's static hourly
+// rows can't represent by themselves -- summing the buckets whose hour
+// started within the last day approximates a rolling 24h window at hourly
+// granularity (the edge bucket can be a few minutes short/over), which is
+// the standard tradeoff for this kind of rollup and far cheaper than
+// re-scanning raw trades on every request.
+async function attach24hVolume<T extends { id: string }>(tokens: T[]): Promise<(T & { volume24h: string })[]> {
+  if (tokens.length === 0) return [];
+  const cutoff = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
+  const data = await querySubgraph<{ tokenHourDatas: { token: { id: string }; volumeQuote: string }[] }>(
+    `query Volume24h($tokens: [String!]!, $cutoff: BigInt!) {
+      tokenHourDatas(first: 1000, where: { token_in: $tokens, hourStartUnix_gte: $cutoff }) {
+        token { id }
+        volumeQuote
+      }
+    }`,
+    { tokens: tokens.map((t) => t.id), cutoff: String(cutoff) }
+  );
+  const sums = new Map<string, bigint>();
+  for (const row of data.tokenHourDatas) {
+    sums.set(row.token.id, (sums.get(row.token.id) ?? 0n) + BigInt(row.volumeQuote));
+  }
+  return tokens.map((t) => ({ ...t, volume24h: (sums.get(t.id) ?? 0n).toString() }));
+}
+
 router.get("/", async (req, res) => {
   const family = typeof req.query.family === "string" ? req.query.family.toUpperCase() : undefined;
   const limit = Math.min(Number(req.query.limit ?? 50), 200);
   const offset = Number(req.query.offset ?? 0);
 
   try {
-    const data = await querySubgraph<{ tokens: unknown[] }>(
+    const data = await querySubgraph<{ tokens: { id: string }[] }>(
       `query Tokens($first: Int!, $skip: Int!, $where: Token_filter) {
         tokens(first: $first, skip: $skip, orderBy: createdAtBlock, orderDirection: desc, where: $where) {
           ${TOKEN_FIELDS}
@@ -28,7 +53,7 @@ router.get("/", async (req, res) => {
       }`,
       { first: limit, skip: offset, where: family ? { family } : {} }
     );
-    res.json(data.tokens);
+    res.json(await attach24hVolume(data.tokens));
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }
@@ -61,7 +86,8 @@ router.get("/:address", async (req, res) => {
     );
 
     if (data.token == null) return res.status(404).json({ error: "not found" });
-    res.json({ ...data.token, position: data.position, pool: data.pools[0] ?? null });
+    const [withVolume] = await attach24hVolume([data.token as { id: string }]);
+    res.json({ ...withVolume, position: data.position, pool: data.pools[0] ?? null });
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }

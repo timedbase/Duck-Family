@@ -44,15 +44,25 @@ export function tokenToCoin(t, i, meta) {
   // campaign starts, well before it resolves. Its "progress" is the
   // campaign's own raised/goal (native ETH), not a curve fill.
   let pct = 100; // INSTANT tokens launch straight onto a DEX pool — no curve to fill
-  let mc = t.raisedQuote ? Number(t.raisedQuote) / 1e18 : 0; // raw quote-asset raised, a rough stand-in for market cap
+  let raised = t.raisedQuote ? Number(t.raisedQuote) / 1e18 : 0; // cumulative quote-asset inflow -- NOT market cap, a different number
   if (t.family === "CURVE" && t.migrationTarget && Number(t.migrationTarget) > 0) {
     pct = Math.min(100, (Number(t.raisedQuote || 0) / Number(t.migrationTarget)) * 100);
   } else if (t.family === "CAMPAIGN") {
     const goal = Number(t.campaign?.goal || 0);
-    const raised = Number(t.campaign?.totalRaised || 0);
-    pct = goal > 0 ? Math.min(100, (raised / goal) * 100) : 0;
-    mc = raised / 1e18;
+    const campaignRaised = Number(t.campaign?.totalRaised || 0);
+    pct = goal > 0 ? Math.min(100, (campaignRaised / goal) * 100) : 0;
+    raised = campaignRaised / 1e18;
   }
+
+  const curveSeed = buildCurveSeedPoint(t);
+  // Real price (quote-asset per token), from the subgraph's running
+  // lastPrice -- the ratio of the most recent actual trade -- falling back
+  // to a curve's deterministic pre-trade seed price if it hasn't traded
+  // yet. Null (not 0) when genuinely unknown, so callers can tell "no
+  // price data" apart from "trades at zero".
+  const price = t.lastPrice != null ? Number(t.lastPrice) : curveSeed ? curveSeed.price : null;
+  const supplyTokens = t.totalSupply ? Number(t.totalSupply) / 1e18 : 0;
+  const mc = price != null ? price * supplyTokens : 0; // real market cap = price * supply, not cumulative inflow
 
   // Every family's name/symbol is indexed directly on Token now (read off
   // the token contract at creation time for CURVE/INSTANT; CampaignCreated
@@ -78,7 +88,7 @@ export function tokenToCoin(t, i, meta) {
     hook: t.hook,
     totalSupply: t.totalSupply,
     burnedSupply: t.burnedSupply || "0",
-    curveSeed: buildCurveSeedPoint(t),
+    curveSeed,
     migrated: !!t.migrated,
     name: name || symbol || shortAddress(t.id),
     symbol: symbol || "???",
@@ -87,10 +97,11 @@ export function tokenToCoin(t, i, meta) {
     famBg: fam.bg, famFg: fam.fg,
     creator: t.creator,
     dev: shortAddress(t.creator),
-    mc, vol: 0, ageMin, chg: 0, pct,
+    price, mc, raised, vol: Number(t.volume24h || 0) / 1e18, volumeAllTime: Number(t.volumeAllTime || 0) / 1e18,
+    ageMin, chg: 0, pct,
     desc: "",
     quote: quoteSymbol(t.quoteToken),
-    holders: 0, // see chain/tokenMeta.js's header — not indexed, only fetchable per-token
+    holders: Number(t.holderCount || 0),
     mint: shortAddress(t.id),
     metaUri: t.metaUri || null, // indexed directly now; loadTokenMeta falls back to an on-chain read if still empty (e.g. a token created moments ago, ahead of the subgraph)
     imageUrl: null,

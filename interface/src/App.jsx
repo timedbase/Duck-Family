@@ -737,7 +737,8 @@ function buildViewModel(ctx) {
   const shape = (c) => ({
     id: c.id, family: c.family === "CURVE" ? "INCUBATION" : c.family === "INSTANT" ? "LAUNCHER" : "RAISE",
     famBg: c.famBg, famFg: c.famFg, initials: c.initials, symbol: c.ticker, name: c.name,
-    price: money(c.mc / 1e6) + "/M", chg: (c.chg >= 0 ? "+" : "") + c.chg.toFixed(1) + "%",
+    price: c.price != null ? "$" + (c.price < 0.01 ? c.price.toFixed(6) : c.price.toFixed(4)) : "—",
+    chg: (c.chg >= 0 ? "+" : "") + c.chg.toFixed(1) + "%",
     chgColor: c.chg >= 0 ? "var(--pos)" : "var(--neg)",
     mcap: money(c.mc), vol: money(c.vol), holders: c.holders.toLocaleString(),
     bars: buildSparkline(c.rawTrades),
@@ -813,10 +814,10 @@ function buildViewModel(ctx) {
       chg: ohlc ? (ohlc.up ? "+" : "−") + (Math.abs((ohlc.c - ohlc.o) / (ohlc.o || 1)) * 100).toFixed(1) + "%" : "—",
       chgColor: ohlc ? (ohlc.up ? "var(--pos)" : "var(--neg)") : "var(--mute)",
       migrated: c.migrated, holders: c.holders,
-      raised: c.mc.toFixed(4), startTarget: "—", migTarget: "—",
+      raised: c.raised.toFixed(4), startTarget: "—", migTarget: "—",
     } : null,
     tokenStats: c ? [
-      { k: "RAISED", v: money(c.mc) }, { k: "24H VOL", v: money(c.vol) },
+      { k: "MCAP", v: money(c.mc) }, { k: "RAISED", v: money(c.raised) }, { k: "24H VOL", v: money(c.vol) },
       { k: "HOLDERS", v: c.holders.toLocaleString() },
       { k: c.family === "CURVE" && !c.migrated ? "CURVE" : "POOL", v: c.family === "CURVE" && !c.migrated ? Math.round(c.pct) + "%" : (c.migrated || c.family === "INSTANT") ? "V4 LIVE" : "—" },
       { k: "LP LOCK", v: (c.migrated || c.family === "INSTANT") ? "FOREVER" : "—" },

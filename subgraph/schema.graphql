@@ -51,6 +51,24 @@ type Token @entity(immutable: false) {
   # mechanism's own event.
   burnedSupply: BigInt!
 
+  # Incremented/decremented in the DuckToken Transfer handler exactly once
+  # per zero-balance crossing (never double-counted for a partial transfer
+  # that leaves an existing holder still holding something).
+  holderCount: Int!
+
+  # Updated to the ratio of the most recent trade (curve Trade or pool
+  # PoolSwap, whichever family/phase applies), in quote-asset units per
+  # token. Null until the first real trade. Real market cap = lastPrice *
+  # totalSupply, computable everywhere (list or detail view) with no extra
+  # per-token query, unlike deriving it from raw trade history each time.
+  lastPrice: BigDecimal
+
+  # Running cumulative total, all-time, in raw quote-asset units -- updated
+  # on every Trade/PoolSwap alongside lastPrice. Rolling 24h volume is
+  # derived separately (see TokenHourData) since "last 24 hours from now" is
+  # a moving target a single static field can't represent.
+  volumeAllTime: BigInt!
+
   # CURVE only (DuckIncubation)
   virtualQuote: BigInt
   migrationTarget: BigInt
@@ -260,4 +278,14 @@ type Holder @entity(immutable: false) {
   balance: BigInt!
   updatedAt: BigInt!
   updatedAtBlock: BigInt!
+}
+
+# One row per token per hour it actually traded in -- lets a rolling 24h
+# volume be computed by summing the last 24 of these (a handful of rows),
+# instead of re-scanning every raw trade on every read.
+type TokenHourData @entity(immutable: false) {
+  id: ID! # token address + "-" + floor(unix timestamp / 3600)
+  token: Token!
+  hourStartUnix: BigInt!
+  volumeQuote: BigInt!
 }
