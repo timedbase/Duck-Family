@@ -49,9 +49,9 @@ export default function DocsPage({ v }) {
   return (
     <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "1fr" : "210px minmax(0,1fr)"};gap:24px;align-items:start`)}>
       {!v.isMobile && (
-        <div style={cs("position:sticky;top:80px;border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
+        <div style={cs("position:sticky;top:80px;display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);border-radius:14px;background:var(--card);padding:10px")}>
           {NAV.map((n) => (
-            <a key={n.id} href={`#${n.id}`} style={cs("display:block;padding:12px 16px;border-bottom:1px solid var(--soft);font-size:13px;font-weight:600;text-decoration:none;color:var(--ink)")}>{n.label}</a>
+            <a key={n.id} href={`#${n.id}`} className="d-hover-paper" style={cs("padding:9px 12px;border-radius:8px;border-bottom:0;font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--card)")}>{n.label}</a>
           ))}
         </div>
       )}

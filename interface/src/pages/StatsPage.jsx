@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cs } from "../cs.js";
 import { api } from "../api.js";
 
@@ -12,12 +12,24 @@ import { api } from "../api.js";
 export default function StatsPage({ v }) {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState("");
+  const [fetchedAt, setFetchedAt] = useState(null);
+  const [nowTick, setNowTick] = useState(Date.now());
+  const loadingRef = useRef(false);
 
   useEffect(() => {
-    api.stats().then(setStats).catch((e) => setError(String(e.message || e)));
+    const load = () => {
+      if (loadingRef.current) return;
+      loadingRef.current = true;
+      api.stats().then((d) => { setStats(d); setFetchedAt(Date.now()); setError(""); }).catch((e) => setError(String(e.message || e))).finally(() => { loadingRef.current = false; });
+    };
+    load();
+    const poll = setInterval(load, 30000);
+    const tick = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => { clearInterval(poll); clearInterval(tick); };
   }, []);
 
   const money = (n) => n >= 1e6 ? "$" + (n / 1e6).toFixed(2) + "M" : n >= 1e3 ? "$" + (n / 1e3).toFixed(1) + "K" : "$" + n.toFixed(0);
+  const updatedSecondsAgo = fetchedAt ? Math.max(0, Math.round((nowTick - fetchedAt) / 1000)) : null;
 
   const cards = stats ? [
     { k: "24H VOLUME", v: money(stats.tradingVolumeUsd), sub: "DEX pools + bonding curves, USD-resolved trades only", bg: "var(--lime)" },
@@ -27,20 +39,27 @@ export default function StatsPage({ v }) {
 
   return (
     <div>
-      <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);padding:26px 24px;margin-bottom:18px")}>
-        <h1 style={cs(`margin:0 0 9px;font-size:${v.isMobile ? "26px" : "38px"};letter-spacing:-.045em;font-weight:700;line-height:1.05`)}>Stats</h1>
-        <p style={cs("margin:0;color:var(--mute);font-size:14.5px;line-height:1.55;max-width:66ch")}>Real-time aggregates from the subgraph — every number here is computed from actual on-chain trades, launches and contributions, not sampled or estimated.</p>
+      <div style={cs("display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px")}>
+        <div>
+          <h1 style={cs(`margin:0;font-size:${v.isMobile ? "26px" : "38px"};letter-spacing:-.04em;font-weight:700;line-height:1`)}>Stats</h1>
+          <div style={cs("font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--mute);margin-top:9px")}>FROM THE SUBGRAPH · LAST 24 HOURS</div>
+        </div>
+        {updatedSecondsAgo != null && (
+          <div style={cs("display:flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-family:'DM Mono',monospace;font-size:11.5px;color:var(--mute)")}>
+            <span style={cs("width:6px;height:6px;border-radius:999px;background:var(--pos)")}></span>updated {updatedSecondsAgo < 1 ? "just now" : updatedSecondsAgo + "s ago"}
+          </div>
+        )}
       </div>
 
-      {error && <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);padding:24px;color:var(--neg);font-size:13.5px;margin-bottom:16px")}>Couldn't load stats: {error}</div>}
+      {error && <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);padding:24px;color:var(--neg);font-size:13.5px;margin-bottom:16px")}>Couldn't load stats: {error}</div>}
 
-      {!stats && !error && <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);padding:40px;text-align:center;color:var(--mute);font-size:13.5px")}>Loading…</div>}
+      {!stats && !error && <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);padding:40px;text-align:center;color:var(--mute);font-size:13.5px")}>Loading…</div>}
 
       {stats && (
         <>
-          <div style={cs("display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px")}>
+          <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:16px")}>
             {cards.map((c, i) => (
-              <div key={i} style={cs(`flex:1;min-width:220px;border:1px solid var(--line);border-radius:10px;background:${c.bg};padding:20px`)}>
+              <div key={i} style={cs(`border:1px solid var(--line);border-radius:14px;background:${c.bg};padding:20px`)}>
                 <div style={cs("font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>{c.k}</div>
                 <div style={cs("font-family:'DM Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-.03em;margin-top:9px")}>{c.v}</div>
                 <div style={cs("font-size:11.5px;color:var(--mute);margin-top:5px")}>{c.sub}</div>
@@ -48,24 +67,36 @@ export default function StatsPage({ v }) {
             ))}
           </div>
 
-          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
-            <div style={cs("padding:13px 18px;border-bottom:1px solid var(--line);font-size:15px;font-weight:700;letter-spacing:-.02em")}>Volume by venue (24h)</div>
-            {stats.venues.map((venue, i) => (
-              <div key={i} style={cs("padding:14px 18px;border-bottom:1px solid var(--soft)")}>
-                <div style={cs("display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:12.5px;margin-bottom:8px")}>
-                  <span>{venue.label}</span>
-                  <span style={cs("font-weight:500")}>{money(venue.volumeUsd)} · {venue.pct.toFixed(1)}%</span>
+          <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);padding:20px")}>
+            <div style={cs("display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px")}>
+              <h2 style={cs("margin:0;font-size:17px;font-weight:700;letter-spacing:-.03em")}>24h volume by venue</h2>
+              <span style={cs("font-family:'DM Mono',monospace;font-size:11.5px;color:var(--mute)")}>{money(stats.tradingVolumeUsd)} total</span>
+            </div>
+            <div style={cs("display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--soft);margin-bottom:18px")}>
+              {stats.venues.map((venue, i) => (
+                <div key={i} style={cs(`width:${venue.pct}%;background:${i === 0 ? "var(--ink)" : "var(--lime)"}`)}></div>
+              ))}
+            </div>
+            <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px")}>
+              {stats.venues.map((venue, i) => (
+                <div key={i} style={cs("display:flex;align-items:flex-start;gap:11px")}>
+                  <span style={cs(`width:11px;height:11px;border-radius:3px;background:${i === 0 ? "var(--ink)" : "var(--lime)"};flex:none;margin-top:4px`)}></span>
+                  <div style={cs("min-width:0")}>
+                    <div style={cs("font-size:13.5px;font-weight:600;letter-spacing:-.01em")}>{venue.label}</div>
+                    <div style={cs("font-family:'DM Mono',monospace;font-size:15px;font-weight:500;margin-top:4px")}>{money(venue.volumeUsd)}</div>
+                    <div style={cs("font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);margin-top:3px")}>{venue.pct.toFixed(1)}% of volume</div>
+                  </div>
                 </div>
-                <div style={cs("height:6px;border-radius:99px;background:var(--soft);overflow:hidden")}>
-                  <div style={cs(`height:100%;width:${venue.pct}%;background:${i === 0 ? "var(--ink)" : "var(--lime)"};border-radius:99px`)}></div>
+              ))}
+              <div style={cs("display:flex;align-items:flex-start;gap:11px")}>
+                <span style={cs("width:11px;height:11px;border-radius:3px;background:var(--orange);flex:none;margin-top:4px")}></span>
+                <div style={cs("min-width:0")}>
+                  <div style={cs("font-size:13.5px;font-weight:600;letter-spacing:-.01em")}>Crowdlaunch</div>
+                  <div style={cs("font-family:'DM Mono',monospace;font-size:15px;font-weight:500;margin-top:4px")}>{stats.raiseContributedEth.toFixed(4)} ETH</div>
+                  <div style={cs("font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);margin-top:3px")}>ETH contributed, not trading volume</div>
                 </div>
               </div>
-            ))}
-            <div style={cs("padding:14px 18px;display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:12.5px;color:var(--mute)")}>
-              <span>Crowdlaunch (ETH contributed, 24h)</span>
-              <span style={cs("color:var(--ink);font-weight:500")}>{stats.raiseContributedEth.toFixed(4)} ETH</span>
             </div>
-            <div style={cs("padding:0 18px 16px;font-size:11.5px;color:var(--mute);line-height:1.5")}>Shown separately from the DEX/curve split above — contributions are escrowed native ETH, not a resolved USD trading volume, so blending it into the same percentage split would overstate precision that isn't really there.</div>
           </div>
         </>
       )}

@@ -73,13 +73,16 @@ export async function getCurveCreationFee() {
 export async function createCurveToken({
   account, name, symbol, totalSupply, curveBps, liquidityBps, quoteToken = ZERO_ADDRESS,
   startVirtualQuote, migrationTargetQuote, hookFeeBps = 0n, enableAntibot = false, antibotBlocks = 0n,
-  metaURI, buyAmountWei = 0n, earlyBuyAmount = 0n,
+  metaURI, buyAmountWei = 0n, earlyBuyAmount = 0n, dryRun = false,
 }) {
   const { userSalt } = mineVanitySalt({ deployer: DUCK_INCUBATION, impl: DUCK_INCUBATION_TOKEN_IMPL, caller: account });
   const fee = await getCurveCreationFee();
   const isNativeQuoted = quoteToken.toLowerCase() === ZERO_ADDRESS.toLowerCase();
 
-  if (!isNativeQuoted && earlyBuyAmount > 0n) {
+  // A dry run must never send a real transaction -- including the ERC20
+  // approve() an early buy would otherwise need. simulateContract below
+  // still proves the createToken call itself would succeed either way.
+  if (!dryRun && !isNativeQuoted && earlyBuyAmount > 0n) {
     await approveToken({ account, token: quoteToken, spender: DUCK_INCUBATION, amount: earlyBuyAmount });
   }
 
@@ -96,6 +99,7 @@ export async function createCurveToken({
     }],
     value: isNativeQuoted ? fee + buyAmountWei : fee,
     account,
+    dryRun,
   });
   return { hash, tokenAddress };
 }
@@ -164,6 +168,7 @@ export async function getLaunchFee() {
 export async function launchInstant({
   account, name, symbol, metaURI, quoteToken = ZERO_ADDRESS, launchMarketCap,
   minQuoteOut = 0n, minTokensOut = 0n, hookFeeBps = 0n, revertOnInstantBuyFailure = false, quoteAmountWei = 0n,
+  dryRun = false,
 }) {
   const { userSalt } = mineVanitySalt({ deployer: DUCK_LAUNCHER, impl: DUCK_LAUNCHER_TOKEN_IMPL, caller: account });
   const fee = await getLaunchFee();
@@ -177,8 +182,9 @@ export async function launchInstant({
     }],
     value: fee + quoteAmountWei,
     account,
+    dryRun,
   });
-  return { hash, tokenAddress: result[0] };
+  return { hash, tokenAddress: result?.[0] };
 }
 
 export async function isLauncherQuoteTokenAllowed(token) {
@@ -206,7 +212,7 @@ export async function getRaiseDefaults() {
 // goalNativeWei: creator-specified soft floor, in native wei -- contribute()
 // is always native-only regardless of dexQuoteAsset (that only determines
 // what the raised ETH gets swapped into when seeding the pool at finalize).
-export async function createCampaign({ account, name, symbol, metaURI, dexQuoteAsset = ZERO_ADDRESS, goalNativeWei, startTimeSeconds, hookFeeBps = 0n }) {
+export async function createCampaign({ account, name, symbol, metaURI, dexQuoteAsset = ZERO_ADDRESS, goalNativeWei, startTimeSeconds, hookFeeBps = 0n, dryRun = false }) {
   const { userSalt } = mineVanitySalt({ deployer: DUCK_RAISE, impl: DUCK_RAISE_TOKEN_IMPL, caller: account });
   const fee = await getCampaignFee();
   const startTime = BigInt(startTimeSeconds ?? Math.floor(Date.now() / 1000));
@@ -217,8 +223,9 @@ export async function createCampaign({ account, name, symbol, metaURI, dexQuoteA
     args: [name, symbol, metaURI || "", dexQuoteAsset, goalNativeWei, startTime, userSalt, hookFeeBps],
     value: fee,
     account,
+    dryRun,
   });
-  return { hash, campaignId: result[0], tokenAddress: result[1] };
+  return { hash, campaignId: result?.[0], tokenAddress: result?.[1] };
 }
 
 export async function contributeCampaign({ account, campaignId, amountWei }) {

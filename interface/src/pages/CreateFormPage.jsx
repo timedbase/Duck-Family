@@ -56,6 +56,10 @@ export default function CreateFormPage({ v }) {
   const family = v.family || "incubation";
   useEffect(() => { if (family === "raise") v.loadRaiseDefaults(); }, [family]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const draft = family === "incubation" ? v.draftCurve : family === "launcher" ? v.draftInstant : v.draftCampaign;
+  const setDraft = family === "incubation" ? v.setCurve : family === "launcher" ? v.setInstant : v.setCampaign;
+  const nameLabel = family === "raise" ? "RAISE / TOKEN NAME" : "TOKEN NAME";
+
   const FORM = {
     incubation: { title: "Bonding curve", accent: "var(--lime)", accentFg: "var(--ink)", cta: "Create curve token",
       sub: "No price oracle: you pick the start and migration targets directly, as raw quote-asset amounts. Buyers receive tokens on every trade from block one." },
@@ -86,12 +90,36 @@ export default function CreateFormPage({ v }) {
           </div>
 
           <div style={cs(`padding:${v.isMobile ? "18px" : "24px"};display:flex;flex-direction:column;gap:18px`)}>
+            <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px")}>
+              <Field label={nameLabel} hint="Shown across the app"><TextInput value={draft.name} onChange={(e) => setDraft({ name: e.target.value })} placeholder="Quack Capital" /></Field>
+              <Field label="SYMBOL" hint="3–9 characters"><TextInput value={draft.ticker} onChange={(e) => setDraft({ ticker: e.target.value.toUpperCase() })} placeholder="QUACK" /></Field>
+            </div>
+
+            <div style={cs("display:flex;align-items:center;gap:16px;flex-wrap:wrap")}>
+              <label style={cs("width:56px;height:56px;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;color:var(--mute);text-align:center;line-height:1.2;flex:none;cursor:pointer;overflow:hidden")}>
+                <input type="file" accept="image/*" onChange={v.onImagePick} style={cs("display:none")} />
+                {v.draftImage.previewUrl ? <img src={v.draftImage.previewUrl} alt="" style={cs("width:100%;height:100%;object-fit:cover")} /> : <>TOKEN<br />LOGO</>}
+              </label>
+              <div style={cs("font-size:12.5px;color:var(--mute);line-height:1.5;flex:1;min-width:200px")}>
+                PNG or SVG. Stored off-chain via IPFS; the token URI points at it. Also permanent.
+                {v.draftImage.previewUrl && !v.draftImage.uploading && <button onClick={v.clearImage} style={cs("display:block;border:0;background:transparent;color:var(--mute);text-decoration:underline;cursor:pointer;padding:4px 0;font-size:11.5px")}>Remove</button>}
+                {v.draftImage.uploading && <span style={cs("display:block;margin-top:4px")}>Uploading…</span>}
+                {v.draftImage.error && <span style={cs("display:block;margin-top:4px;color:var(--neg)")}>{v.draftImage.error}</span>}
+              </div>
+            </div>
+
+            <div>
+              <div style={cs("font-size:17px;font-weight:700;letter-spacing:-.03em")}>Socials</div>
+              <div style={cs("font-size:12.5px;color:var(--mute);margin:7px 0 14px;line-height:1.55;max-width:70ch")}>Written into the token metadata at creation. The token renounces ownership on deploy, so these are permanent — check them carefully before you submit.</div>
+              <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px")}>
+                <TextInput value={v.socials.website} onChange={(e) => v.setSocial("website", e.target.value)} placeholder="Website URL" />
+                <TextInput value={v.socials.twitter} onChange={(e) => v.setSocial("twitter", e.target.value)} placeholder="X / Twitter URL" />
+                <TextInput value={v.socials.telegram} onChange={(e) => v.setSocial("telegram", e.target.value)} placeholder="Telegram URL" />
+              </div>
+            </div>
+
             {family === "incubation" && (
               <>
-                <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px")}>
-                  <Field label="TOKEN NAME" hint="Shown across the app"><TextInput value={v.draftCurve.name} onChange={(e) => v.setCurve({ name: e.target.value })} placeholder="Quack Capital" /></Field>
-                  <Field label="SYMBOL" hint="3–9 characters"><TextInput value={v.draftCurve.ticker} onChange={(e) => v.setCurve({ ticker: e.target.value.toUpperCase() })} placeholder="QUACK" /></Field>
-                </div>
                 <Field label="QUOTE ASSET" hint="Only USDC/USDT0 have a real ETH route for buyWithNative — pick ETH if unsure">
                   <QuoteChips options={v.quoteOptions} value={v.draftCurve.quoteToken} onPick={(a) => v.setCurve({ quoteToken: a })} />
                 </Field>
@@ -112,10 +140,6 @@ export default function CreateFormPage({ v }) {
 
             {family === "launcher" && (
               <>
-                <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px")}>
-                  <Field label="TOKEN NAME" hint="Shown across the app"><TextInput value={v.draftInstant.name} onChange={(e) => v.setInstant({ name: e.target.value })} placeholder="Mallard Index" /></Field>
-                  <Field label="SYMBOL" hint="3–9 characters"><TextInput value={v.draftInstant.ticker} onChange={(e) => v.setInstant({ ticker: e.target.value.toUpperCase() })} placeholder="MALRD" /></Field>
-                </div>
                 <Field label="TOTAL SUPPLY"><LockedInput value="1,000,000,000 — fixed, no further mint path" /></Field>
                 <Field label="QUOTE ASSET" hint="Paired side of the V4 pool">
                   <QuoteChips options={v.quoteOptions} value={v.draftInstant.quoteToken} onPick={(a) => v.setInstant({ quoteToken: a })} />
@@ -132,10 +156,6 @@ export default function CreateFormPage({ v }) {
 
             {family === "raise" && (
               <>
-                <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px")}>
-                  <Field label="RAISE / TOKEN NAME" hint="Shown across the app"><TextInput value={v.draftCampaign.name} onChange={(e) => v.setCampaign({ name: e.target.value })} placeholder="Drake Reserve" /></Field>
-                  <Field label="SYMBOL" hint="3–9 characters"><TextInput value={v.draftCampaign.ticker} onChange={(e) => v.setCampaign({ ticker: e.target.value.toUpperCase() })} placeholder="DRAKE" /></Field>
-                </div>
                 <Field label="GOAL (ETH)" hint="Native ETH only — no quote asset during the raise">
                   <TextInput value={v.draftCampaign.goalNative} onChange={(e) => v.setCampaign({ goalNative: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="50" />
                 </Field>
@@ -151,36 +171,15 @@ export default function CreateFormPage({ v }) {
 
             <label style={cs("display:flex;flex-direction:column;gap:7px")}>
               <span style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>DESCRIPTION</span>
-              <textarea rows="3" placeholder="What is this token for?" value={family === "incubation" ? v.draftCurve.desc : family === "launcher" ? v.draftInstant.desc : v.draftCampaign.desc}
-                onChange={(e) => (family === "incubation" ? v.setCurve({ desc: e.target.value.slice(0, 140) }) : family === "launcher" ? v.setInstant({ desc: e.target.value.slice(0, 140) }) : v.setCampaign({ desc: e.target.value.slice(0, 140) }))}
+              <textarea rows="3" placeholder="What is this token for?" value={draft.desc}
+                onChange={(e) => setDraft({ desc: e.target.value.slice(0, 140) })}
                 style={cs("padding:12px;border:1px solid var(--line);background:var(--paper);font-size:14px;outline:0;resize:vertical")} />
             </label>
-
-            <div>
-              <span style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>SOCIALS (OPTIONAL)</span>
-              <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:7px")}>
-                <TextInput value={v.socials.website} onChange={(e) => v.setSocial("website", e.target.value)} placeholder="Website URL" />
-                <TextInput value={v.socials.twitter} onChange={(e) => v.setSocial("twitter", e.target.value)} placeholder="X / Twitter URL" />
-                <TextInput value={v.socials.telegram} onChange={(e) => v.setSocial("telegram", e.target.value)} placeholder="Telegram URL" />
-              </div>
-            </div>
           </div>
 
-          <div style={cs("border-top:1px solid var(--line);padding:20px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap")}>
-            <label style={cs("width:56px;height:56px;border:2px dashed var(--mute);border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;color:var(--mute);text-align:center;line-height:1.2;flex:none;cursor:pointer;overflow:hidden")}>
-              <input type="file" accept="image/*" onChange={v.onImagePick} style={cs("display:none")} />
-              {v.draftImage.previewUrl ? <img src={v.draftImage.previewUrl} alt="" style={cs("width:100%;height:100%;object-fit:cover")} /> : <>TOKEN<br />LOGO</>}
-            </label>
-            <div style={cs("font-size:12.5px;color:var(--mute);line-height:1.5;flex:1;min-width:200px")}>
-              PNG or SVG. Stored off-chain via IPFS; the token URI points at it.
-              {v.draftImage.previewUrl && !v.draftImage.uploading && <button onClick={v.clearImage} style={cs("display:block;border:0;background:transparent;color:var(--mute);text-decoration:underline;cursor:pointer;padding:4px 0;font-size:11.5px")}>Remove</button>}
-              {v.draftImage.uploading && <span style={cs("display:block;margin-top:4px")}>Uploading…</span>}
-              {v.draftImage.error && <span style={cs("display:block;margin-top:4px;color:var(--neg)")}>{v.draftImage.error}</span>}
-            </div>
-          </div>
-
-          <div style={cs("border-top:1px solid var(--line);padding:20px 24px")}>
+          <div style={cs("border-top:1px solid var(--line);padding:20px 24px;display:flex;gap:12px;flex-wrap:wrap")}>
             <button onClick={v.submitCreate} style={cs("padding:15px 26px;border:1px solid var(--line);border-radius:9px;background:var(--ink);color:var(--card);font-size:15px;font-weight:700;cursor:pointer")}>{v.createCta}</button>
+            <button onClick={v.simulateCreate} disabled={v.simulating} style={cs("padding:15px 24px;border:1px solid var(--line);border-radius:9px;background:var(--card);font-size:15px;font-weight:600;cursor:pointer")}>{v.simulating ? "Simulating…" : "Simulate first"}</button>
           </div>
         </div>
 
@@ -195,7 +194,7 @@ export default function CreateFormPage({ v }) {
             ))}
           </div>
           <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
-            <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>NOTES</div>
+            <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>COSTS</div>
             {costs.map((c, i) => (
               <div key={i} style={cs("display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12.5px")}>
                 <span style={cs("color:var(--mute)")}>{c.k}</span><span style={cs("font-weight:500;text-align:right")}>{c.v}</span>

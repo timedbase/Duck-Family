@@ -23,6 +23,7 @@ input, select, textarea { border-radius: 8px; }
 button { border-radius: 0; transition: background .14s ease, color .14s ease, border-color .14s ease; }
 .d-hover-line:hover { border-color: var(--mute) !important; }
 .d-hover-lime:hover { background: var(--lime) !important; }
+.d-hover-paper:hover { background: var(--paper) !important; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes popin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes slidein { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }

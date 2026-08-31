@@ -74,7 +74,7 @@ export default function App() {
     screen: "home", layout: "cards", filter: "All", query: "",
     tokenId: null, side: "buy", amount: "250", range: "1D", chartMode: "price", tab: "Trades", chatDraft: "",
     family: null, contribAmount: "0.5", slippageBps: 500,
-    previewOut: null, previewLoading: false,
+    previewOut: null, previewLoading: false, simulating: false,
     nativeBalance: 0n, txPending: false, tx: null, toast: "",
     portfolio: EMPTY_PORTFOLIO, coins: [], coinsLoading: true, coinsError: "",
     draftCurve: { name: "", ticker: "", desc: "", quoteToken: ZERO_ADDRESS, startVirtualQuote: "8000", migrationTargetQuote: "60000", earlyBuyAmount: "0", socials: EMPTY_SOCIALS },
@@ -500,6 +500,70 @@ export default function App() {
     }
   }
 
+  // Proves a launch would succeed -- the exact same params (vanity salt,
+  // uploaded metaURI, fees) run through a real simulateContract eth_call,
+  // just stopped before the wallet is ever asked to sign or a transaction
+  // sent. Shares submitCreate's validation/param-building so "simulate"
+  // can never silently check something different from what "launch"
+  // actually submits.
+  async function simulateCreate() {
+    if (!requireWallet()) return;
+    const family = s.family;
+    set({ simulating: true });
+    try {
+      if (family === "incubation") {
+        const d = s.draftCurve;
+        if (!d.name.trim() || !d.ticker.trim()) return flash("Name and ticker are required.");
+        if (findBlockedTerm(d.name, d.ticker, d.desc)) return flash("That name, ticker, or description isn't allowed.");
+        const symbol = d.ticker.trim().toUpperCase().slice(0, 9);
+        const decimals = decimalsFor(d.quoteToken, [s.platformTokens.incubation]);
+        const startVirtualQuote = parseUnits(d.startVirtualQuote || "1", decimals);
+        const migrationTargetQuote = parseUnits(d.migrationTargetQuote || "10", decimals);
+        if (startVirtualQuote === 0n || migrationTargetQuote <= startVirtualQuote) return flash("Migration target must exceed the start target.");
+        const metaURI = await buildMetaURI(d.name.trim(), symbol, d.desc.trim(), d.socials);
+        const isNativeQuoted = d.quoteToken.toLowerCase() === ZERO_ADDRESS;
+        const earlyBuyAmount = d.earlyBuyAmount && Number(d.earlyBuyAmount) > 0 ? parseUnits(String(d.earlyBuyAmount), decimals) : 0n;
+        await createCurveToken({
+          account, name: d.name.trim(), symbol, totalSupply: parseUnits("1000000000", 18),
+          curveBps: 8000n, liquidityBps: 2000n, quoteToken: d.quoteToken, startVirtualQuote, migrationTargetQuote,
+          enableAntibot: false, antibotBlocks: 0n, metaURI,
+          buyAmountWei: isNativeQuoted ? earlyBuyAmount : 0n, earlyBuyAmount: isNativeQuoted ? 0n : earlyBuyAmount,
+          dryRun: true,
+        });
+      } else if (family === "launcher") {
+        const d = s.draftInstant;
+        if (!d.name.trim() || !d.ticker.trim()) return flash("Name and ticker are required.");
+        if (findBlockedTerm(d.name, d.ticker, d.desc)) return flash("That name, ticker, or description isn't allowed.");
+        const symbol = d.ticker.trim().toUpperCase().slice(0, 9);
+        const metaURI = await buildMetaURI(d.name.trim(), symbol, d.desc.trim(), d.socials);
+        const decimals = decimalsFor(d.quoteToken, [s.platformTokens.launcher]);
+        const launchMarketCap = parseUnits(d.launchMarketCap || "10", decimals);
+        const buyWei = d.buyAmountHype && Number(d.buyAmountHype) > 0 ? parseEther(String(d.buyAmountHype)) : 0n;
+        await launchInstant({
+          account, name: d.name.trim(), symbol, metaURI, quoteToken: d.quoteToken, launchMarketCap, quoteAmountWei: buyWei,
+          dryRun: true,
+        });
+      } else {
+        const d = s.draftCampaign;
+        if (!d.name.trim() || !d.ticker.trim()) return flash("Name and ticker are required.");
+        if (findBlockedTerm(d.name, d.ticker, d.desc)) return flash("That name, ticker, or description isn't allowed.");
+        const symbol = d.ticker.trim().toUpperCase().slice(0, 9);
+        const metaURI = await buildMetaURI(d.name.trim(), symbol, d.desc.trim(), d.socials);
+        const goalNativeWei = parseEther(d.goalNative || "1");
+        if (goalNativeWei === 0n) return flash("Enter a funding goal greater than zero.");
+        await createCampaign({
+          account, name: d.name.trim(), symbol, metaURI, dexQuoteAsset: d.dexQuoteAsset, goalNativeWei,
+          dryRun: true,
+        });
+      }
+      flash("Simulation succeeded — this would launch successfully.");
+    } catch (e) {
+      flash("Simulation failed: " + errorText(e, "unknown error"));
+    } finally {
+      set({ simulating: false });
+    }
+  }
+
   // ---------- campaign ----------
 
   async function contribute(coin, amtEth) {
@@ -635,7 +699,7 @@ export default function App() {
   const v = buildViewModel({
     s, set, account, isConnected, disconnect, openConnectModal,
     loadCoins, loadPortfolio, loadTokenDetail, openToken, flash, requireWallet,
-    buy, sell, submitCreate, onImagePick, clearImage, setSocial,
+    buy, sell, submitCreate, simulateCreate, onImagePick, clearImage, setSocial,
     contribute, claimCampaignTokens, claimCampaignRefundAction, finalizeCampaignAction,
     claimCreatorFees, claimAllCreatorFees, loadCreatorData, claimCreatorAndHookFees, claimCurveFeeAction, saveFeeSplits, buyTakeover,
   });
@@ -753,8 +817,8 @@ function buildViewModel(ctx) {
   });
 
   const filters = ["All", "CURVE", "INSTANT", "CAMPAIGN", "Migrated"].map((key) => {
-    const label = key === "CURVE" ? "Incubation" : key === "INSTANT" ? "Launcher" : key === "CAMPAIGN" ? "Raise" : key;
-    const shortLabel = key === "CURVE" ? "Curve" : key === "INSTANT" ? "Launch" : label;
+    const label = key === "CURVE" ? "Bonding" : key === "INSTANT" ? "Instant launch" : key === "CAMPAIGN" ? "Crowdlaunch" : key;
+    const shortLabel = key === "CURVE" ? "Bonding" : key === "INSTANT" ? "Instant" : label;
     return Object.assign({ key, label: s.mobile ? shortLabel : label, dv: key === "All" ? "0" : "1px solid var(--line)", go: () => set({ filter: key }) }, block(s.filter === key));
   });
 
@@ -766,7 +830,7 @@ function buildViewModel(ctx) {
 
   const isInstant = (c) => c.family === "INSTANT";
   const shape = (c) => ({
-    id: c.id, family: c.family === "CURVE" ? "INCUBATION" : c.family === "INSTANT" ? "LAUNCHER" : "RAISE",
+    id: c.id, family: c.family === "CURVE" ? "BONDING" : c.family === "INSTANT" ? "INSTANT LAUNCH" : "CROWDLAUNCH",
     famBg: c.famBg, famFg: c.famFg, initials: c.initials, symbol: c.ticker, name: c.name,
     creator: shortAddress(c.creator), age: ageLabel(c.ageMin),
     price: usdOrQuote(c.priceUsd, c.price, c.quote),
@@ -901,7 +965,7 @@ function buildViewModel(ctx) {
 
     coin: c,
     sel: c ? {
-      name: c.name, symbol: c.ticker, family: c.family === "CURVE" ? "INCUBATION" : c.family === "INSTANT" ? "LAUNCHER" : "RAISE",
+      name: c.name, symbol: c.ticker, family: c.family === "CURVE" ? "BONDING" : c.family === "INSTANT" ? "INSTANT LAUNCH" : "CROWDLAUNCH",
       famBg: c.famBg, famFg: c.famFg, initials: c.initials, address: shortAddress(c.id), quote: c.quote,
       price: ohlc ? "$" + ohlc.c : c.curveSeed ? "$" + compactNumber(c.curveSeed.price) : "—",
       chg: ohlc ? (ohlc.pctChange >= 0 ? "+" : "−") + Math.abs(ohlc.pctChange).toFixed(1) + "%" : "—",
@@ -1021,6 +1085,7 @@ function buildViewModel(ctx) {
     raiseQuoteOptions: quoteOptionsFor(RAISE_DEFAULT_QUOTE_ASSETS, s.platformTokens.raise),
     createCta: !account ? "Connect wallet to launch" : s.txPending ? "Confirming…" : "Launch",
     submitCreate: ctx.submitCreate,
+    simulating: s.simulating, simulateCreate: ctx.simulateCreate,
     draftImage: s.draftImage, onImagePick: ctx.onImagePick, clearImage: ctx.clearImage,
 
     contribAmount: s.contribAmount, setContrib: (e) => set({ contribAmount: e.target.value.replace(/[^0-9.]/g, "") }),

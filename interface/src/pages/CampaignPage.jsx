@@ -11,7 +11,10 @@ export default function CampaignPage({ v }) {
         <div style={cs("display:flex;flex-direction:column;gap:16px;min-width:0")}>
           <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
             <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
-              <div style={cs(`width:${v.isMobile ? "56px" : "84px"};flex:none;border-right:1px solid var(--line);background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:${v.isMobile ? "18px" : "26px"};font-weight:700;letter-spacing:-.03em`)}>{camp.initials}</div>
+              <div style={cs(`width:${v.isMobile ? "56px" : "84px"};flex:none;border-right:1px solid var(--line);background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:${v.isMobile ? "18px" : "26px"};font-weight:700;letter-spacing:-.03em;position:relative`)}>
+                {camp.initials}
+                <span style={cs("position:absolute;right:0;bottom:0;width:18px;height:18px;border-top:1px solid var(--line);border-left:1px solid var(--line);background:var(--card)")}></span>
+              </div>
               <div style={cs("flex:1;min-width:260px;padding:16px 20px")}>
                 <div style={cs("display:flex;align-items:baseline;gap:11px;flex-wrap:wrap")}>
                   <h1 style={cs(`margin:0;font-size:${v.isMobile ? "20px" : "28px"};font-weight:700;letter-spacing:-.04em`)}>{camp.name}</h1>
@@ -25,11 +28,11 @@ export default function CampaignPage({ v }) {
                   {camp.socials?.twitter && <a href={camp.socials.twitter} target="_blank" rel="noreferrer noopener">X / Twitter</a>}
                   {camp.socials?.telegram && <a href={camp.socials.telegram} target="_blank" rel="noreferrer noopener">Telegram</a>}
                 </div>
-                {camp.desc && <div style={cs("font-size:13px;color:var(--mute);margin-top:10px;max-width:60ch;line-height:1.5")}>{camp.desc}</div>}
               </div>
             </div>
 
             <div style={cs("padding:20px;border-bottom:1px solid var(--line)")}>
+              {camp.desc && <p style={cs("margin:0 0 18px;font-size:14px;color:var(--mute);line-height:1.6;max-width:72ch")}>{camp.desc}</p>}
               <div style={cs(`border:1px solid var(--line);border-radius:9px;background:${camp.noteBg};color:${camp.noteFg};padding:14px 16px;font-size:13px;line-height:1.55;margin-bottom:20px`)}>{camp.note}</div>
               <div style={cs("display:flex;height:26px;border-radius:8px;background:var(--soft);padding:3px")}>
                 <div style={cs(`height:100%;border-radius:6px;width:${camp.progWidth}%;background:${camp.progFill}`)}></div>

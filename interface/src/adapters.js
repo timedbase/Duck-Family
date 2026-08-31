@@ -232,7 +232,7 @@ export function tradeToRow(tr, labels, quoteSymbolLabel = "ETH") {
   const tokenAmt = Number(tr.tokenAmount) / 1e18;
   const buy = tr.side === "BUY";
   return {
-    side: tr.side,
+    side: tr.side, sideLabel: buy ? "B" : "S",
     bg: buy ? "var(--lime)" : "var(--orange)",
     fg: buy ? "var(--ink)" : "#fff",
     who: labelFor(tr.trader, labels) || shortAddress(tr.trader),

@@ -29,7 +29,10 @@ export default function TokenPage({ v }) {
 
       <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);margin-bottom:16px;overflow:hidden")}>
         <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
-          <div style={cs(`width:${v.isMobile ? "56px" : "84px"};flex:none;border-right:1px solid var(--line);background:${sel.famBg};color:${sel.famFg};display:flex;align-items:center;justify-content:center;font-size:${v.isMobile ? "18px" : "26px"};font-weight:700;letter-spacing:-.03em`)}>{sel.initials}</div>
+          <div style={cs(`width:${v.isMobile ? "56px" : "84px"};flex:none;border-right:1px solid var(--line);background:${sel.famBg};color:${sel.famFg};display:flex;align-items:center;justify-content:center;font-size:${v.isMobile ? "18px" : "26px"};font-weight:700;letter-spacing:-.03em;position:relative`)}>
+            {sel.initials}
+            <span style={cs(`position:absolute;right:0;bottom:0;width:18px;height:18px;border-top:1px solid var(--line);border-left:1px solid var(--line);background:${sel.chgColor === "var(--neg)" ? "var(--orange)" : "var(--lime)"}`)}></span>
+          </div>
           <div style={cs("flex:1;min-width:260px;padding:16px 20px")}>
             <div style={cs("display:flex;align-items:baseline;gap:11px;flex-wrap:wrap")}>
               <h1 style={cs(`margin:0;font-size:${v.isMobile ? "20px" : "28px"};font-weight:700;letter-spacing:-.04em`)}>{sel.name}</h1>
@@ -122,7 +125,7 @@ export default function TokenPage({ v }) {
                 {tok.trades.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No trades yet.</div>}
                 {tok.trades.map((r, i) => (
                   <div key={i} style={cs("display:grid;min-width:460px;grid-template-columns:86px 1fr 1fr 1.3fr 70px;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12.5px;align-items:center")}>
-                    <span><span style={cs(`padding:2px 9px;border-radius:999px;background:${r.bg};color:${r.fg};font-size:10px;letter-spacing:.08em`)}>{r.side}</span></span>
+                    <span><span title={r.side} style={cs(`width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;background:${r.bg};color:${r.fg};font-size:10.5px;font-weight:500;border-radius:999px`)}>{r.sideLabel}</span></span>
                     <span style={cs("text-align:right")}>{r.quote}</span>
                     <span style={cs("text-align:right")}>{r.amount}</span>
                     <a href={`https://explorer.inkonchain.com/address/${r.full}`} target="_blank" rel="noreferrer" title={r.full}>{r.who}</a>
@@ -301,7 +304,7 @@ export default function TokenPage({ v }) {
               </div>
               <div style={cs("display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:12px")}><span>YOUR BALANCE</span><span style={cs("color:var(--ink)")}>{v.myBalanceTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })} {sel.symbol.replace("$", "")}</span></div>
               <button onClick={v.submitTx} disabled={v.txPending} style={cs(`width:100%;padding:16px;margin-top:14px;border:1px solid var(--line);border-radius:9px;background:${v.ctaBg};color:${v.ctaFg};font-size:16px;font-weight:700;letter-spacing:-.01em;cursor:pointer`)}>{v.ctaLabel}</button>
-              <div style={cs("font-size:12px;color:var(--mute);line-height:1.55;margin-top:14px")}>{tok.family === "CURVE" && !tok.migrated ? "Buys route native ETH in automatically for ERC20-quoted curves. Sell proceeds land in the quote asset directly." : "Routes through the real Uniswap V4 pool via the Universal Router. Both buy and sell settle in native ETH. Anti-MEV blocks a second swap, either direction, from the same address in the same block."}</div>
+              <div style={cs("font-size:12px;color:var(--mute);line-height:1.55;margin-top:14px")}>{tok.family === "CURVE" && !tok.migrated ? "Buys route native ETH in automatically for ERC20-quoted curves. Sell proceeds land in the quote asset directly. The curve's own 1% trading fee applies both ways." : "Routes through the real Uniswap V4 pool via the Universal Router. Both buy and sell settle in native ETH. Anti-MEV blocks a second swap, either direction, from the same address in the same block. The hook skims 2% of every sell, paid to the creator."}</div>
             </div>
           </div>
         </div>

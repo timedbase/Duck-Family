@@ -17,8 +17,13 @@ export async function simulateAndSend({ address, abi, functionName, args, value,
 // return value -- e.g. the created token's real address, or (for
 // DuckRaise.launch) its real campaignId -- straight from the same eth_call
 // that already proves the tx succeeds. No guessing/prediction needed.
-export async function simulateAndSendWithResult({ address, abi, functionName, args, value, account }) {
+// `dryRun`: stop after the simulate step -- used by the create flow's
+// "Simulate first" button to prove a launch would succeed (with the exact
+// same params: vanity salt, metaURI, fees) without ever prompting the
+// wallet or broadcasting anything.
+export async function simulateAndSendWithResult({ address, abi, functionName, args, value, account, dryRun = false }) {
   const { request, result } = await publicClient.simulateContract({ address, abi, functionName, args, value, account });
+  if (dryRun) return { hash: null, result };
 
   let estimated;
   try {
