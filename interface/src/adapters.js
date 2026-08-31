@@ -157,13 +157,20 @@ export function tradeToRow(tr, labels, quoteSymbolLabel = "ETH") {
 
 // Real OHLC candles (quote per token) built from the subgraph's raw trade
 // rows for the lightweight-charts price chart. The API returns newest-first;
-// this reverses to chronological order and buckets by an interval picked
-// from how much real time the trade history actually spans, so a token with
-// five trades over a minute doesn't get one giant useless daily candle.
+// this reverses to chronological order and buckets by `bucketSeconds` --
+// the range picker's job (5M/1H/4H/1D pick a candle *resolution*, applied
+// across the token's ENTIRE trade history, exactly like a real exchange's
+// timeframe selector; they are not a "how far back to look" filter, and
+// trades must never be pre-filtered by recency before reaching this
+// function -- a quiet-but-real token would otherwise show "no trades" on
+// every range except "ALL" purely because nothing happened to trade in the
+// last 5 real-world minutes). When bucketSeconds is omitted (the "ALL"
+// case), an interval is picked from how much time the history spans, so a
+// token with five trades over a minute doesn't get one giant daily candle.
 // `seed`, when given, is a real deterministic starting price (not fake data)
 // — see buildCurveSeedPoint() below — prepended so the chart has a "since
 // launch" reference point even before the first trade.
-export function buildCandles(trades, seed) {
+export function buildCandles(trades, seed, bucketSeconds) {
   const points = trades
     .slice()
     .reverse()
@@ -176,8 +183,10 @@ export function buildCandles(trades, seed) {
   if (seed && (points.length === 0 || seed.time < points[0].time)) points.unshift({ ...seed, quoteAmt: 0 });
   if (points.length === 0) return [];
 
-  const span = points[points.length - 1].time - points[0].time;
-  const bucketSeconds = span <= 3600 ? 60 : span <= 86400 ? 300 : span <= 7 * 86400 ? 3600 : 86400;
+  if (!bucketSeconds) {
+    const span = points[points.length - 1].time - points[0].time;
+    bucketSeconds = span <= 3600 ? 60 : span <= 86400 ? 300 : span <= 7 * 86400 ? 3600 : 86400;
+  }
 
   const buckets = new Map();
   for (const p of points) {

@@ -762,12 +762,14 @@ function buildViewModel(ctx) {
 
   const walletTx = buildTxModel(s, account);
 
-  const RANGE_SECONDS = { "5M": 300, "1H": 3600, "4H": 4 * 3600, "1D": 86400, ALL: Infinity };
+  // Candle RESOLUTION (bucket size) applied across the token's whole trade
+  // history -- like a real exchange's timeframe picker, not a "how far back"
+  // filter. "ALL" omits a fixed size so buildCandles auto-picks one from the
+  // real history's span.
+  const RANGE_BUCKET_SECONDS = { "5M": 300, "1H": 3600, "4H": 4 * 3600, "1D": 86400, ALL: undefined };
   let candles = [], ohlc = null;
   if (c) {
-    const cutoff = Date.now() / 1000 - (RANGE_SECONDS[s.range] ?? Infinity);
-    const windowedTrades = (c.rawTrades || []).filter((tr) => Number(tr.timestamp) >= cutoff);
-    candles = buildCandles(windowedTrades, c.curveSeed);
+    candles = buildCandles(c.rawTrades || [], c.curveSeed, RANGE_BUCKET_SECONDS[s.range]);
     if (candles.length > 0) {
       const last = candles[candles.length - 1];
       const fmt = (v) => (v < 0.01 ? v.toFixed(5) : v.toFixed(v < 1 ? 4 : 3));
