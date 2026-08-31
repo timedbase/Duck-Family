@@ -14,9 +14,8 @@ export default function CampaignPage({ v }) {
           <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden")}>
             <div style={cs("height:4px;background:var(--orange)")}></div>
             <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
-              <div style={cs(`width:${v.isMobile ? "56px" : "84px"};height:${v.isMobile ? "56px" : "84px"};align-self:flex-start;flex:none;border-right:1px solid var(--line);position:relative`)}>
+              <div style={cs(`width:${v.isMobile ? "56px" : "84px"};height:${v.isMobile ? "56px" : "84px"};align-self:flex-start;flex:none;border-right:1px solid var(--line)`)}>
                 <Thumb url={camp.imageUrl} bg="var(--orange)" fg="#fff" initials={camp.initials} size="100%" fontSize={v.isMobile ? "18px" : "26px"} />
-                <span style={cs("position:absolute;right:0;bottom:0;width:18px;height:18px;border-top:1px solid var(--line);border-left:1px solid var(--line);background:var(--card)")}></span>
               </div>
               <div style={cs("flex:1;min-width:260px;padding:16px 20px")}>
                 <div style={cs("display:flex;align-items:baseline;gap:11px;flex-wrap:wrap")}>

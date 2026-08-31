@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { formatEther, formatUnits, parseEther, parseUnits } from "viem";
 import { useAccount, useDisconnect } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -64,6 +64,41 @@ const EMPTY_IMAGE = { file: null, previewUrl: "", uploading: false, ipfsUri: "",
 const EMPTY_PORTFOLIO = { created: [], holdings: [], contributions: [] };
 const block = (active) => (active ? { bg: INK, fg: CARD } : { bg: CARD, fg: INK });
 
+// Real URL routing (plain History API -- no router dependency needed for
+// ~7 static paths plus one dynamic one). A token or campaign's page is
+// keyed by its own contract address, e.g. /0xe911...8888, so the link is
+// the same thing Blockscout/Etherscan would call it -- shareable and
+// bookmarkable without any separate slug concept.
+const ADDRESS_PATH_RE = /^\/(0x[0-9a-fA-F]{40})$/;
+const CREATE_FAMILY_PATH_RE = /^\/create\/(incubation|launcher|raise)$/;
+
+function pathForScreen(screen, tokenId, family) {
+  if ((screen === "token" || screen === "campaign") && tokenId) return "/" + tokenId;
+  if (screen === "createForm" && family) return "/create/" + family;
+  if (screen === "create") return "/create";
+  if (screen === "portfolio") return "/portfolio";
+  if (screen === "stats") return "/stats";
+  if (screen === "how") return "/how";
+  if (screen === "docs") return "/docs";
+  return "/";
+}
+
+// Every static path this maps to a screen -- anything else (unknown path,
+// or a /0x... address, which needs s.coins loaded first) falls through to
+// null and is handled by the caller.
+function staticScreenForPath(pathname) {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  if (path === "/") return { screen: "home" };
+  if (path === "/create") return { screen: "create" };
+  const fam = path.match(CREATE_FAMILY_PATH_RE);
+  if (fam) return { screen: "createForm", family: fam[1] };
+  if (path === "/portfolio") return { screen: "portfolio" };
+  if (path === "/stats") return { screen: "stats" };
+  if (path === "/how") return { screen: "how" };
+  if (path === "/docs") return { screen: "docs" };
+  return null;
+}
+
 // Real market-cap/launch-date bands for Discover's filter dropdowns --
 // bucketed off real mcUsd/ageMin, never a fabricated placeholder list.
 const MCAP_PRESETS = [
@@ -98,12 +133,22 @@ export default function App() {
   const { disconnect } = useDisconnect();
   const { openConnectModal } = useConnectModal();
 
+  // Deep-link support: a static path (/, /create, /portfolio, /stats, /how,
+  // /docs) resolves synchronously into the initial screen. A /0x... address
+  // can't -- it needs s.coins loaded first to tell a token from a campaign
+  // -- so it's captured here and consumed once by the effect below.
+  const initialStatic = staticScreenForPath(window.location.pathname) || { screen: "home" };
+  const deepLinkToken = useRef((window.location.pathname.match(ADDRESS_PATH_RE) || [])[1] || null);
+  const firstUrlSync = useRef(true);
+  const skipNextPush = useRef(false);
+
   const [s, setS] = useState({
     mobile: false, menuOpen: false, hero: "Last activity", heroIdx: 0,
-    screen: "home", layout: "cards", filter: "All", query: "",
+    layout: "cards", filter: "All", query: "",
     mcapFilter: "any", launchedFilter: "any", quoteFilter: "any",
     tokenId: null, side: "buy", amount: "250", range: "1D", chartMode: "price", tab: "Trades", chatDraft: "",
     family: null, contribAmount: "0.5", slippageBps: 500,
+    ...initialStatic,
     previewOut: null, previewLoading: false, simulating: false,
     nativeBalance: 0n, txPending: false, tx: null, toast: "",
     portfolio: EMPTY_PORTFOLIO, coins: [], coinsLoading: true, coinsError: "",
@@ -125,6 +170,48 @@ export default function App() {
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
   }, [set]);
+
+  // URL routing: keep the address bar in sync with s.screen/tokenId/family
+  // (state -> URL), support the browser's back/forward buttons (URL ->
+  // state), and resolve a /0x... deep link into the right screen once
+  // coins have loaded (openToken needs s.coins to tell a token from a
+  // campaign -- see staticScreenForPath's comment above).
+  useEffect(() => {
+    const path = pathForScreen(s.screen, s.tokenId, s.family);
+    const isFirst = firstUrlSync.current;
+    firstUrlSync.current = false;
+    if (skipNextPush.current) { skipNextPush.current = false; return; }
+    // A pending /0x... deep link hasn't resolved into s.screen/tokenId yet
+    // (needs s.coins loaded first) -- leave the real URL alone rather than
+    // stomping it with "/" for the split second before openToken runs.
+    if (isFirst && deepLinkToken.current) return;
+    if (window.location.pathname === path) return;
+    if (isFirst) window.history.replaceState(null, "", path);
+    else window.history.pushState(null, "", path);
+  }, [s.screen, s.tokenId, s.family]);
+
+  useEffect(() => {
+    function onPopState() {
+      skipNextPush.current = true;
+      const stat = staticScreenForPath(window.location.pathname);
+      if (stat) { set(stat); return; }
+      const addr = (window.location.pathname.match(ADDRESS_PATH_RE) || [])[1];
+      if (addr) openToken(addr);
+      else set({ screen: "home" });
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (deepLinkToken.current && s.coins.length > 0) {
+      const id = deepLinkToken.current;
+      deepLinkToken.current = null;
+      openToken(id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.coins.length]);
 
   useEffect(() => {
     getPlatformTokens().then((tokens) => set({ platformTokens: tokens })).catch(() => {});
@@ -316,8 +403,15 @@ export default function App() {
     else flash("Connect a wallet first.");
     return false;
   }
-  function openToken(id) {
-    const coin = s.coins.find((c) => c.id === id);
+  function openToken(rawId) {
+    // Case-insensitive lookup: a /0x... URL typed or pasted from a block
+    // explorer often carries EIP-55 checksummed casing, while subgraph ids
+    // are lowercase. Normalize to the coin's own canonical id so every
+    // other s.coins.find(x => x.id === s.tokenId) lookup downstream (view
+    // model, URL sync) keeps matching regardless of the casing a link came
+    // in with.
+    const coin = s.coins.find((c) => c.id.toLowerCase() === rawId.toLowerCase());
+    const id = coin ? coin.id : rawId.toLowerCase();
     if (coin && coin.family === "CAMPAIGN") {
       set({ screen: "campaign", tokenId: id, campaignDetail: null });
       if (coin.campaignId) loadCampaignDetail(coin.campaignId);
