@@ -44,6 +44,13 @@ type Token @entity(immutable: false) {
   symbol: String
   metaUri: String
 
+  # Running total of every Transfer to the standard 0x…dEaD burn address,
+  # across every family -- the curve-migration penalty burn, DuckLocker's
+  # LP-fee token-side burn, and any manual send all land here identically,
+  # since it's tallied generically off Transfer events, not any one
+  # mechanism's own event.
+  burnedSupply: BigInt!
+
   # CURVE only (DuckIncubation)
   virtualQuote: BigInt
   migrationTarget: BigInt

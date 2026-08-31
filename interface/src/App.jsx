@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { formatEther, parseEther, parseUnits } from "viem";
+import { formatEther, formatUnits, parseEther, parseUnits } from "viem";
 import { useAccount, useDisconnect } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { cs } from "./cs.js";
@@ -11,7 +11,7 @@ import CampaignPage from "./pages/CampaignPage.jsx";
 import PortfolioPage from "./pages/PortfolioPage.jsx";
 import { money } from "./data.js";
 import { api, shortAddress, quoteSymbol, API_BASE } from "./api.js";
-import { tokenToCoin, tradeToRow, holderToRow, buildCandles, buildChartBars, buildSparkline, buildTicks } from "./adapters.js";
+import { tokenToCoin, tradeToRow, holderToRow, buildCandles, buildSparkline, buildTicks } from "./adapters.js";
 import {
   createCurveToken, buyCurve, buyCurveWithNative, sellCurve, claimCurveFee,
   launchInstant,
@@ -70,7 +70,8 @@ export default function App() {
     mobile: false,
     screen: "home", layout: "cards", filter: "All", query: "",
     tokenId: null, side: "buy", amount: "250", range: "1H", tab: "Trades", chatDraft: "",
-    family: null, contribAmount: "0.5", slippageBps: 100,
+    family: null, contribAmount: "0.5", slippageBps: 500,
+    previewOut: null, previewLoading: false,
     nativeBalance: 0n, txPending: false, tx: null, toast: "",
     portfolio: EMPTY_PORTFOLIO, coins: [], coinsLoading: true, coinsError: "",
     draftCurve: { name: "", ticker: "", desc: "", quoteToken: ZERO_ADDRESS, startVirtualQuote: "8000", migrationTargetQuote: "60000", earlyBuyAmount: "0", socials: EMPTY_SOCIALS },
@@ -542,6 +543,47 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.screen, s.tab, s.tokenId]);
 
+  // Live "you receive ~X" estimate, debounced -- reuses the exact same
+  // preview calls buy()/sell() use for minOut, just without submitting
+  // anything. Cleared whenever the amount/side/token changes so a stale
+  // estimate from a previous keystroke never lingers on screen.
+  useEffect(() => {
+    if (s.screen !== "token" || !selectedCoin || selectedCoin.family === "CAMPAIGN") return;
+    const amt = parseFloat(s.amount);
+    if (!amt || amt <= 0) { set({ previewOut: null, previewLoading: false }); return; }
+    const coin = selectedCoin;
+    const buying = s.side === "buy";
+    set({ previewLoading: true });
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const isPool = coin.family === "INSTANT" || (coin.family === "CURVE" && coin.migrated);
+        let out = null;
+        if (buying) {
+          const valueWei = parseEther(String(amt));
+          if (isPool) {
+            out = await previewPoolBuyWithNative({ token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountInWei: valueWei });
+          } else if (coin.quoteTokenAddress.toLowerCase() === ZERO_ADDRESS) {
+            out = await previewCurveBuy(coin.id, valueWei);
+          } else {
+            const r = await previewCurveBuyWithNative(coin.id, coin.quoteTokenAddress, coin.quote, valueWei);
+            out = r.tokensOut;
+          }
+        } else {
+          const amountIn = parseUnits(String(amt), 18);
+          out = isPool
+            ? await previewPoolSellForNative({ token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountIn })
+            : await previewCurveSell(coin.id, amountIn);
+        }
+        if (!cancelled) set({ previewOut: out, previewLoading: false });
+      } catch {
+        if (!cancelled) set({ previewOut: null, previewLoading: false });
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.screen, s.tokenId, s.side, s.amount]);
+
   // Triggers DuckLocker.claimFees, which collects the LP-position's trading
   // fee and (same call, best-effort) the hook's separate sell-fee skim --
   // but only the hook's sell-fee skim actually pays the creator. The
@@ -721,12 +763,16 @@ function buildViewModel(ctx) {
   const walletTx = buildTxModel(s, account);
 
   const RANGE_SECONDS = { "5M": 300, "1H": 3600, "4H": 4 * 3600, "1D": 86400, ALL: Infinity };
-  let chartBars = { bars: [], axis: [], ohlc: null };
+  let candles = [], ohlc = null;
   if (c) {
     const cutoff = Date.now() / 1000 - (RANGE_SECONDS[s.range] ?? Infinity);
     const windowedTrades = (c.rawTrades || []).filter((tr) => Number(tr.timestamp) >= cutoff);
-    const candles = buildCandles(windowedTrades, c.curveSeed);
-    chartBars = buildChartBars(candles);
+    candles = buildCandles(windowedTrades, c.curveSeed);
+    if (candles.length > 0) {
+      const last = candles[candles.length - 1];
+      const fmt = (v) => (v < 0.01 ? v.toFixed(5) : v.toFixed(v < 1 ? 4 : 3));
+      ohlc = { o: fmt(last.open), h: fmt(last.high), l: fmt(last.low), c: fmt(last.close), up: last.close >= last.open };
+    }
   }
 
   return {
@@ -761,9 +807,9 @@ function buildViewModel(ctx) {
     sel: c ? {
       name: c.name, symbol: c.ticker, family: c.family === "CURVE" ? "INCUBATION" : c.family === "INSTANT" ? "LAUNCHER" : "RAISE",
       famBg: c.famBg, famFg: c.famFg, initials: c.initials, address: shortAddress(c.id), quote: c.quote,
-      price: chartBars.ohlc ? "$" + chartBars.ohlc.c : c.curveSeed ? "$" + (c.curveSeed.price < 0.01 ? c.curveSeed.price.toFixed(5) : c.curveSeed.price.toFixed(4)) : "—",
-      chg: chartBars.ohlc ? (chartBars.ohlc.up ? "+" : "−") + (Math.abs((chartBars.ohlc.c - chartBars.ohlc.o) / (chartBars.ohlc.o || 1)) * 100).toFixed(1) + "%" : "—",
-      chgColor: chartBars.ohlc ? (chartBars.ohlc.up ? "var(--pos)" : "var(--neg)") : "var(--mute)",
+      price: ohlc ? "$" + ohlc.c : c.curveSeed ? "$" + (c.curveSeed.price < 0.01 ? c.curveSeed.price.toFixed(5) : c.curveSeed.price.toFixed(4)) : "—",
+      chg: ohlc ? (ohlc.up ? "+" : "−") + (Math.abs((ohlc.c - ohlc.o) / (ohlc.o || 1)) * 100).toFixed(1) + "%" : "—",
+      chgColor: ohlc ? (ohlc.up ? "var(--pos)" : "var(--neg)") : "var(--mute)",
       migrated: c.migrated, holders: c.holders,
       raised: c.mc.toFixed(4), startTarget: "—", migTarget: "—",
     } : null,
@@ -772,8 +818,9 @@ function buildViewModel(ctx) {
       { k: "HOLDERS", v: c.holders.toLocaleString() },
       { k: c.family === "CURVE" && !c.migrated ? "CURVE" : "POOL", v: c.family === "CURVE" && !c.migrated ? Math.round(c.pct) + "%" : (c.migrated || c.family === "INSTANT") ? "V4 LIVE" : "—" },
       { k: "LP LOCK", v: (c.migrated || c.family === "INSTANT") ? "FOREVER" : "—" },
+      { k: "BURNED", v: (Number(c.burnedSupply || 0) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 0 }) },
     ] : [],
-    candles: chartBars.bars, axis: chartBars.axis, ohlc: chartBars.ohlc,
+    candles, ohlc,
     curve: c && c.family === "CURVE" ? {
       title: c.migrated ? "Migrated to Uniswap V4" : "Curve → V4 migration",
       headline: c.migrated ? "LP LOCKED FOREVER" : Math.round(c.pct) + "% filled",
@@ -824,7 +871,21 @@ function buildViewModel(ctx) {
     submitTx: () => (buying ? ctx.buy(c, amt) : ctx.sell(c, amt)),
     ctaLabel: !account ? "Connect wallet to trade" : s.txPending ? "Confirming…" : (buying ? "Buy " + (c ? c.ticker.replace("$", "") : "") : "Sell " + (c ? c.ticker.replace("$", "") : "")),
     ctaBg: !account ? INK : (buying ? LIME : ORANGE), ctaFg: !account ? CARD : (buying ? INK : "#fff"),
+    previewLoading: s.previewLoading,
+    previewText: (() => {
+      if (!c || s.previewOut == null) return null;
+      const decimals = buying ? 18 : decimalsFor(c.quoteTokenAddress, [s.platformTokens.incubation, s.platformTokens.launcher, s.platformTokens.raise]);
+      const symbol = buying ? c.ticker.replace("$", "") : c.quote;
+      const val = Number(formatUnits(s.previewOut, decimals));
+      return "~" + val.toLocaleString(undefined, { maximumFractionDigits: val < 1 ? 6 : 4 }) + " " + symbol;
+    })(),
     slippageBps: s.slippageBps,
+    slippageOptions: [50, 100, 500].map((bps) => Object.assign({ bps, label: (bps / 100) + "%" }, block(s.slippageBps === bps))),
+    setSlippage: (bps) => set({ slippageBps: bps }),
+    setSlippagePct: (e) => {
+      const pct = parseFloat(e.target.value);
+      if (!isNaN(pct) && pct >= 0) set({ slippageBps: Math.round(pct * 100) });
+    },
 
     range: s.range, ranges: ["5M", "1H", "4H", "1D", "ALL"].map((label) => Object.assign({ label, go: () => set({ range: label }) }, block(s.range === label))),
     tab: s.tab, tabs: ["Trades", "Holders", "Comments", "Creator + liquidity"].map((label) => Object.assign({ label, go: () => set({ tab: label }) }, block(s.tab === label))),

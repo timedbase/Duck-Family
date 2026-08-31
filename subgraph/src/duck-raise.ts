@@ -37,6 +37,7 @@ export function handleCampaignCreated(event: CampaignCreated): void {
   token.symbol = event.params.symbol;
   let metaUriResult = TokenMetadata.bind(event.params.token).try_metaURI();
   token.metaUri = metaUriResult.reverted ? null : metaUriResult.value;
+  token.burnedSupply = BigInt.zero();
 
   token.save();
 

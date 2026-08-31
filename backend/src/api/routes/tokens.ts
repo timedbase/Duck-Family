@@ -6,7 +6,7 @@ const router = Router();
 const TOKEN_FIELDS = `
   id family creator quoteToken totalSupply
   createdAt createdAtBlock createdAtTx
-  name symbol metaUri
+  name symbol metaUri burnedSupply
   virtualQuote migrationTarget antibotEnabled tradingBlock migrated bcTokensSold raisedQuote
   positionManager hook tokenId
   campaign { id name symbol goal totalRaised deadline succeeded failed }

@@ -1,8 +1,9 @@
 import { Address, BigInt } from "@graphprotocol/graph-ts";
 import { Transfer } from "../generated/templates/DuckToken/ERC20";
-import { Holder } from "../generated/schema";
+import { Holder, Token } from "../generated/schema";
 
 const ZERO_ADDRESS = Address.zero();
+const DEAD_ADDRESS = Address.fromString("0x000000000000000000000000000000000000dEaD");
 
 function loadOrCreateHolder(token: Address, account: Address): Holder {
   let id = token.toHexString() + "-" + account.toHexString();
@@ -33,5 +34,13 @@ export function handleTransfer(event: Transfer): void {
     to.updatedAt = event.block.timestamp;
     to.updatedAtBlock = event.block.number;
     to.save();
+  }
+
+  if (event.params.to.equals(DEAD_ADDRESS)) {
+    let tokenEntity = Token.load(token.toHexString());
+    if (tokenEntity != null) {
+      tokenEntity.burnedSupply = tokenEntity.burnedSupply.plus(event.params.value);
+      tokenEntity.save();
+    }
   }
 }

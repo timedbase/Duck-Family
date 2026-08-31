@@ -39,6 +39,7 @@ export function handleTokenCreated(event: TokenCreated): void {
   token.migrated = false;
   token.bcTokensSold = BigInt.zero();
   token.raisedQuote = BigInt.zero();
+  token.burnedSupply = BigInt.zero();
 
   token.save();
 

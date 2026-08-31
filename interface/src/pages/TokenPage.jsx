@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { cs } from "../cs.js";
+import PriceChart from "../PriceChart.jsx";
 
 export default function TokenPage({ v }) {
   const sel = v.sel;
@@ -80,25 +81,8 @@ export default function TokenPage({ v }) {
               )}
             </div>
             {v.candles.length > 0 ? (
-              <div style={cs("display:flex;padding:18px")}>
-                <div style={cs("flex:1;min-width:0")}>
-                  <div style={cs("display:flex;align-items:stretch;gap:2px;height:262px")}>
-                    {v.candles.map((k, i) => (
-                      <div key={i} style={cs("flex:1;position:relative;min-width:2px")}>
-                        <div style={cs(`position:absolute;left:50%;transform:translateX(-50%);width:2px;top:${k.wt}%;height:${k.wh}%;background:var(--ink)`)}></div>
-                        <div style={cs(`position:absolute;left:0;right:0;top:${k.bt}%;height:${k.bh}%;background:${k.c};border:2px solid var(--ink);min-height:3px`)}></div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={cs("display:flex;align-items:flex-end;gap:2px;height:44px;margin-top:12px;border-top:2px solid var(--ink);padding-top:9px")}>
-                    {v.candles.map((k, i) => (
-                      <div key={i} style={cs(`flex:1;height:${k.vh}%;background:${k.vc};min-height:2px`)}></div>
-                    ))}
-                  </div>
-                </div>
-                <div style={cs("width:72px;flex:none;display:flex;flex-direction:column;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);text-align:right;height:262px;padding-left:12px")}>
-                  {v.axis.map((a, i) => <span key={i}>{a}</span>)}
-                </div>
+              <div style={cs("padding:14px")}>
+                <PriceChart candles={v.candles} height={v.isMobile ? 260 : 320} />
               </div>
             ) : (
               <div style={cs("padding:60px 18px;text-align:center;color:var(--mute);font-size:13px")}>No trades in this window yet.</div>
@@ -295,7 +279,20 @@ export default function TokenPage({ v }) {
                   <button key={i} onClick={p.go} style={cs(`flex:1;padding:9px 0;border:0;border-left:${p.dv};background:var(--card);font-family:'DM Mono',monospace;font-size:11.5px;cursor:pointer`)}>{p.label}</button>
                 ))}
               </div>
-              <div style={cs("display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:16px")}><span>YOUR BALANCE</span><span style={cs("color:var(--ink)")}>{v.myBalanceTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })} {sel.symbol.replace("$", "")}</span></div>
+              <div style={cs("display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:10px 12px;border:2px solid var(--soft);background:var(--paper);font-family:'DM Mono',monospace;font-size:12.5px")}>
+                <span style={cs("color:var(--mute)")}>YOU RECEIVE</span>
+                <span style={cs("font-weight:500")}>{v.previewLoading ? "estimating…" : (v.previewText || "—")}</span>
+              </div>
+              <div style={cs("display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-family:'DM Mono',monospace;font-size:10px;color:var(--mute)")}>
+                <span style={cs("letter-spacing:.1em")}>SLIPPAGE</span>
+                <div style={cs("display:flex;gap:5px;align-items:center")}>
+                  {v.slippageOptions.map((o, i) => (
+                    <button key={i} onClick={() => v.setSlippage(o.bps)} style={cs(`padding:4px 8px;border:1px solid var(--ink);background:${o.bg};color:${o.fg};font-size:10px;cursor:pointer`)}>{o.label}</button>
+                  ))}
+                  <input defaultValue="" placeholder={(v.slippageBps / 100) + "%"} onChange={v.setSlippagePct} style={cs("width:42px;border:1px solid var(--ink);background:var(--card);text-align:right;padding:4px 5px;font-family:'DM Mono',monospace;font-size:10px;outline:0")} />
+                </div>
+              </div>
+              <div style={cs("display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:12px")}><span>YOUR BALANCE</span><span style={cs("color:var(--ink)")}>{v.myBalanceTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })} {sel.symbol.replace("$", "")}</span></div>
               <button onClick={v.submitTx} disabled={v.txPending} style={cs(`width:100%;padding:16px;margin-top:14px;border:2px solid var(--ink);background:${v.ctaBg};color:${v.ctaFg};font-size:16px;font-weight:700;letter-spacing:-.01em;cursor:pointer;box-shadow:3px 3px 0 var(--ink)`)}>{v.ctaLabel}</button>
               <div style={cs("font-size:12px;color:var(--mute);line-height:1.55;margin-top:14px")}>{tok.family === "CURVE" && !tok.migrated ? "Buys route native ETH in automatically for ERC20-quoted curves. Sell proceeds land in the quote asset directly." : "Routes through the real Uniswap V4 pool via the Universal Router. Both buy and sell settle in native ETH. Anti-MEV blocks a second swap, either direction, from the same address in the same block."}</div>
             </div>

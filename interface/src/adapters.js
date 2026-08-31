@@ -77,6 +77,7 @@ export function tokenToCoin(t, i, meta) {
     poolId: t.pool?.id,
     hook: t.hook,
     totalSupply: t.totalSupply,
+    burnedSupply: t.burnedSupply || "0",
     curveSeed: buildCurveSeedPoint(t),
     migrated: !!t.migrated,
     name: name || symbol || shortAddress(t.id),
@@ -192,35 +193,6 @@ export function buildCandles(trades, seed) {
     }
   }
   return Array.from(buckets.values()).sort((a, b) => a.time - b.time);
-}
-
-// Converts real OHLCV candles into the percentage-position bars a hand-rolled
-// CSS candlestick chart draws with (wick top/height, body top/height, volume
-// height, all as % of the chart's pixel box) -- real data in, real geometry
-// out, no placeholder/random values anywhere in this path.
-export function buildChartBars(candles) {
-  if (!candles.length) return { bars: [], axis: [], ohlc: null };
-  const hi = Math.max(...candles.map((k) => k.high));
-  const lo = Math.min(...candles.map((k) => k.low));
-  const span = hi - lo || hi || 1;
-  const maxVol = Math.max(...candles.map((k) => k.volume), 1);
-  const y = (v) => ((hi - v) / span) * 100;
-  const bars = candles.map((k) => {
-    const up = k.close >= k.open;
-    const color = up ? "var(--lime)" : "var(--orange)";
-    return {
-      c: color, vc: color,
-      wt: y(k.high).toFixed(2), wh: Math.max(y(k.low) - y(k.high), 0.3).toFixed(2),
-      bt: y(Math.max(k.open, k.close)).toFixed(2),
-      bh: Math.max(y(Math.min(k.open, k.close)) - y(Math.max(k.open, k.close)), 0.8).toFixed(2),
-      vh: Math.max((k.volume / maxVol) * 100, k.volume > 0 ? 4 : 0).toFixed(0),
-    };
-  });
-  const fmt = (v) => (v < 0.01 ? v.toFixed(5) : v.toFixed(v < 1 ? 4 : 3));
-  const axis = [0, 1, 2, 3, 4].map((i) => "$" + fmt(hi - (span * i) / 4));
-  const last = candles[candles.length - 1];
-  const ohlc = { o: fmt(last.open), h: fmt(last.high), l: fmt(last.low), c: fmt(last.close), up: last.close >= last.open };
-  return { bars, axis, ohlc };
 }
 
 // A freshly created bonding-curve token already has a deterministic price
