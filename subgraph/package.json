@@ -5,8 +5,7 @@
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy:goldsky": "goldsky subgraph deploy duckfun-ink/1.0.1 --path .",
-    "tag:goldsky": "goldsky subgraph tag create duckfun-ink/1.0.1 --tag current"
+    "deploy:goldsky": "bash deploy.sh"
   },
   "dependencies": {
     "@graphprotocol/graph-cli": "^0.98.1",
