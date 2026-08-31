@@ -10,8 +10,8 @@ const ZERO_ADDRESS_HEX = Address.zero().toHexString();
 // stablecoin liquidity on Ink. PoolKey-hash computed and verified directly
 // against live chain state (getSlot0 on both returns a real, initialized
 // sqrtPriceX96) before hardcoding, not derived/guessed in-mapping.
-const ETH_USDC_POOL_ID = "0x45a5aed4efc11ff55290b5504f357d6204f7027d14de4af56c1c23faecfb258";
-const ETH_USDT0_POOL_ID = "0x426354d494b48cc544076d4afe855b5bf224e6a5d4e403bbbf04cbc7f25790b";
+const ETH_USDC_POOL_ID = "0x45a5aed4efc11ff55290b5504f357d6204f7027d14de4af56c1c23faecfb2583";
+const ETH_USDT0_POOL_ID = "0x426354d494b48cc544076d4afe855b5bf224e6a5d4e403bbbf04cbc7f25790b0";
 const Q96 = BigDecimal.fromString("79228162514264337593543950336"); // 2^96
 
 // currency0 is always native ETH (18 decimals) on both reference pools,
