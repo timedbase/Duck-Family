@@ -1,4 +1,4 @@
-import { BigInt } from "@graphprotocol/graph-ts";
+import { BigInt, BigDecimal } from "@graphprotocol/graph-ts";
 import {
   TokenCreated,
   TokenBought,
@@ -10,7 +10,7 @@ import {
 import { TokenMetadata } from "../generated/DuckIncubation/TokenMetadata";
 import { Token, Trade, Migration, CurveFeeClaim } from "../generated/schema";
 import { DuckToken } from "../generated/templates";
-import { recordPrice, recordVolume } from "./lib";
+import { recordPrice, recordVolume, quoteHexOf } from "./lib";
 
 export function handleTokenCreated(event: TokenCreated): void {
   let token = new Token(event.params.token.toHexString());
@@ -43,6 +43,7 @@ export function handleTokenCreated(event: TokenCreated): void {
   token.burnedSupply = BigInt.zero();
   token.holderCount = 0;
   token.volumeAllTime = BigInt.zero();
+  token.volumeAllTimeUsd = BigDecimal.zero();
 
   token.save();
 
@@ -69,8 +70,9 @@ export function handleTokenBought(event: TokenBought): void {
   trade.txHash = event.transaction.hash;
   trade.save();
 
-  recordPrice(token.id, trade.quoteAmount, trade.tokenAmount);
-  recordVolume(token.id, event.block.timestamp, trade.quoteAmount);
+  let quoteHex = quoteHexOf(token);
+  recordPrice(token.id, trade.quoteAmount, trade.tokenAmount, quoteHex);
+  recordVolume(token.id, event.block.timestamp, trade.quoteAmount, quoteHex);
 }
 
 export function handleTokenSold(event: TokenSold): void {
@@ -93,8 +95,9 @@ export function handleTokenSold(event: TokenSold): void {
   trade.txHash = event.transaction.hash;
   trade.save();
 
-  recordPrice(token.id, trade.quoteAmount, trade.tokenAmount);
-  recordVolume(token.id, event.block.timestamp, trade.quoteAmount);
+  let quoteHex = quoteHexOf(token);
+  recordPrice(token.id, trade.quoteAmount, trade.tokenAmount, quoteHex);
+  recordVolume(token.id, event.block.timestamp, trade.quoteAmount, quoteHex);
 }
 
 export function handleTokenMigrated(event: TokenMigrated): void {

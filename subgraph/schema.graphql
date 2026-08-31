@@ -57,17 +57,29 @@ type Token @entity(immutable: false) {
   holderCount: Int!
 
   # Updated to the ratio of the most recent trade (curve Trade or pool
-  # PoolSwap, whichever family/phase applies), in quote-asset units per
-  # token. Null until the first real trade. Real market cap = lastPrice *
-  # totalSupply, computable everywhere (list or detail view) with no extra
-  # per-token query, unlike deriving it from raw trade history each time.
+  # PoolSwap, whichever family/phase applies), decimal-normalized to a real
+  # human-readable quote-asset-per-token price (quote decimals vary: 18 for
+  # native ETH, 6 for USDC/USDT0 -- this is NOT the raw amount ratio). Null
+  # until the first real trade. Real market cap = lastPrice * totalSupply.
   lastPrice: BigDecimal
+
+  # lastPrice converted to USD: USDC/USDT0 treated as pegged 1:1 (no
+  # separate market needed), ETH converted via ReferencePrice (the real
+  # ETH/USDC and ETH/USDT0 external pool spot price, indexed off the same
+  # shared PoolManager). Null for a platform-token-quoted pool -- that
+  # token's own USD value isn't resolvable without its own tracked market,
+  # so this is left honestly unknown rather than fabricated.
+  lastPriceUsd: BigDecimal
 
   # Running cumulative total, all-time, in raw quote-asset units -- updated
   # on every Trade/PoolSwap alongside lastPrice. Rolling 24h volume is
   # derived separately (see TokenHourData) since "last 24 hours from now" is
   # a moving target a single static field can't represent.
   volumeAllTime: BigInt!
+  # Same total, converted to USD at each trade's own historical reference
+  # price (not today's) -- null contributions (unresolvable platform-token
+  # quotes) are simply skipped, so this under-counts only that case.
+  volumeAllTimeUsd: BigDecimal!
 
   # CURVE only (DuckIncubation)
   virtualQuote: BigInt
@@ -288,4 +300,19 @@ type TokenHourData @entity(immutable: false) {
   token: Token!
   hourStartUnix: BigInt!
   volumeQuote: BigInt!
+  volumeUsd: BigDecimal!
+}
+
+# Singleton (id: "eth-usd"), updated from the real ETH/USDC and ETH/USDT0
+# external pools' own Swap events (the same hookless, fee=3000/tick=60 pools
+# DuckIncubation/DuckLauncher/DuckRaise's own buyWithNative routing uses,
+# and the only real ETH<->stablecoin liquidity on Ink) -- not a fabricated
+# or off-chain price feed. USDC/USDT0 are both treated as $1; whichever of
+# the two pools swaps last wins (they track each other closely via
+# arbitrage, no need to reconcile them further).
+type ReferencePrice @entity(immutable: false) {
+  id: ID!
+  ethUsd: BigDecimal!
+  updatedAt: BigInt!
+  updatedAtBlock: BigInt!
 }

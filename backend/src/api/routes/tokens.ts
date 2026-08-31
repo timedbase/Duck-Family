@@ -6,7 +6,7 @@ const router = Router();
 const TOKEN_FIELDS = `
   id family creator quoteToken totalSupply
   createdAt createdAtBlock createdAtTx
-  name symbol metaUri burnedSupply holderCount lastPrice volumeAllTime
+  name symbol metaUri burnedSupply holderCount lastPrice lastPriceUsd volumeAllTime volumeAllTimeUsd
   virtualQuote migrationTarget antibotEnabled tradingBlock migrated bcTokensSold raisedQuote
   positionManager hook tokenId
   campaign { id name symbol goal totalRaised deadline succeeded failed }
@@ -20,23 +20,32 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 // granularity (the edge bucket can be a few minutes short/over), which is
 // the standard tradeoff for this kind of rollup and far cheaper than
 // re-scanning raw trades on every request.
-async function attach24hVolume<T extends { id: string }>(tokens: T[]): Promise<(T & { volume24h: string })[]> {
+async function attach24hVolume<T extends { id: string }>(
+  tokens: T[]
+): Promise<(T & { volume24h: string; volume24hUsd: string })[]> {
   if (tokens.length === 0) return [];
   const cutoff = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-  const data = await querySubgraph<{ tokenHourDatas: { token: { id: string }; volumeQuote: string }[] }>(
+  const data = await querySubgraph<{ tokenHourDatas: { token: { id: string }; volumeQuote: string; volumeUsd: string }[] }>(
     `query Volume24h($tokens: [String!]!, $cutoff: BigInt!) {
       tokenHourDatas(first: 1000, where: { token_in: $tokens, hourStartUnix_gte: $cutoff }) {
         token { id }
         volumeQuote
+        volumeUsd
       }
     }`,
     { tokens: tokens.map((t) => t.id), cutoff: String(cutoff) }
   );
   const sums = new Map<string, bigint>();
+  const usdSums = new Map<string, number>();
   for (const row of data.tokenHourDatas) {
     sums.set(row.token.id, (sums.get(row.token.id) ?? 0n) + BigInt(row.volumeQuote));
+    usdSums.set(row.token.id, (usdSums.get(row.token.id) ?? 0) + Number(row.volumeUsd));
   }
-  return tokens.map((t) => ({ ...t, volume24h: (sums.get(t.id) ?? 0n).toString() }));
+  return tokens.map((t) => ({
+    ...t,
+    volume24h: (sums.get(t.id) ?? 0n).toString(),
+    volume24hUsd: String(usdSums.get(t.id) ?? 0),
+  }));
 }
 
 router.get("/", async (req, res) => {

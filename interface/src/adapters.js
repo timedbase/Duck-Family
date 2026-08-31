@@ -3,7 +3,19 @@
 // equivalent yet (chg, chat) are left at honest defaults (0 / empty), not
 // fabricated.
 import { quoteSymbol, shortAddress } from "./api.js";
-import { DUCK_INCUBATION, DUCK_LAUNCHER, DUCK_RAISE, DUCK_LOCKER, DUCK_HOOK } from "./chain/addresses.js";
+import { DUCK_INCUBATION, DUCK_LAUNCHER, DUCK_RAISE, DUCK_LOCKER, DUCK_HOOK, DEFAULT_QUOTE_TOKENS } from "./chain/addresses.js";
+
+// RAW subgraph amounts (raisedQuote, volumeAllTime, volume24h) are never
+// decimal-normalized by the subgraph -- same convention as Trade.quoteAmount
+// etc. -- so dividing by a flat 1e18 is only correct for a native-ETH-quoted
+// token; USDC/USDT0 are 6 decimals. lastPrice/lastPriceUsd, by contrast,
+// ARE already normalized by the subgraph (a real human-readable ratio), so
+// nothing derived from those needs this.
+function quoteDecimalsFor(address) {
+  if (!address || address.toLowerCase() === "0x0000000000000000000000000000000000000000") return 18;
+  const t = DEFAULT_QUOTE_TOKENS.find((q) => q.address.toLowerCase() === address.toLowerCase());
+  return t ? t.decimals : 18;
+}
 
 // Family badge colors, matching the design's FAM map (lime = curve, plain
 // card = instant, orange = campaign).
@@ -44,7 +56,10 @@ export function tokenToCoin(t, i, meta) {
   // campaign starts, well before it resolves. Its "progress" is the
   // campaign's own raised/goal (native ETH), not a curve fill.
   let pct = 100; // INSTANT tokens launch straight onto a DEX pool — no curve to fill
-  let raised = t.raisedQuote ? Number(t.raisedQuote) / 1e18 : 0; // cumulative quote-asset inflow -- NOT market cap, a different number
+  // Cumulative quote-asset inflow -- NOT market cap, a different number.
+  // CURVE's quoteToken varies (ETH/USDC/USDT0); CAMPAIGN is always native
+  // ETH (contribute() takes no other asset), handled in its own branch below.
+  let raised = t.raisedQuote ? Number(t.raisedQuote) / 10 ** quoteDecimalsFor(t.quoteToken) : 0;
   if (t.family === "CURVE" && t.migrationTarget && Number(t.migrationTarget) > 0) {
     pct = Math.min(100, (Number(t.raisedQuote || 0) / Number(t.migrationTarget)) * 100);
   } else if (t.family === "CAMPAIGN") {
@@ -97,7 +112,13 @@ export function tokenToCoin(t, i, meta) {
     famBg: fam.bg, famFg: fam.fg,
     creator: t.creator,
     dev: shortAddress(t.creator),
-    price, mc, raised, vol: Number(t.volume24h || 0) / 1e18, volumeAllTime: Number(t.volumeAllTime || 0) / 1e18,
+    price, mc, raised,
+    priceUsd: t.lastPriceUsd != null ? Number(t.lastPriceUsd) : null,
+    mcUsd: t.lastPriceUsd != null ? Number(t.lastPriceUsd) * supplyTokens : null,
+    vol: Number(t.volume24h || 0) / 10 ** quoteDecimalsFor(t.quoteToken),
+    volUsd: t.volume24hUsd != null ? Number(t.volume24hUsd) : null,
+    volumeAllTime: Number(t.volumeAllTime || 0) / 10 ** quoteDecimalsFor(t.quoteToken),
+    volumeAllTimeUsd: t.volumeAllTimeUsd != null ? Number(t.volumeAllTimeUsd) : null,
     ageMin, chg: 0, pct,
     desc: "",
     quote: quoteSymbol(t.quoteToken),

@@ -70,13 +70,18 @@ export default function TokenPage({ v }) {
                   <button key={i} onClick={r.go} style={cs(`padding:9px 14px;border:0;border-right:2px solid var(--ink);background:${r.bg};color:${r.fg};font-family:'DM Mono',monospace;font-size:11.5px;cursor:pointer`)}>{r.label}</button>
                 ))}
               </div>
+              <div style={cs("display:flex;border-right:2px solid var(--ink)")}>
+                {["price", "mcap"].map((mode) => (
+                  <button key={mode} onClick={() => v.setChartMode(mode)} style={cs(`padding:9px 14px;border:0;border-right:1px solid var(--soft);background:${v.chartMode === mode ? "var(--ink)" : "transparent"};color:${v.chartMode === mode ? "var(--card)" : "var(--mute)"};font-family:'DM Mono',monospace;font-size:11.5px;font-weight:600;cursor:pointer`)}>{mode === "price" ? "PRICE" : "MCAP"}</button>
+                ))}
+              </div>
               <div style={cs("flex:1")}></div>
-              {v.ohlc && (
+              {v.chartOhlc && (
                 <div style={cs("display:flex;align-items:center;gap:16px;padding:0 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--mute)")}>
-                  <span>O <span style={cs("color:var(--ink)")}>{v.ohlc.o}</span></span>
-                  <span>H <span style={cs("color:var(--ink)")}>{v.ohlc.h}</span></span>
-                  <span>L <span style={cs("color:var(--ink)")}>{v.ohlc.l}</span></span>
-                  <span>C <span style={cs(`color:${sel.chgColor}`)}>{v.ohlc.c}</span></span>
+                  <span>O <span style={cs("color:var(--ink)")}>{v.chartOhlc.o}</span></span>
+                  <span>H <span style={cs("color:var(--ink)")}>{v.chartOhlc.h}</span></span>
+                  <span>L <span style={cs("color:var(--ink)")}>{v.chartOhlc.l}</span></span>
+                  <span>C <span style={cs(`color:${v.chartOhlc.up ? "var(--pos)" : "var(--neg)"}`)}>{v.chartOhlc.c}</span></span>
                 </div>
               )}
             </div>

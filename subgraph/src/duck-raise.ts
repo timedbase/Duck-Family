@@ -1,4 +1,4 @@
-import { BigInt } from "@graphprotocol/graph-ts";
+import { BigInt, BigDecimal } from "@graphprotocol/graph-ts";
 import {
   CampaignCreated,
   Contributed,
@@ -40,6 +40,7 @@ export function handleCampaignCreated(event: CampaignCreated): void {
   token.burnedSupply = BigInt.zero();
   token.holderCount = 0;
   token.volumeAllTime = BigInt.zero();
+  token.volumeAllTimeUsd = BigDecimal.zero();
 
   token.save();
 

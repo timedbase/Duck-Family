@@ -1,4 +1,4 @@
-import { BigInt } from "@graphprotocol/graph-ts";
+import { BigInt, BigDecimal } from "@graphprotocol/graph-ts";
 import { TokenLaunched } from "../generated/DuckLauncher/DuckLauncher";
 import { TokenMetadata } from "../generated/DuckLauncher/TokenMetadata";
 import { Token } from "../generated/schema";
@@ -32,6 +32,7 @@ export function handleTokenLaunched(event: TokenLaunched): void {
   token.burnedSupply = BigInt.zero();
   token.holderCount = 0;
   token.volumeAllTime = BigInt.zero();
+  token.volumeAllTimeUsd = BigDecimal.zero();
 
   token.save();
 

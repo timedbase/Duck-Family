@@ -9,7 +9,6 @@ import CreateChooserPage from "./pages/CreateChooserPage.jsx";
 import CreateFormPage from "./pages/CreateFormPage.jsx";
 import CampaignPage from "./pages/CampaignPage.jsx";
 import PortfolioPage from "./pages/PortfolioPage.jsx";
-import { money } from "./data.js";
 import { api, shortAddress, quoteSymbol, API_BASE } from "./api.js";
 import { tokenToCoin, tradeToRow, holderToRow, buildCandles, buildSparkline, buildTicks } from "./adapters.js";
 import {
@@ -34,6 +33,33 @@ const INK = "var(--ink)", CARD = "var(--card)", LIME = "var(--lime)", ORANGE = "
 function truncateDecimals(numStr, decimals) {
   const [whole, frac = ""] = numStr.split(".");
   return frac.length > decimals ? `${whole}.${frac.slice(0, decimals)}` : numStr;
+}
+
+// money()'s "$" prefix implies real USD -- wrong for a value actually
+// denominated in whatever quote asset a token trades against (ETH, USDC,
+// USDT0, or a platform token), which is all mc/raised/vol ever are without
+// a real USD conversion (not built yet -- see the subgraph-level spot-price
+// plan). A tiny ETH-scale number like 2.5 rendered as money() would show
+// "$3", implying a $3 market cap when it's actually ~2.5 ETH. Shows the
+// real quote-denominated number with its real unit instead of a fabricated
+// dollar sign.
+function quoteAmount(n, symbol) {
+  if (n == null) return "—";
+  const digits = n === 0 ? 2 : n < 0.01 ? 6 : n < 1 ? 4 : n < 1000 ? 3 : 2;
+  return n.toLocaleString(undefined, { maximumFractionDigits: digits }) + " " + symbol;
+}
+
+// Real USD, resolved via the subgraph's ETH/USDC-USDT0 reference price (or
+// the 1:1 stablecoin peg) -- shown when available. Null for a platform-
+// token-quoted pool (that token's own USD value isn't resolvable without
+// its own tracked market) -- falls back to the honest quote-denominated
+// figure instead of fabricating a dollar amount.
+function usdOrQuote(usd, quote, symbol) {
+  if (usd != null) {
+    if (usd === 0) return "$0";
+    return "$" + usd.toLocaleString(undefined, { maximumFractionDigits: usd < 1 ? 4 : 2 });
+  }
+  return quoteAmount(quote, symbol);
 }
 
 // ETH first (always tradeable directly), then the platform's default-allowed
@@ -69,7 +95,7 @@ export default function App() {
   const [s, setS] = useState({
     mobile: false,
     screen: "home", layout: "cards", filter: "All", query: "",
-    tokenId: null, side: "buy", amount: "250", range: "1H", tab: "Trades", chatDraft: "",
+    tokenId: null, side: "buy", amount: "250", range: "1H", chartMode: "price", tab: "Trades", chatDraft: "",
     family: null, contribAmount: "0.5", slippageBps: 500,
     previewOut: null, previewLoading: false,
     nativeBalance: 0n, txPending: false, tx: null, toast: "",
@@ -737,10 +763,10 @@ function buildViewModel(ctx) {
   const shape = (c) => ({
     id: c.id, family: c.family === "CURVE" ? "INCUBATION" : c.family === "INSTANT" ? "LAUNCHER" : "RAISE",
     famBg: c.famBg, famFg: c.famFg, initials: c.initials, symbol: c.ticker, name: c.name,
-    price: c.price != null ? "$" + (c.price < 0.01 ? c.price.toFixed(6) : c.price.toFixed(4)) : "—",
+    price: usdOrQuote(c.priceUsd, c.price, c.quote),
     chg: (c.chg >= 0 ? "+" : "") + c.chg.toFixed(1) + "%",
     chgColor: c.chg >= 0 ? "var(--pos)" : "var(--neg)",
-    mcap: money(c.mc), vol: money(c.vol), holders: c.holders.toLocaleString(),
+    mcap: usdOrQuote(c.mcUsd, c.mc, c.quote), vol: usdOrQuote(c.volUsd, c.vol, c.quote), holders: c.holders.toLocaleString(),
     bars: buildSparkline(c.rawTrades),
     progLabel: c.family === "CAMPAIGN" ? "RAISE · ILLIQUID" : c.migrated ? "MIGRATED → V4" : "CURVE",
     progPct: Math.round(c.pct) + "%",
@@ -768,14 +794,27 @@ function buildViewModel(ctx) {
   // filter. "ALL" omits a fixed size so buildCandles auto-picks one from the
   // real history's span.
   const RANGE_BUCKET_SECONDS = { "5M": 300, "1H": 3600, "4H": 4 * 3600, "1D": 86400, ALL: undefined };
+  const fmtOhlc = (v) => (v < 0.01 ? v.toFixed(5) : v.toFixed(v < 1 ? 4 : 3));
   let candles = [], ohlc = null;
   if (c) {
     candles = buildCandles(c.rawTrades || [], c.curveSeed, RANGE_BUCKET_SECONDS[s.range]);
     if (candles.length > 0) {
       const last = candles[candles.length - 1];
-      const fmt = (v) => (v < 0.01 ? v.toFixed(5) : v.toFixed(v < 1 ? 4 : 3));
-      ohlc = { o: fmt(last.open), h: fmt(last.high), l: fmt(last.low), c: fmt(last.close), up: last.close >= last.open };
+      ohlc = { o: fmtOhlc(last.open), h: fmtOhlc(last.high), l: fmtOhlc(last.low), c: fmtOhlc(last.close), up: last.close >= last.open };
     }
+  }
+  // Chart-only view: PRICE (as-is) or MCAP (every OHLC value scaled by
+  // total supply -- a pure uniform rescale, same real trade data, not a
+  // separate metric requiring its own indexed history). Never affects
+  // sel.price/ohlc above, which is always the token header's real price.
+  const supplyTokens = c && c.totalSupply ? Number(c.totalSupply) / 1e18 : 0;
+  const chartCandles = s.chartMode === "mcap"
+    ? candles.map((k) => ({ ...k, open: k.open * supplyTokens, high: k.high * supplyTokens, low: k.low * supplyTokens, close: k.close * supplyTokens }))
+    : candles;
+  let chartOhlc = null;
+  if (chartCandles.length > 0) {
+    const last = chartCandles[chartCandles.length - 1];
+    chartOhlc = { o: fmtOhlc(last.open), h: fmtOhlc(last.high), l: fmtOhlc(last.low), c: fmtOhlc(last.close), up: last.close >= last.open };
   }
 
   return {
@@ -817,13 +856,14 @@ function buildViewModel(ctx) {
       raised: c.raised.toFixed(4), startTarget: "—", migTarget: "—",
     } : null,
     tokenStats: c ? [
-      { k: "MCAP", v: money(c.mc) }, { k: "RAISED", v: money(c.raised) }, { k: "24H VOL", v: money(c.vol) },
+      { k: "MCAP", v: usdOrQuote(c.mcUsd, c.mc, c.quote) }, { k: "RAISED", v: quoteAmount(c.raised, c.quote) }, { k: "24H VOL", v: usdOrQuote(c.volUsd, c.vol, c.quote) },
       { k: "HOLDERS", v: c.holders.toLocaleString() },
       { k: c.family === "CURVE" && !c.migrated ? "CURVE" : "POOL", v: c.family === "CURVE" && !c.migrated ? Math.round(c.pct) + "%" : (c.migrated || c.family === "INSTANT") ? "V4 LIVE" : "—" },
       { k: "LP LOCK", v: (c.migrated || c.family === "INSTANT") ? "FOREVER" : "—" },
       { k: "BURNED", v: (Number(c.burnedSupply || 0) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 0 }) },
     ] : [],
-    candles, ohlc,
+    candles: chartCandles, ohlc, chartOhlc,
+    chartMode: s.chartMode, setChartMode: (mode) => set({ chartMode: mode }),
     curve: c && c.family === "CURVE" ? {
       title: c.migrated ? "Migrated to Uniswap V4" : "Curve → V4 migration",
       headline: c.migrated ? "LP LOCKED FOREVER" : Math.round(c.pct) + "% filled",
