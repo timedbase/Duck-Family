@@ -823,7 +823,12 @@ function buildViewModel(ctx) {
     candles = buildCandles(c.rawTrades || [], c.curveSeed, RANGE_BUCKET_SECONDS[s.range]);
     if (candles.length > 0) {
       const last = candles[candles.length - 1];
-      ohlc = { o: fmtOhlc(last.open), h: fmtOhlc(last.high), l: fmtOhlc(last.low), c: fmtOhlc(last.close), up: last.close >= last.open };
+      // pctChange computed from the RAW numbers, before formatting --
+      // ohlc.o/c below become display strings that can contain unicode
+      // subscript digits (compactNumber's small-price notation), which
+      // silently produce NaN if re-parsed as numbers via `-`.
+      const pctChange = last.open !== 0 ? ((last.close - last.open) / Math.abs(last.open)) * 100 : 0;
+      ohlc = { o: fmtOhlc(last.open), h: fmtOhlc(last.high), l: fmtOhlc(last.low), c: fmtOhlc(last.close), up: last.close >= last.open, pctChange };
     }
   }
   // Chart-only view: PRICE (as-is) or MCAP (every OHLC value scaled by
@@ -873,7 +878,7 @@ function buildViewModel(ctx) {
       name: c.name, symbol: c.ticker, family: c.family === "CURVE" ? "INCUBATION" : c.family === "INSTANT" ? "LAUNCHER" : "RAISE",
       famBg: c.famBg, famFg: c.famFg, initials: c.initials, address: shortAddress(c.id), quote: c.quote,
       price: ohlc ? "$" + ohlc.c : c.curveSeed ? "$" + compactNumber(c.curveSeed.price) : "—",
-      chg: ohlc ? (ohlc.up ? "+" : "−") + (Math.abs((ohlc.c - ohlc.o) / (ohlc.o || 1)) * 100).toFixed(1) + "%" : "—",
+      chg: ohlc ? (ohlc.pctChange >= 0 ? "+" : "−") + Math.abs(ohlc.pctChange).toFixed(1) + "%" : "—",
       chgColor: ohlc ? (ohlc.up ? "var(--pos)" : "var(--neg)") : "var(--mute)",
       migrated: c.migrated, holders: c.holders,
       raised: c.raised.toFixed(4), startTarget: "—", migTarget: "—",

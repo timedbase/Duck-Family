@@ -47,7 +47,7 @@ export default function TokenPage({ v }) {
           </div>
           <div style={cs("border-left:2px solid var(--ink);padding:16px 22px;text-align:right;flex:none")}>
             <div style={cs("font-family:'DM Mono',monospace;font-size:34px;font-weight:500;letter-spacing:-.04em;line-height:1")}>{sel.price}</div>
-            <div style={cs(`font-family:'DM Mono',monospace;font-size:13px;color:${sel.chgColor};margin-top:5px`)}>{sel.chg} / window</div>
+            <div style={cs(`font-family:'DM Mono',monospace;font-size:13px;color:${sel.chgColor};margin-top:5px`)}>{sel.chg} / {v.range}</div>
           </div>
         </div>
         <div style={cs("display:flex;flex-wrap:wrap")}>
