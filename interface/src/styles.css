@@ -24,6 +24,8 @@ button { border-radius: 0; transition: background .14s ease, color .14s ease, bo
 .d-hover-line:hover { border-color: var(--mute) !important; }
 .d-hover-lime:hover { background: var(--lime) !important; }
 .d-hover-paper:hover { background: var(--paper) !important; }
+.d-lift { transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+.d-lift:hover { transform: translateY(-3px); box-shadow: 0 16px 30px -20px rgba(26, 25, 23, .45); border-color: var(--ink) !important; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes popin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes slidein { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }

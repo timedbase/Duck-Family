@@ -134,13 +134,13 @@ export default function CreateFormPage({ v }) {
                 <Field label={`OPTIONAL INSTANT BUY (${labelFor(v.quoteOptions, v.draftCurve.quoteToken)})`} hint="Bought off the curve in the same transaction as creation">
                   <TextInput value={v.draftCurve.earlyBuyAmount} onChange={(e) => v.setCurve({ earlyBuyAmount: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="0" />
                 </Field>
-                <Field label="SUPPLY / SPLIT (THIS APP'S DEFAULT)"><LockedInput value="1,000,000,000 — 80% curve / 20% liquidity" /></Field>
+                <Field label="SUPPLY / SPLIT (THIS APP'S DEFAULT)" hint="Fixed at deploy, no mint function ever — deflationary by default"><LockedInput value="1,000,000,000 — 80% curve / 20% liquidity" /></Field>
               </>
             )}
 
             {family === "launcher" && (
               <>
-                <Field label="TOTAL SUPPLY"><LockedInput value="1,000,000,000 — fixed, no further mint path" /></Field>
+                <Field label="TOTAL SUPPLY" hint="Fixed at deploy, no mint function ever — deflationary by default"><LockedInput value="1,000,000,000 — fixed, no further mint path" /></Field>
                 <Field label="QUOTE ASSET" hint="Paired side of the V4 pool">
                   <QuoteChips options={v.quoteOptions} value={v.draftInstant.quoteToken} onPick={(a) => v.setInstant({ quoteToken: a })} />
                 </Field>
@@ -156,6 +156,7 @@ export default function CreateFormPage({ v }) {
 
             {family === "raise" && (
               <>
+                <Field label="TOTAL SUPPLY" hint="Fixed at deploy, no mint function ever — deflationary by default"><LockedInput value="1,000,000,000" /></Field>
                 <Field label="GOAL (ETH)" hint="Native ETH only — no quote asset during the raise">
                   <TextInput value={v.draftCampaign.goalNative} onChange={(e) => v.setCampaign({ goalNative: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="50" />
                 </Field>

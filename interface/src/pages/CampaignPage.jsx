@@ -1,5 +1,6 @@
 import { cs } from "../cs.js";
 import Thumb from "../Thumb.jsx";
+import { AddressChip, LinkChip } from "../MetaChips.jsx";
 
 export default function CampaignPage({ v }) {
   const camp = v.camp;
@@ -22,12 +23,12 @@ export default function CampaignPage({ v }) {
                   <span style={cs("font-family:'DM Mono',monospace;font-size:14px;color:var(--mute)")}>{camp.symbol}</span>
                   <span style={cs(`font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:${camp.stBg};color:${camp.stFg}`)}>{camp.status}</span>
                 </div>
-                <div style={cs("display:flex;gap:15px;margin-top:10px;font-family:'DM Mono',monospace;font-size:11.5px;color:var(--mute);flex-wrap:wrap")}>
-                  <span>{camp.token}</span>
-                  <a href={`https://explorer.inkonchain.com/address/${camp.tokenAddress}`} target="_blank" rel="noreferrer">Blockscout</a>
-                  {camp.socials?.website && <a href={camp.socials.website} target="_blank" rel="noreferrer noopener">Website</a>}
-                  {camp.socials?.twitter && <a href={camp.socials.twitter} target="_blank" rel="noreferrer noopener">X / Twitter</a>}
-                  {camp.socials?.telegram && <a href={camp.socials.telegram} target="_blank" rel="noreferrer noopener">Telegram</a>}
+                <div style={cs("display:flex;gap:7px;margin-top:10px;flex-wrap:wrap")}>
+                  <AddressChip address={camp.token} full={camp.tokenAddress} />
+                  <LinkChip href={`https://explorer.inkonchain.com/address/${camp.tokenAddress}`}>Explorer</LinkChip>
+                  {camp.socials?.website && <LinkChip href={camp.socials.website}>Website</LinkChip>}
+                  {camp.socials?.twitter && <LinkChip href={camp.socials.twitter}>X</LinkChip>}
+                  {camp.socials?.telegram && <LinkChip href={camp.socials.telegram}>Telegram</LinkChip>}
                 </div>
               </div>
             </div>

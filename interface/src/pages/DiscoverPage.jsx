@@ -1,13 +1,16 @@
 import { cs } from "../cs.js";
 import Thumb from "../Thumb.jsx";
+import Sparkline from "../Sparkline.jsx";
 
 function HeroSlide({ t }) {
   return (
     <div
       onClick={t.open}
-      className="d-hover-line"
-      style={cs(`flex:${t.flex} 0 ${t.basis};min-width:${t.minw};cursor:pointer;display:flex;flex-direction:column;gap:12px;border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--card)`)}
+      className="d-lift"
+      style={cs(`flex:${t.flex} 0 ${t.basis};min-width:${t.minw};cursor:pointer;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:12px;border:1px solid var(--line);border-radius:14px;padding:14px 14px 14px 17px;background:var(--card)`)}
     >
+      <div style={cs(`position:absolute;left:0;top:0;bottom:0;width:4px;background:${t.famBg}`)}></div>
+
       <div style={cs("display:flex;gap:12px;min-width:0")}>
         <Thumb url={t.imageUrl} bg={t.famBg} fg={t.famFg} initials={t.initials} size={t.logoSize} radius="11px" fontSize={t.logoType} />
         <div style={cs("flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center")}>
@@ -23,8 +26,8 @@ function HeroSlide({ t }) {
         </div>
       </div>
 
-      <div style={cs(`display:flex;align-items:flex-end;gap:2px;height:${t.sparkH}`)}>
-        {t.bars.map((b, bi) => <div key={bi} style={cs(`flex:1;height:${b.h}%;background:${b.c};border-radius:2px;min-height:2px`)}></div>)}
+      <div style={cs(`height:${t.sparkH};margin:0 -2px`)}>
+        <Sparkline bars={t.bars} height={t.sparkH} />
       </div>
 
       <div style={cs("flex:1;min-height:0")}></div>
@@ -94,13 +97,15 @@ export default function DiscoverPage({ v }) {
       {(v.layoutCards || v.isMobile) && (
         <div style={cs(`display:grid;grid-template-columns:repeat(auto-fill,minmax(${v.isMobile ? "100%" : "330px"},1fr));gap:12px`)}>
           {v.feed.map((t) => (
-            <div key={t.id} onClick={t.open} className="d-hover-line" style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;cursor:pointer;display:flex;gap:14px;padding:14px")}>
+            <div key={t.id} onClick={t.open} className="d-lift" style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;cursor:pointer;position:relative;overflow:hidden;display:flex;gap:14px;padding:14px 14px 14px 17px")}>
+              <div style={cs(`position:absolute;left:0;top:0;bottom:0;width:4px;background:${t.famBg}`)}></div>
               <Thumb url={t.imageUrl} bg={t.famBg} fg={t.famFg} initials={t.initials} size="104px" radius="11px" fontSize="30px" />
 
               <div style={cs("flex:1;min-width:0;display:flex;flex-direction:column")}>
                 <div style={cs("display:flex;align-items:baseline;gap:7px;min-width:0")}>
                   <span style={cs("font-size:15.5px;font-weight:700;letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.name}</span>
                   <span style={cs("font-family:'DM Mono',monospace;font-size:12px;color:var(--mute);flex:none")}>{t.symbol}</span>
+                  <span style={cs(`margin-left:auto;flex:none;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;padding:3px 7px;border-radius:999px;background:${t.famBg};color:${t.famFg}`)}>{t.family}</span>
                 </div>
 
                 <div style={cs("font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>by {t.creator} · {t.age}</div>
@@ -139,12 +144,12 @@ export default function DiscoverPage({ v }) {
             <span>TOKEN</span><span style={cs("text-align:right")}>PRICE</span><span style={cs("text-align:right")}>24H</span><span style={cs("text-align:right")}>MCAP</span><span style={cs("text-align:right")}>VOLUME</span><span>PROGRESS</span>
           </div>
           {v.feed.map((t) => (
-            <div key={t.id} onClick={t.open} style={cs("display:grid;min-width:760px;grid-template-columns:2.2fr .9fr .8fr .9fr .9fr 1.4fr;gap:14px;padding:12px 18px;border-bottom:1px solid var(--soft);align-items:center;cursor:pointer;font-family:'DM Mono',monospace;font-size:12.5px")}>
+            <div key={t.id} onClick={t.open} className="d-hover-paper" style={cs("display:grid;min-width:760px;grid-template-columns:2.2fr .9fr .8fr .9fr .9fr 1.4fr;gap:14px;padding:12px 18px;border-bottom:1px solid var(--soft);align-items:center;cursor:pointer;font-family:'DM Mono',monospace;font-size:12.5px")}>
               <div style={cs("display:flex;align-items:center;gap:11px;min-width:0")}>
                 <Thumb url={t.imageUrl} bg={t.famBg} fg={t.famFg} initials={t.initials} size="26px" fontSize="11px" />
                 <span style={cs("font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;letter-spacing:-.02em")}>{t.symbol}</span>
                 <span style={cs("color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.name}</span>
-                <span style={cs("font-size:9.5px;letter-spacing:.1em;color:var(--mute);flex:none")}>{t.family}</span>
+                <span style={cs(`flex:none;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;padding:3px 7px;border-radius:999px;background:${t.famBg};color:${t.famFg}`)}>{t.family}</span>
               </div>
               <span style={cs("text-align:right;font-weight:500")}>{t.price}</span>
               <span style={cs(`text-align:right;color:${t.chgColor}`)}>{t.chg}</span>

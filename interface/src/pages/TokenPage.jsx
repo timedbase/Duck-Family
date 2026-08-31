@@ -2,6 +2,7 @@ import { useState } from "react";
 import { cs } from "../cs.js";
 import PriceChart from "../PriceChart.jsx";
 import Thumb from "../Thumb.jsx";
+import { AddressChip, LinkChip } from "../MetaChips.jsx";
 
 export default function TokenPage({ v }) {
   const sel = v.sel;
@@ -34,24 +35,25 @@ export default function TokenPage({ v }) {
             <Thumb url={sel.imageUrl} bg={sel.famBg} fg={sel.famFg} initials={sel.initials} size="100%" fontSize={v.isMobile ? "18px" : "26px"} />
             <span style={cs(`position:absolute;right:0;bottom:0;width:18px;height:18px;border-top:1px solid var(--line);border-left:1px solid var(--line);background:${sel.chgColor === "var(--neg)" ? "var(--orange)" : "var(--lime)"}`)}></span>
           </div>
-          <div style={cs("flex:1;min-width:260px;padding:16px 20px")}>
+          <div style={cs("flex:1;min-width:260px;padding:16px 20px;display:flex;flex-direction:column;gap:10px")}>
             <div style={cs("display:flex;align-items:baseline;gap:11px;flex-wrap:wrap")}>
               <h1 style={cs(`margin:0;font-size:${v.isMobile ? "20px" : "28px"};font-weight:700;letter-spacing:-.04em`)}>{sel.name}</h1>
               <span style={cs("font-family:'DM Mono',monospace;font-size:14px;color:var(--mute)")}>{sel.symbol}</span>
               <span style={cs(`font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:${sel.famBg};color:${sel.famFg}`)}>{sel.family}</span>
             </div>
-            <div style={cs("display:flex;gap:15px;margin-top:10px;font-family:'DM Mono',monospace;font-size:11.5px;color:var(--mute);flex-wrap:wrap")}>
-              <span>{sel.address}</span>
-              <a href={`https://explorer.inkonchain.com/address/${tok.id}`} target="_blank" rel="noreferrer">Blockscout</a>
-              {tok.socials?.website && <a href={tok.socials.website} target="_blank" rel="noreferrer noopener">Website</a>}
-              {tok.socials?.twitter && <a href={tok.socials.twitter} target="_blank" rel="noreferrer noopener">X / Twitter</a>}
-              {tok.socials?.telegram && <a href={tok.socials.telegram} target="_blank" rel="noreferrer noopener">Telegram</a>}
+            <div style={cs("display:flex;gap:7px;flex-wrap:wrap")}>
+              <AddressChip address={sel.address} full={tok.id} />
+              <LinkChip href={`https://explorer.inkonchain.com/address/${tok.id}`}>Explorer</LinkChip>
+              {tok.socials?.website && <LinkChip href={tok.socials.website}>Website</LinkChip>}
+              {tok.socials?.twitter && <LinkChip href={tok.socials.twitter}>X</LinkChip>}
+              {tok.socials?.telegram && <LinkChip href={tok.socials.telegram}>Telegram</LinkChip>}
             </div>
-            {tok.desc && <div style={cs("font-size:13px;color:var(--mute);margin-top:10px;max-width:60ch;line-height:1.5")}>{tok.desc}</div>}
+            {tok.desc && <div style={cs("font-size:13px;color:var(--mute);max-width:60ch;line-height:1.5")}>{tok.desc}</div>}
           </div>
-          <div style={cs("border-left:1px solid var(--line);padding:16px 22px;text-align:right;flex:none")}>
-            <div style={cs("font-family:'DM Mono',monospace;font-size:34px;font-weight:500;letter-spacing:-.04em;line-height:1")}>{sel.price}</div>
-            <div style={cs(`font-family:'DM Mono',monospace;font-size:13px;color:${sel.chgColor};margin-top:5px`)}>{sel.chg} / {v.range}</div>
+          <div style={cs("border-left:1px solid var(--line);padding:16px 22px;text-align:right;flex:none;display:flex;flex-direction:column;justify-content:center")}>
+            <div style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>{v.chartMode === "mcap" ? "MARKET CAP" : "PRICE"}</div>
+            <div style={cs("font-family:'DM Mono',monospace;font-size:34px;font-weight:500;letter-spacing:-.04em;line-height:1;margin-top:6px")}>{sel.price}</div>
+            <div style={cs(`font-family:'DM Mono',monospace;font-size:13px;color:${sel.chgColor};margin-top:5px`)}>{sel.chg} · {v.range}</div>
           </div>
         </div>
         <div style={cs("display:flex;flex-wrap:wrap")}>
@@ -199,10 +201,10 @@ export default function TokenPage({ v }) {
                       <div style={cs("font-size:17px;font-weight:700;letter-spacing:-.03em;margin-bottom:14px")}>Creator fees</div>
                       <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;align-items:start")}>
                         <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--lime);padding:18px")}>
-                          <div style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>HOOK SELL-FEE ACCRUED (YOURS)</div>
+                          <div style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>CREATOR FEE ACCRUED (YOURS)</div>
                           <div style={cs("font-family:'DM Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-.04em;margin:7px 0 3px")}>{v.hookAccruedFailed ? "—" : v.hookAccrued.toFixed(5) + " " + sel.quote}</div>
                           <div style={cs("font-family:'DM Mono',monospace;font-size:11.5px;margin-bottom:16px")}>{v.hookAccruedFailed ? "Couldn't read this from the chain — try reopening this tab." : "This same claim also sweeps the LP position's trading fee — that side is always burned (token) / sent to the platform (quote), never paid to you"}</div>
-                          <button onClick={v.claimCreatorAndHookFees} disabled={v.txPending} style={cs("width:100%;padding:13px;border:1px solid var(--line);border-radius:9px;background:var(--ink);color:var(--card);font-size:14px;font-weight:700;cursor:pointer")}>Claim your hook fee</button>
+                          <button onClick={v.claimCreatorAndHookFees} disabled={v.txPending} style={cs("width:100%;padding:13px;border:1px solid var(--line);border-radius:9px;background:var(--ink);color:var(--card);font-size:14px;font-weight:700;cursor:pointer")}>Claim your creator fee</button>
                         </div>
                         {tok.family === "CURVE" && (
                           <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card)")} >
@@ -216,7 +218,7 @@ export default function TokenPage({ v }) {
                       </div>
 
                       <div style={cs("border:1px solid var(--line);border-radius:10px;margin-top:16px;background:var(--card);overflow:hidden")}>
-                        <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>HOOK FEE ROUTING</div>
+                        <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>CREATOR FEE ROUTING</div>
                         {!v.liq || v.liq.status === "NO POOL YET" ? (
                           <div style={cs("padding:16px;font-size:12.5px;color:var(--mute)")}>Not available until this token has a real V4 pool.</div>
                         ) : (
@@ -233,7 +235,7 @@ export default function TokenPage({ v }) {
                             </div>
                             <div style={cs("padding:0 16px 16px")}>
                               <button onClick={submitSplits} disabled={v.txPending} style={cs("padding:12px 20px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:13.5px;font-weight:600;cursor:pointer")}>Save fee settings</button>
-                              <div style={cs("font-size:12px;color:var(--mute);margin-top:12px;line-height:1.55;max-width:76ch")}>Leave blank to reset to 100% direct to the creator. This only routes the hook's sell-fee skim — not the LP-position fee.</div>
+                              <div style={cs("font-size:12px;color:var(--mute);margin-top:12px;line-height:1.55;max-width:76ch")}>Leave blank to reset to 100% direct to the creator. This only routes the creator's sell-fee skim — not the LP-position fee.</div>
                             </div>
                           </>
                         )}
@@ -305,7 +307,7 @@ export default function TokenPage({ v }) {
               </div>
               <div style={cs("display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:12px")}><span>YOUR BALANCE</span><span style={cs("color:var(--ink)")}>{v.myBalanceTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })} {sel.symbol.replace("$", "")}</span></div>
               <button onClick={v.submitTx} disabled={v.txPending} style={cs(`width:100%;padding:16px;margin-top:14px;border:1px solid var(--line);border-radius:9px;background:${v.ctaBg};color:${v.ctaFg};font-size:16px;font-weight:700;letter-spacing:-.01em;cursor:pointer`)}>{v.ctaLabel}</button>
-              <div style={cs("font-size:12px;color:var(--mute);line-height:1.55;margin-top:14px")}>{tok.family === "CURVE" && !tok.migrated ? "Buys route native ETH in automatically for ERC20-quoted curves. Sell proceeds land in the quote asset directly. The curve's own 1% trading fee applies both ways." : "Routes through the real Uniswap V4 pool via the Universal Router. Both buy and sell settle in native ETH. Anti-MEV blocks a second swap, either direction, from the same address in the same block. The hook skims 2% of every sell, paid to the creator."}</div>
+              <div style={cs("font-size:12px;color:var(--mute);line-height:1.55;margin-top:14px")}>{tok.family === "CURVE" && !tok.migrated ? "Buys route native ETH in automatically for ERC20-quoted curves. Sell proceeds land in the quote asset directly. The curve's own 1% trading fee applies both ways." : "Routes through the real Uniswap V4 pool via the Universal Router. Both buy and sell settle in native ETH. Anti-MEV blocks a second swap, either direction, from the same address in the same block. A 2% creator fee is taken from every sell, paid straight to the token's creator."}</div>
             </div>
           </div>
         </div>
