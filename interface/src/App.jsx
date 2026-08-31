@@ -118,7 +118,7 @@ export default function App() {
   const [s, setS] = useState({
     mobile: false,
     screen: "home", layout: "cards", filter: "All", query: "",
-    tokenId: null, side: "buy", amount: "250", range: "1H", chartMode: "price", tab: "Trades", chatDraft: "",
+    tokenId: null, side: "buy", amount: "250", range: "1D", chartMode: "price", tab: "Trades", chatDraft: "",
     family: null, contribAmount: "0.5", slippageBps: 500,
     previewOut: null, previewLoading: false,
     nativeBalance: 0n, txPending: false, tx: null, toast: "",
