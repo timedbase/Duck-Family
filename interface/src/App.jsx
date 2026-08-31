@@ -10,7 +10,7 @@ import CreateFormPage from "./pages/CreateFormPage.jsx";
 import CampaignPage from "./pages/CampaignPage.jsx";
 import PortfolioPage from "./pages/PortfolioPage.jsx";
 import { api, shortAddress, quoteSymbol, API_BASE } from "./api.js";
-import { tokenToCoin, tradeToRow, holderToRow, buildCandles, buildSparkline, buildTicks } from "./adapters.js";
+import { tokenToCoin, tradeToRow, holderToRow, buildCandles, buildSparkline, buildTicks, labelFor } from "./adapters.js";
 import {
   createCurveToken, buyCurve, buyCurveWithNative, sellCurve, claimCurveFee,
   launchInstant,
@@ -43,10 +43,36 @@ function truncateDecimals(numStr, decimals) {
 // "$3", implying a $3 market cap when it's actually ~2.5 ETH. Shows the
 // real quote-denominated number with its real unit instead of a fabricated
 // dollar sign.
+const SUBSCRIPT_DIGITS = "₀₁₂₃₄₅₆₇₈₉";
+function toSubscript(num) {
+  return String(num).split("").map((d) => SUBSCRIPT_DIGITS[+d]).join("");
+}
+
+// Compact "leading zero count" notation for small decimals -- the same
+// convention pump.fun/Photon/etc. use, e.g. 0.000004338325 becomes
+// "0.0₄4338" instead of a hard-to-scan run of zeros. Only kicks in below
+// 0.0001, where plain fixed-decimal formatting stops being scannable;
+// anything at or above that (including large numbers like a market cap)
+// uses normal formatting.
+function compactNumber(n) {
+  if (n === 0) return "0";
+  if (n >= 0.0001) return n.toLocaleString(undefined, { maximumFractionDigits: n < 1 ? 6 : n < 1000 ? 3 : 2 });
+  const str = n.toFixed(24);
+  const match = str.match(/^0\.(0+)(\d+)/);
+  if (!match) return n.toString();
+  const zeroCount = match[1].length;
+  const significant = match[2].slice(0, 4);
+  return "0.0" + toSubscript(zeroCount - 1) + significant;
+}
+
+// mc/raised/vol are denominated in whatever quote asset a token trades
+// against (ETH, USDC, USDT0, or a platform token) -- never real USD without
+// an actual conversion (see usdOrQuote below). Shows the real
+// quote-denominated number with its real unit instead of a fabricated
+// dollar sign.
 function quoteAmount(n, symbol) {
   if (n == null) return "—";
-  const digits = n === 0 ? 2 : n < 0.01 ? 6 : n < 1 ? 4 : n < 1000 ? 3 : 2;
-  return n.toLocaleString(undefined, { maximumFractionDigits: digits }) + " " + symbol;
+  return compactNumber(n) + " " + symbol;
 }
 
 // Real USD, resolved via the subgraph's ETH/USDC-USDT0 reference price (or
@@ -55,10 +81,7 @@ function quoteAmount(n, symbol) {
 // its own tracked market) -- falls back to the honest quote-denominated
 // figure instead of fabricating a dollar amount.
 function usdOrQuote(usd, quote, symbol) {
-  if (usd != null) {
-    if (usd === 0) return "$0";
-    return "$" + usd.toLocaleString(undefined, { maximumFractionDigits: usd < 1 ? 4 : 2 });
-  }
+  if (usd != null) return "$" + compactNumber(usd);
   return quoteAmount(quote, symbol);
 }
 
@@ -794,7 +817,7 @@ function buildViewModel(ctx) {
   // filter. "ALL" omits a fixed size so buildCandles auto-picks one from the
   // real history's span.
   const RANGE_BUCKET_SECONDS = { "5M": 300, "1H": 3600, "4H": 4 * 3600, "1D": 86400, ALL: undefined };
-  const fmtOhlc = (v) => (v < 0.01 ? v.toFixed(5) : v.toFixed(v < 1 ? 4 : 3));
+  const fmtOhlc = (v) => compactNumber(v);
   let candles = [], ohlc = null;
   if (c) {
     candles = buildCandles(c.rawTrades || [], c.curveSeed, RANGE_BUCKET_SECONDS[s.range]);
@@ -849,7 +872,7 @@ function buildViewModel(ctx) {
     sel: c ? {
       name: c.name, symbol: c.ticker, family: c.family === "CURVE" ? "INCUBATION" : c.family === "INSTANT" ? "LAUNCHER" : "RAISE",
       famBg: c.famBg, famFg: c.famFg, initials: c.initials, address: shortAddress(c.id), quote: c.quote,
-      price: ohlc ? "$" + ohlc.c : c.curveSeed ? "$" + (c.curveSeed.price < 0.01 ? c.curveSeed.price.toFixed(5) : c.curveSeed.price.toFixed(4)) : "—",
+      price: ohlc ? "$" + ohlc.c : c.curveSeed ? "$" + compactNumber(c.curveSeed.price) : "—",
       chg: ohlc ? (ohlc.up ? "+" : "−") + (Math.abs((ohlc.c - ohlc.o) / (ohlc.o || 1)) * 100).toFixed(1) + "%" : "—",
       chgColor: ohlc ? (ohlc.up ? "var(--pos)" : "var(--neg)") : "var(--mute)",
       migrated: c.migrated, holders: c.holders,
@@ -1054,10 +1077,17 @@ function buildCampaignModel(c, s, myContribution) {
       { k: "TOKEN STATUS", v: resolved && c.campaignSucceeded ? "released" : "escrowed" },
       { k: "TRADEABLE", v: c.campaignSucceeded ? "yes" : "no" },
     ],
-    contribs: (detail?.contributions || []).map((ct) => ({
-      wallet: shortAddress(ct.contributor), full: ct.contributor, eth: (Number(ct.amount) / 1e18).toFixed(4),
-      status: ct.claimed ? "claimed" : ct.refunded ? "refunded" : "pending", age: "",
-    })),
+    contribs: (detail?.contributions || []).map((ct) => {
+      // Same address-labeling treatment TokenPage's Trades/Holders already
+      // get (Creator, DuckRaise, DuckLocker, Burned, Liquidity Pool, etc.)
+      // -- a contributor CAN be the campaign's own creator, or (post-
+      // success, once claims/refunds route through it) the contract itself.
+      const label = labelFor(ct.contributor, { [c.creator?.toLowerCase()]: "Creator" });
+      return {
+        wallet: label || shortAddress(ct.contributor), full: ct.contributor, eth: (Number(ct.amount) / 1e18).toFixed(4),
+        status: ct.claimed ? "claimed" : ct.refunded ? "refunded" : "pending", age: "",
+      };
+    }),
     custody: [
       { k: "ESCROWED ETH", v: raised.toFixed(4) + " ETH", c: INK },
       { k: "ESCROWED SUPPLY", v: contributorSupply != null ? Math.round(contributorSupply).toLocaleString() : "—", c: INK },

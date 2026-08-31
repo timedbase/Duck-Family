@@ -3,7 +3,7 @@
 // equivalent yet (chg, chat) are left at honest defaults (0 / empty), not
 // fabricated.
 import { quoteSymbol, shortAddress } from "./api.js";
-import { DUCK_INCUBATION, DUCK_LAUNCHER, DUCK_RAISE, DUCK_LOCKER, DUCK_HOOK, DEFAULT_QUOTE_TOKENS } from "./chain/addresses.js";
+import { DUCK_INCUBATION, DUCK_LAUNCHER, DUCK_RAISE, DUCK_LOCKER, DUCK_HOOK, V4_POOL_MANAGER, DEFAULT_QUOTE_TOKENS } from "./chain/addresses.js";
 
 // RAW subgraph amounts (raisedQuote, volumeAllTime, volume24h) are never
 // decimal-normalized by the subgraph -- same convention as Trade.quoteAmount
@@ -34,10 +34,11 @@ const STATIC_LABELS = {
   [DUCK_RAISE.toLowerCase()]: "DuckRaise (campaigns)",
   [DUCK_LOCKER.toLowerCase()]: "DuckLocker (LP lock)",
   [DUCK_HOOK.toLowerCase()]: "DuckHookV4",
+  [V4_POOL_MANAGER.toLowerCase()]: "Liquidity Pool",
   "0x000000000000000000000000000000000000dead": "Burned",
 };
 
-function labelFor(address, extraLabels) {
+export function labelFor(address, extraLabels) {
   if (!address) return null;
   const key = address.toLowerCase();
   return (extraLabels && extraLabels[key]) || STATIC_LABELS[key] || null;
