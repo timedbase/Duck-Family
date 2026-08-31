@@ -2,53 +2,106 @@ import { cs } from "../cs.js";
 import Thumb from "../Thumb.jsx";
 import Sparkline from "../Sparkline.jsx";
 
+// Square, image-first block shared by the hero rail and the feed grid --
+// the token's own art is the card's visual anchor, with age/family as small
+// pinned badges on top of it rather than a separate text row.
+function ImageBlock({ t, badgeSize = "9px" }) {
+  return (
+    <div style={cs("position:relative;width:100%;padding-top:100%;overflow:hidden;flex:none")}>
+      <Thumb url={t.imageUrl} bg={t.famBg} fg={t.famFg} initials={t.initials} size="100%" radius="0" fontSize={t.logoType || "44px"} style="position:absolute;top:0;left:0" />
+      <span style={cs(`position:absolute;top:8px;left:8px;padding:3px 8px;border-radius:999px;background:rgba(26,25,23,.72);color:#fff;font-family:'DM Mono',monospace;font-size:${badgeSize};letter-spacing:.04em;white-space:nowrap`)}>{t.age}</span>
+      <span style={cs(`position:absolute;top:8px;right:8px;padding:3px 8px;border-radius:999px;background:${t.famBg};color:${t.famFg};font-family:'DM Mono',monospace;font-size:${badgeSize};letter-spacing:.04em;white-space:nowrap`)}>{t.family}</span>
+    </div>
+  );
+}
+
+function ProgressRow({ t, height = "6px", fontSize = "10px" }) {
+  return (
+    <div>
+      <div style={cs(`display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:'DM Mono',monospace;font-size:${fontSize};letter-spacing:.07em;color:var(--mute);margin-bottom:6px`)}>
+        <span style={cs("min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.progLabel}</span>
+        <span style={cs("flex:none;color:var(--ink)")}>{t.progPct}</span>
+      </div>
+      {t.showProg && (
+        <div style={cs(`height:${height};border-radius:99px;background:var(--soft);overflow:hidden`)}>
+          <div style={cs(`height:100%;width:${t.progWidth}%;background:${t.progFill};border-radius:99px`)}></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HeroSlide({ t }) {
   return (
-    <div
-      onClick={t.open}
-      className="d-lift"
-      style={cs(`flex:${t.flex} 0 ${t.basis};min-width:${t.minw};cursor:pointer;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:12px;border:1px solid var(--line);border-radius:14px;padding:14px 14px 14px 17px;background:var(--card)`)}
-    >
-      <div style={cs(`position:absolute;left:0;top:0;bottom:0;width:4px;background:${t.famBg}`)}></div>
-
-      <div style={cs("display:flex;gap:12px;min-width:0")}>
-        <Thumb url={t.imageUrl} bg={t.famBg} fg={t.famFg} initials={t.initials} size={t.logoSize} radius="11px" fontSize={t.logoType} />
-        <div style={cs("flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center")}>
+    <div onClick={t.open} className="d-lift" style={cs(`flex:${t.flex} 0 ${t.basis};min-width:${t.minw};cursor:pointer;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)`)}>
+      <ImageBlock t={t} badgeSize={t.symType === "19px" ? "10px" : "9px"} />
+      <div style={cs("padding:12px 14px;display:flex;flex-direction:column;gap:10px;flex:1")}>
+        <div>
           <div style={cs("display:flex;align-items:baseline;gap:7px;min-width:0")}>
             <span style={cs(`font-size:${t.symType};font-weight:700;letter-spacing:-.03em;flex:none`)}>{t.symbol}</span>
             <span style={cs("font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.name}</span>
           </div>
-          <div style={cs("font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>by {t.creator} · {t.age}</div>
-          <div style={cs("display:flex;align-items:baseline;gap:8px;margin-top:8px;font-family:'DM Mono',monospace;flex-wrap:wrap")}>
-            <span style={cs(`font-size:${t.priceType};font-weight:500;letter-spacing:-.03em;color:var(--pos);flex:none`)}>MC {t.mcap}</span>
-            <span style={cs(`font-size:12px;color:${t.chgColor};flex:none`)}>{t.chg}</span>
-          </div>
+          <div style={cs("font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>by {t.creator}</div>
         </div>
-      </div>
 
-      <div style={cs(`height:${t.sparkH};margin:0 -2px`)}>
-        <Sparkline bars={t.bars} height={t.sparkH} />
-      </div>
-
-      <div style={cs("flex:1;min-height:0")}></div>
-
-      <div>
-        <div style={cs("display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--mute);margin-bottom:6px")}>
-          <span style={cs("min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.progLabel}</span>
-          <span style={cs("flex:none;color:var(--ink)")}>{t.progPct}</span>
+        <div style={cs("display:flex;align-items:baseline;gap:8px;font-family:'DM Mono',monospace;flex-wrap:wrap")}>
+          <span style={cs(`font-size:${t.priceType};font-weight:500;letter-spacing:-.03em;color:var(--pos);flex:none`)}>MC {t.mcap}</span>
+          <span style={cs(`font-size:12px;color:${t.chgColor};flex:none`)}>{t.chg}</span>
         </div>
-        {t.showProg && (
-          <div style={cs("height:6px;border-radius:99px;background:var(--soft);overflow:hidden")}>
-            <div style={cs(`height:100%;width:${t.progWidth}%;background:${t.progFill};border-radius:99px`)}></div>
-          </div>
-        )}
-      </div>
 
-      <div style={cs("display:flex;gap:12px;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);min-width:0")}>
-        <span style={cs("white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>VOL <span style={cs("color:var(--ink)")}>{t.vol}</span></span>
-        <span style={cs("margin-left:auto;flex:none;white-space:nowrap")}>{t.sideMetric} <span style={cs("color:var(--ink)")}>{t.sideValue}</span></span>
+        <div style={cs(`height:${t.sparkH}`)}>
+          <Sparkline bars={t.bars} height={t.sparkH} />
+        </div>
+
+        <div style={cs("flex:1;min-height:0")}></div>
+
+        <ProgressRow t={t} />
+
+        <div style={cs("display:flex;gap:12px;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);min-width:0")}>
+          <span style={cs("white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>VOL <span style={cs("color:var(--ink)")}>{t.vol}</span></span>
+          <span style={cs("margin-left:auto;flex:none;white-space:nowrap")}>{t.sideMetric} <span style={cs("color:var(--ink)")}>{t.sideValue}</span></span>
+        </div>
       </div>
     </div>
+  );
+}
+
+function FeedCard({ t }) {
+  return (
+    <div onClick={t.open} className="d-lift" style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;cursor:pointer;overflow:hidden;display:flex;flex-direction:column")}>
+      <ImageBlock t={t} />
+      <div style={cs("padding:12px 14px;display:flex;flex-direction:column;gap:8px;flex:1")}>
+        <div>
+          <div style={cs("display:flex;align-items:baseline;gap:7px;min-width:0")}>
+            <span style={cs("font-size:15px;font-weight:700;letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.name}</span>
+            <span style={cs("font-family:'DM Mono',monospace;font-size:11.5px;color:var(--mute);flex:none")}>{t.symbol}</span>
+          </div>
+          <div style={cs("font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>by {t.creator} · {t.age}</div>
+        </div>
+
+        <div style={cs("display:flex;align-items:baseline;gap:8px;font-family:'DM Mono',monospace")}>
+          <span style={cs("font-size:14.5px;font-weight:500;letter-spacing:-.02em;color:var(--pos)")}>MC {t.mcap}</span>
+          <span style={cs(`font-size:11.5px;color:${t.chgColor}`)}>{t.chg}</span>
+        </div>
+
+        <div style={cs("flex:1;min-height:4px")}></div>
+
+        <ProgressRow t={t} height="5px" fontSize="9.5px" />
+
+        <div style={cs("display:flex;gap:10px;font-family:'DM Mono',monospace;font-size:10px;color:var(--mute)")}>
+          <span style={cs("white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>VOL <span style={cs("color:var(--ink)")}>{t.vol}</span></span>
+          <span style={cs("margin-left:auto;white-space:nowrap")}>{t.holders} hldrs</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FilterSelect({ value, onChange, options, isMobile }) {
+  return (
+    <select value={value} onChange={onChange} style={cs(`border:1px solid var(--line);border-radius:8px;background:var(--card);padding:${isMobile ? "7px 8px" : "8px 12px"};font-family:'DM Mono',monospace;font-size:${isMobile ? "11px" : "12px"};color:var(--ink);cursor:pointer;flex:1 1 110px;min-width:0`)}>
+      {options.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+    </select>
   );
 }
 
@@ -69,13 +122,13 @@ export default function DiscoverPage({ v }) {
           </div>
         </div>
 
-        <div style={cs("display:flex;align-items:stretch;gap:12px;overflow-x:auto;padding:14px")}>
+        <div style={cs(`display:flex;align-items:stretch;gap:12px;overflow-x:auto;padding:14px`)}>
           {v.heroSlides.length === 0 && <div style={cs("padding:20px;color:var(--mute);font-size:13px")}>Nothing launched yet.</div>}
           {v.heroSlides.map((t) => <HeroSlide key={t.id} t={t} />)}
         </div>
       </div>
 
-      <div style={cs("display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px")}>
+      <div style={cs("display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px")}>
         <div style={cs(`display:flex;border:1px solid var(--line);border-radius:8px;overflow-x:auto;max-width:100%;${v.isMobile ? "width:100%" : ""}`)}>
           {v.filters.map((f, i) => (
             <button key={i} onClick={f.go} style={cs(`padding:${v.isMobile ? "7px 8px" : "8px 15px"};border:0;flex:${v.isMobile ? "1" : "none"};white-space:nowrap;border-left:${f.dv};background:${f.bg};color:${f.fg};font-size:${v.isMobile ? "10.5px" : "12.5px"};font-weight:600;cursor:pointer`)}>{f.label}</button>
@@ -94,47 +147,15 @@ export default function DiscoverPage({ v }) {
         </div>
       </div>
 
+      <div style={cs("display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px")}>
+        <FilterSelect value={v.mcapFilter} onChange={v.setMcapFilter} options={v.mcapPresets} isMobile={v.isMobile} />
+        <FilterSelect value={v.launchedFilter} onChange={v.setLaunchedFilter} options={v.launchedPresets} isMobile={v.isMobile} />
+        <FilterSelect value={v.quoteFilter} onChange={v.setQuoteFilter} options={v.quoteFilterOptions.map((q) => ({ key: q, label: q === "any" ? "Any pair" : q }))} isMobile={v.isMobile} />
+      </div>
+
       {(v.layoutCards || v.isMobile) && (
-        <div style={cs(`display:grid;grid-template-columns:repeat(auto-fill,minmax(${v.isMobile ? "100%" : "330px"},1fr));gap:12px`)}>
-          {v.feed.map((t) => (
-            <div key={t.id} onClick={t.open} className="d-lift" style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;cursor:pointer;position:relative;overflow:hidden;display:flex;gap:14px;padding:14px 14px 14px 17px")}>
-              <div style={cs(`position:absolute;left:0;top:0;bottom:0;width:4px;background:${t.famBg}`)}></div>
-              <Thumb url={t.imageUrl} bg={t.famBg} fg={t.famFg} initials={t.initials} size="104px" radius="11px" fontSize="30px" />
-
-              <div style={cs("flex:1;min-width:0;display:flex;flex-direction:column")}>
-                <div style={cs("display:flex;align-items:baseline;gap:7px;min-width:0")}>
-                  <span style={cs("font-size:15.5px;font-weight:700;letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.name}</span>
-                  <span style={cs("font-family:'DM Mono',monospace;font-size:12px;color:var(--mute);flex:none")}>{t.symbol}</span>
-                  <span style={cs(`margin-left:auto;flex:none;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;padding:3px 7px;border-radius:999px;background:${t.famBg};color:${t.famFg}`)}>{t.family}</span>
-                </div>
-
-                <div style={cs("font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>by {t.creator} · {t.age}</div>
-
-                <div style={cs("display:flex;align-items:baseline;gap:8px;margin-top:9px;font-family:'DM Mono',monospace")}>
-                  <span style={cs("font-size:15px;font-weight:500;letter-spacing:-.02em;color:var(--pos)")}>MC {t.mcap}</span>
-                  <span style={cs(`font-size:12px;color:${t.chgColor}`)}>{t.chg}</span>
-                </div>
-
-                <div style={cs("flex:1;min-height:8px")}></div>
-
-                <div style={cs("display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--mute);margin-bottom:6px")}>
-                  <span style={cs("white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.progLabel}</span>
-                  <span style={cs("flex:none;color:var(--ink)")}>{t.progPct}</span>
-                </div>
-                {t.showProg && (
-                  <div style={cs("height:6px;border-radius:99px;background:var(--soft);overflow:hidden")}>
-                    <div style={cs(`height:100%;width:${t.progWidth}%;background:${t.progFill};border-radius:99px`)}></div>
-                  </div>
-                )}
-
-                <div style={cs("display:flex;gap:14px;margin-top:10px;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute)")}>
-                  <span>VOL <span style={cs("color:var(--ink)")}>{t.vol}</span></span>
-                  <span>{t.holders} holders</span>
-                  <span style={cs("margin-left:auto")}>{t.quote}</span>
-                </div>
-              </div>
-            </div>
-          ))}
+        <div style={cs(`display:grid;grid-template-columns:repeat(auto-fill,minmax(${v.isMobile ? "150px" : "220px"},1fr));gap:12px`)}>
+          {v.feed.map((t) => <FeedCard key={t.id} t={t} />)}
         </div>
       )}
 

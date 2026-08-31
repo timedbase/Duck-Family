@@ -64,6 +64,35 @@ const EMPTY_IMAGE = { file: null, previewUrl: "", uploading: false, ipfsUri: "",
 const EMPTY_PORTFOLIO = { created: [], holdings: [], contributions: [] };
 const block = (active) => (active ? { bg: INK, fg: CARD } : { bg: CARD, fg: INK });
 
+// Real market-cap/launch-date bands for Discover's filter dropdowns --
+// bucketed off real mcUsd/ageMin, never a fabricated placeholder list.
+const MCAP_PRESETS = [
+  { key: "any", label: "Any market cap" },
+  { key: "u10k", label: "Under $10K" },
+  { key: "10k-100k", label: "$10K – $100K" },
+  { key: "100k-1m", label: "$100K – $1M" },
+  { key: "1m+", label: "Over $1M" },
+];
+const MCAP_TEST = {
+  u10k: (v) => v < 10000,
+  "10k-100k": (v) => v >= 10000 && v < 100000,
+  "100k-1m": (v) => v >= 100000 && v < 1000000,
+  "1m+": (v) => v >= 1000000,
+};
+const LAUNCHED_PRESETS = [
+  { key: "any", label: "Any launch date" },
+  { key: "1h", label: "Last hour" },
+  { key: "24h", label: "Last 24 hours" },
+  { key: "7d", label: "Last 7 days" },
+  { key: "30d", label: "Last 30 days" },
+];
+const LAUNCHED_TEST = {
+  "1h": (min) => min <= 60,
+  "24h": (min) => min <= 1440,
+  "7d": (min) => min <= 10080,
+  "30d": (min) => min <= 43200,
+};
+
 export default function App() {
   const { address: account, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
@@ -72,6 +101,7 @@ export default function App() {
   const [s, setS] = useState({
     mobile: false, menuOpen: false, hero: "Last activity", heroIdx: 0,
     screen: "home", layout: "cards", filter: "All", query: "",
+    mcapFilter: "any", launchedFilter: "any", quoteFilter: "any",
     tokenId: null, side: "buy", amount: "250", range: "1D", chartMode: "price", tab: "Trades", chatDraft: "",
     family: null, contribAmount: "0.5", slippageBps: 500,
     previewOut: null, previewLoading: false, simulating: false,
@@ -825,8 +855,14 @@ function buildViewModel(ctx) {
   let list = s.coins.slice();
   if (s.filter === "Migrated") list = list.filter((c) => c.migrated);
   else if (s.filter !== "All") list = list.filter((c) => c.family === s.filter);
+  // A token with no priced trade yet has no mcUsd to test -- pass it through
+  // rather than guess, so an untraded launch is never hidden by mistake.
+  if (s.mcapFilter !== "any") { const test = MCAP_TEST[s.mcapFilter]; list = list.filter((c) => c.mcUsd == null || test(c.mcUsd)); }
+  if (s.launchedFilter !== "any") { const test = LAUNCHED_TEST[s.launchedFilter]; list = list.filter((c) => test(c.ageMin)); }
+  if (s.quoteFilter !== "any") list = list.filter((c) => c.quote === s.quoteFilter);
   const q = s.query.trim().toLowerCase();
   if (q) list = list.filter((c) => (c.name + c.ticker + c.dev).toLowerCase().includes(q));
+  const quoteFilterOptions = ["any", ...new Set(s.coins.map((c) => c.quote))];
 
   const isInstant = (c) => c.family === "INSTANT";
   const shape = (c) => ({
@@ -887,7 +923,7 @@ function buildViewModel(ctx) {
     return {
       ...row,
       flex: lead ? "1.6" : "1", basis: lead ? "360px" : "268px", minw: lead ? "320px" : "268px",
-      sparkH: lead ? "52px" : "38px", logoSize: lead ? "86px" : "62px", logoType: lead ? "26px" : "19px",
+      sparkH: lead ? "52px" : "38px", logoSize: lead ? "86px" : "62px", logoType: lead ? "72px" : "52px",
       symType: lead ? "19px" : "16px", priceType: lead ? "17px" : "14px",
       sideMetric: m.k, sideValue: m.v,
     };
@@ -962,6 +998,9 @@ function buildViewModel(ctx) {
     lcBg: block(s.layout === "cards").bg, lcFg: block(s.layout === "cards").fg,
     ltBg: block(s.layout === "table").bg, ltFg: block(s.layout === "table").fg,
     query: s.query, setQuery: (e) => set({ query: e.target.value }),
+    mcapPresets: MCAP_PRESETS, mcapFilter: s.mcapFilter, setMcapFilter: (e) => set({ mcapFilter: e.target.value }),
+    launchedPresets: LAUNCHED_PRESETS, launchedFilter: s.launchedFilter, setLaunchedFilter: (e) => set({ launchedFilter: e.target.value }),
+    quoteFilterOptions, quoteFilter: s.quoteFilter, setQuoteFilter: (e) => set({ quoteFilter: e.target.value }),
 
     coin: c,
     sel: c ? {
