@@ -92,6 +92,10 @@ export function usdOrQuote(usd, quote, symbol) {
 // t.campaign.name/symbol are already populated by the backend.
 export function tokenToCoin(t, i, meta) {
   const ageMin = Math.max(0, Math.round((Date.now() / 1000 - Number(t.createdAt)) / 60));
+  // Minutes since the most recent real trade -- null (not "same as ageMin")
+  // when the token has never traded, so "most recently active" can be told
+  // apart from "just launched, never traded".
+  const lastActiveMin = t.lastTradeAt != null ? Math.max(0, Math.round((Date.now() / 1000 - Number(t.lastTradeAt)) / 60)) : null;
 
   // DuckRaise deploys a campaign's token immediately at launch() -- not at
   // finalize() -- so a CAMPAIGN token exists (and is indexed) the moment the
@@ -167,7 +171,7 @@ export function tokenToCoin(t, i, meta) {
     // "genuinely flat" apart from "not enough history".
     chg: t.priceChange24h != null ? t.priceChange24h : null,
     chgUsd: t.priceChange24hUsd != null ? t.priceChange24hUsd : null,
-    ageMin, pct,
+    ageMin, lastActiveMin, pct,
     desc: "",
     quote: quoteSymbol(t.quoteToken),
     holders: Number(t.holderCount || 0),
@@ -213,6 +217,14 @@ export function buildSparkline(rawTrades, count = 26) {
   const up = bucketed[bucketed.length - 1] >= bucketed[0];
   const color = up ? "var(--lime)" : "var(--orange)";
   return bucketed.map((p) => ({ h: (18 + ((p - lo) / span) * 82).toFixed(0), c: color }));
+}
+
+// Discrete filled/unfilled tick cells for the Discover table view's progress
+// column (the handoff keeps this as individual ticks there, unlike the card
+// views' single filled pill bar) -- pct is 0-100.
+export function buildTicks(count, pct, onColor, offColor = "var(--paper)") {
+  const filled = Math.round((count * Math.min(100, Math.max(0, pct))) / 100);
+  return Array.from({ length: count }, (_, i) => (i < filled ? onColor : offColor));
 }
 
 export function tradeToRow(tr, labels, quoteSymbolLabel = "ETH") {

@@ -62,6 +62,8 @@ export function recordTrade(tokenId: string, timestamp: BigInt, quoteAmountRaw: 
   let token = Token.load(tokenId);
   if (token == null) return;
 
+  token.lastTradeAt = timestamp;
+
   let price: BigDecimal | null = null;
   let priceUsd: BigDecimal | null = null;
   if (!tokenAmountRaw.equals(BigInt.zero())) {

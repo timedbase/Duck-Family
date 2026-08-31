@@ -13,7 +13,8 @@ import StatsPage from "./pages/StatsPage.jsx";
 import HowItWorksPage from "./pages/HowItWorksPage.jsx";
 import DocsPage from "./pages/DocsPage.jsx";
 import { api, shortAddress, quoteSymbol, API_BASE } from "./api.js";
-import { tokenToCoin, tradeToRow, holderToRow, buildCandles, buildSparkline, labelFor, compactNumber, quoteAmount, usdOrQuote } from "./adapters.js";
+import { tokenToCoin, tradeToRow, holderToRow, buildCandles, buildSparkline, buildTicks, labelFor, compactNumber, quoteAmount, usdOrQuote } from "./adapters.js";
+import { ageLabel } from "./data.js";
 import {
   createCurveToken, buyCurve, buyCurveWithNative, sellCurve, claimCurveFee,
   launchInstant,
@@ -69,7 +70,7 @@ export default function App() {
   const { openConnectModal } = useConnectModal();
 
   const [s, setS] = useState({
-    mobile: false, menuOpen: false,
+    mobile: false, menuOpen: false, hero: "Last activity", heroIdx: 0,
     screen: "home", layout: "cards", filter: "All", query: "",
     tokenId: null, side: "buy", amount: "250", range: "1D", chartMode: "price", tab: "Trades", chatDraft: "",
     family: null, contribAmount: "0.5", slippageBps: 500,
@@ -763,26 +764,72 @@ function buildViewModel(ctx) {
   const q = s.query.trim().toLowerCase();
   if (q) list = list.filter((c) => (c.name + c.ticker + c.dev).toLowerCase().includes(q));
 
+  const isInstant = (c) => c.family === "INSTANT";
   const shape = (c) => ({
     id: c.id, family: c.family === "CURVE" ? "INCUBATION" : c.family === "INSTANT" ? "LAUNCHER" : "RAISE",
     famBg: c.famBg, famFg: c.famFg, initials: c.initials, symbol: c.ticker, name: c.name,
+    creator: shortAddress(c.creator), age: ageLabel(c.ageMin),
     price: usdOrQuote(c.priceUsd, c.price, c.quote),
     chg: c.chg != null ? (c.chg >= 0 ? "+" : "") + c.chg.toFixed(1) + "%" : "—",
     chgColor: c.chg != null ? (c.chg >= 0 ? "var(--pos)" : "var(--neg)") : "var(--mute)",
-    mcap: usdOrQuote(c.mcUsd, c.mc, c.quote), vol: usdOrQuote(c.volUsd, c.vol, c.quote), holders: c.holders.toLocaleString(),
+    mcap: usdOrQuote(c.mcUsd, c.mc, c.quote), vol: usdOrQuote(c.volUsd, c.vol, c.quote),
+    holders: c.holders.toLocaleString(), quote: c.quote,
     bars: buildSparkline(c.rawTrades),
+    // Instant-launch tokens land straight on a V4 pool -- no curve to fill,
+    // so the handoff hides the progress bar entirely for them (a permanent
+    // "LP LOCKED" label instead) rather than showing a meaningless 100%.
     progLabel: c.family === "CAMPAIGN" ? "RAISE · ILLIQUID" : c.migrated ? "MIGRATED → V4" : "CURVE",
-    progPct: Math.round(c.pct) + "%",
+    progPct: isInstant(c) ? "LP LOCKED" : Math.round(c.pct) + "%",
+    showProg: !isInstant(c),
     progWidth: Math.min(100, Math.max(0, c.pct)),
-    progFill: INK,
+    progFill: c.family === "CAMPAIGN" ? ORANGE : c.pct >= 100 ? "var(--pos)" : INK,
+    ticks: buildTicks(20, c.pct, INK),
     open: () => ctx.openToken(c.id),
   });
   const feed = list.map(shape);
-  // Hero slider: the 5 most recently active launches across every family,
-  // unfiltered by the Discover page's own filter/search -- "most recent
-  // activity" is honestly the most recent on-chain launch event (ageMin),
-  // since no cross-token recent-trades feed exists to rank by actual trades.
-  const recentTokens = s.coins.slice().sort((a, b) => a.ageMin - b.ageMin).slice(0, 5).map(shape);
+
+  // Hero rail: three real ranking modes over every launched token,
+  // unfiltered by the Discover page's own filter/search. "Last activity"
+  // ranks by real last-trade time (Token.lastTradeAt, tracked alongside
+  // lastPrice) -- tokens that have never traded sort last, never faked into
+  // looking recently active.
+  const HERO_MODES = {
+    "Last activity": {
+      sort: (a, b) => (a.lastActiveMin ?? Infinity) - (b.lastActiveMin ?? Infinity),
+      caption: "MOST RECENT TRADES ACROSS ALL FAMILIES",
+      metric: (c) => ({ k: "LAST TRADE", v: c.lastActiveMin != null ? ageLabel(c.lastActiveMin) : "—" }),
+    },
+    "Top market cap": {
+      sort: (a, b) => (b.mcUsd ?? b.mc) - (a.mcUsd ?? a.mc),
+      caption: "LARGEST POOLS BY MARKET CAP",
+      metric: (c) => ({ k: "MKT CAP", v: usdOrQuote(c.mcUsd, c.mc, c.quote) }),
+    },
+    New: {
+      sort: (a, b) => a.ageMin - b.ageMin,
+      caption: "LAUNCHED IN THE LAST 24 HOURS FIRST",
+      metric: (c) => ({ k: "AGE", v: ageLabel(c.ageMin) }),
+    },
+  };
+  const heroMode = HERO_MODES[s.hero] || HERO_MODES["Last activity"];
+  const heroTabs = Object.keys(HERO_MODES).map((label) =>
+    Object.assign({ label, go: () => set({ hero: label, heroIdx: 0 }) }, block(s.hero === label)));
+  const heroPool = s.coins.slice().sort(heroMode.sort);
+  const heroWindowSize = Math.min(4, heroPool.length);
+  const heroWindow = Array.from({ length: heroWindowSize }, (_, i) => heroPool[(s.heroIdx + i) % heroPool.length]);
+  const heroSlides = heroWindow.map((coin, i) => {
+    const row = shape(coin);
+    const lead = i === 0;
+    const m = heroMode.metric(coin);
+    return {
+      ...row,
+      flex: lead ? "1.6" : "1", basis: lead ? "360px" : "268px", minw: lead ? "320px" : "268px",
+      sparkH: lead ? "52px" : "38px", logoSize: lead ? "86px" : "62px", logoType: lead ? "26px" : "19px",
+      symType: lead ? "19px" : "16px", priceType: lead ? "17px" : "14px",
+      sideMetric: m.k, sideValue: m.v,
+    };
+  });
+  const heroPrev = () => heroPool.length > 0 && set((st) => ({ heroIdx: (st.heroIdx + heroPool.length - 1) % heroPool.length }));
+  const heroNext = () => heroPool.length > 0 && set((st) => ({ heroIdx: (st.heroIdx + 1) % heroPool.length }));
 
   const c = s.coins.find((x) => x.id === s.tokenId);
   const buying = s.side === "buy";
@@ -844,12 +891,8 @@ function buildViewModel(ctx) {
     goPortfolio: () => set({ screen: "portfolio" }),
     menuOpen: s.menuOpen, openMenu: () => set({ menuOpen: true }), closeMenu: () => set({ menuOpen: false }),
 
-    stats: [
-      { label: "TOKENS LISTED", value: String(s.coins.length), sub: "across three families", bg: CARD },
-      { label: "MIGRATED", value: String(s.coins.filter((x) => x.migrated).length), sub: "curves → V4 pools", bg: CARD },
-      { label: "ACTIVE RAISES", value: String(s.coins.filter((x) => x.family === "CAMPAIGN" && !x.campaignSucceeded && !x.campaignFailed).length), sub: "crowdfund campaigns", bg: LIME },
-    ],
-    filters, feed, isEmpty: feed.length === 0, recentTokens,
+    filters, feed, isEmpty: feed.length === 0,
+    heroTabs, heroSlides, heroCaption: heroMode.caption, heroPrev, heroNext,
     layoutCards: s.layout === "cards", layoutTable: s.layout === "table",
     setLayoutCards: () => set({ layout: "cards" }), setLayoutTable: () => set({ layout: "table" }),
     lcBg: block(s.layout === "cards").bg, lcFg: block(s.layout === "cards").fg,

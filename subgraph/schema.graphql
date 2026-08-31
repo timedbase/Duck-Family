@@ -65,6 +65,12 @@ type Token @entity(immutable: false) {
   # that leaves an existing holder still holding something).
   holderCount: Int!
 
+  # Timestamp of the most recent real trade (curve Trade or pool PoolSwap),
+  # updated alongside lastPrice in the same recordTrade call. Null until the
+  # first real trade -- lets the interface rank "most recently active"
+  # honestly (distinct from createdAt, which never changes).
+  lastTradeAt: BigInt
+
   # Updated to the ratio of the most recent trade (curve Trade or pool
   # PoolSwap, whichever family/phase applies), decimal-normalized to a real
   # human-readable quote-asset-per-token price (quote decimals vary: 18 for
