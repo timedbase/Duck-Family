@@ -1,4 +1,5 @@
 import { cs } from "../cs.js";
+import Thumb from "../Thumb.jsx";
 
 export default function CampaignPage({ v }) {
   const camp = v.camp;
@@ -11,8 +12,8 @@ export default function CampaignPage({ v }) {
         <div style={cs("display:flex;flex-direction:column;gap:16px;min-width:0")}>
           <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
             <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
-              <div style={cs(`width:${v.isMobile ? "56px" : "84px"};flex:none;border-right:1px solid var(--line);background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:${v.isMobile ? "18px" : "26px"};font-weight:700;letter-spacing:-.03em;position:relative`)}>
-                {camp.initials}
+              <div style={cs(`width:${v.isMobile ? "56px" : "84px"};flex:none;border-right:1px solid var(--line);position:relative`)}>
+                <Thumb url={camp.imageUrl} bg="var(--orange)" fg="#fff" initials={camp.initials} size="100%" fontSize={v.isMobile ? "18px" : "26px"} />
                 <span style={cs("position:absolute;right:0;bottom:0;width:18px;height:18px;border-top:1px solid var(--line);border-left:1px solid var(--line);background:var(--card)")}></span>
               </div>
               <div style={cs("flex:1;min-width:260px;padding:16px 20px")}>

@@ -1,4 +1,5 @@
 import { cs } from "../cs.js";
+import Thumb from "../Thumb.jsx";
 
 function HeroSlide({ t }) {
   return (
@@ -8,7 +9,7 @@ function HeroSlide({ t }) {
       style={cs(`flex:${t.flex} 0 ${t.basis};min-width:${t.minw};cursor:pointer;display:flex;flex-direction:column;gap:12px;border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--card)`)}
     >
       <div style={cs("display:flex;gap:12px;min-width:0")}>
-        <div style={cs(`width:${t.logoSize};height:${t.logoSize};flex:none;border-radius:11px;background:${t.famBg};color:${t.famFg};display:flex;align-items:center;justify-content:center;font-size:${t.logoType};font-weight:700;letter-spacing:-.04em;overflow:hidden`)}>{t.initials}</div>
+        <Thumb url={t.imageUrl} bg={t.famBg} fg={t.famFg} initials={t.initials} size={t.logoSize} radius="11px" fontSize={t.logoType} />
         <div style={cs("flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center")}>
           <div style={cs("display:flex;align-items:baseline;gap:7px;min-width:0")}>
             <span style={cs(`font-size:${t.symType};font-weight:700;letter-spacing:-.03em;flex:none`)}>{t.symbol}</span>
@@ -94,7 +95,7 @@ export default function DiscoverPage({ v }) {
         <div style={cs(`display:grid;grid-template-columns:repeat(auto-fill,minmax(${v.isMobile ? "100%" : "330px"},1fr));gap:12px`)}>
           {v.feed.map((t) => (
             <div key={t.id} onClick={t.open} className="d-hover-line" style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;cursor:pointer;display:flex;gap:14px;padding:14px")}>
-              <div style={cs(`width:104px;height:104px;flex:none;border-radius:11px;background:${t.famBg};color:${t.famFg};display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;letter-spacing:-.04em;overflow:hidden`)}>{t.initials}</div>
+              <Thumb url={t.imageUrl} bg={t.famBg} fg={t.famFg} initials={t.initials} size="104px" radius="11px" fontSize="30px" />
 
               <div style={cs("flex:1;min-width:0;display:flex;flex-direction:column")}>
                 <div style={cs("display:flex;align-items:baseline;gap:7px;min-width:0")}>
@@ -140,7 +141,7 @@ export default function DiscoverPage({ v }) {
           {v.feed.map((t) => (
             <div key={t.id} onClick={t.open} style={cs("display:grid;min-width:760px;grid-template-columns:2.2fr .9fr .8fr .9fr .9fr 1.4fr;gap:14px;padding:12px 18px;border-bottom:1px solid var(--soft);align-items:center;cursor:pointer;font-family:'DM Mono',monospace;font-size:12.5px")}>
               <div style={cs("display:flex;align-items:center;gap:11px;min-width:0")}>
-                <div style={cs(`width:26px;height:26px;border:1px solid var(--line);background:${t.famBg};color:${t.famFg};flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:-.03em`)}>{t.initials}</div>
+                <Thumb url={t.imageUrl} bg={t.famBg} fg={t.famFg} initials={t.initials} size="26px" fontSize="11px" />
                 <span style={cs("font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;letter-spacing:-.02em")}>{t.symbol}</span>
                 <span style={cs("color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.name}</span>
                 <span style={cs("font-size:9.5px;letter-spacing:.1em;color:var(--mute);flex:none")}>{t.family}</span>

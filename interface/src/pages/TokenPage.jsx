@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { cs } from "../cs.js";
 import PriceChart from "../PriceChart.jsx";
+import Thumb from "../Thumb.jsx";
 
 export default function TokenPage({ v }) {
   const sel = v.sel;
@@ -29,8 +30,8 @@ export default function TokenPage({ v }) {
 
       <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);margin-bottom:16px;overflow:hidden")}>
         <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
-          <div style={cs(`width:${v.isMobile ? "56px" : "84px"};flex:none;border-right:1px solid var(--line);background:${sel.famBg};color:${sel.famFg};display:flex;align-items:center;justify-content:center;font-size:${v.isMobile ? "18px" : "26px"};font-weight:700;letter-spacing:-.03em;position:relative`)}>
-            {sel.initials}
+          <div style={cs(`width:${v.isMobile ? "56px" : "84px"};flex:none;border-right:1px solid var(--line);position:relative`)}>
+            <Thumb url={sel.imageUrl} bg={sel.famBg} fg={sel.famFg} initials={sel.initials} size="100%" fontSize={v.isMobile ? "18px" : "26px"} />
             <span style={cs(`position:absolute;right:0;bottom:0;width:18px;height:18px;border-top:1px solid var(--line);border-left:1px solid var(--line);background:${sel.chgColor === "var(--neg)" ? "var(--orange)" : "var(--lime)"}`)}></span>
           </div>
           <div style={cs("flex:1;min-width:260px;padding:16px 20px")}>

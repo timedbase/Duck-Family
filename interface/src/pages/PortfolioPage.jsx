@@ -1,6 +1,7 @@
 import { cs } from "../cs.js";
 import { ageLabel } from "../data.js";
 import { usdOrQuote } from "../adapters.js";
+import Thumb from "../Thumb.jsx";
 
 export default function PortfolioPage({ v }) {
   if (!v.connected) {
@@ -75,7 +76,7 @@ export default function PortfolioPage({ v }) {
               const valueUsd = co && co.priceUsd != null ? balanceTokens * co.priceUsd : null;
               return (
                 <div key={i} style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;padding:14px;display:flex;gap:14px")}>
-                  <div style={cs(`width:56px;height:56px;flex:none;border-radius:11px;background:${co ? co.famBg : "var(--card)"};color:${co ? co.famFg : "var(--ink)"};display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;letter-spacing:-.03em`)}>{co ? co.initials : "??"}</div>
+                  <Thumb url={co?.imageUrl} bg={co ? co.famBg : "var(--card)"} fg={co ? co.famFg : "var(--ink)"} initials={co ? co.initials : "??"} size="56px" radius="11px" fontSize="17px" />
                   <div style={cs("flex:1;min-width:0;display:flex;flex-direction:column")}>
                     <div style={cs("display:flex;align-items:baseline;gap:7px;min-width:0")}>
                       <span style={cs("font-size:15.5px;font-weight:700;letter-spacing:-.025em;flex:none")}>{co ? co.ticker : h.token?.id?.slice(0, 8)}</span>
@@ -126,7 +127,7 @@ export default function PortfolioPage({ v }) {
               const co = coinById.get(t.id);
               return (
                 <div key={i} style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px")}>
-                  <span style={cs(`width:34px;height:34px;flex:none;border-radius:11px;background:${co ? co.famBg : "var(--card)"};color:${co ? co.famFg : "var(--ink)"};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;letter-spacing:-.03em`)}>{co ? co.initials : "??"}</span>
+                  <Thumb url={co?.imageUrl} bg={co ? co.famBg : "var(--card)"} fg={co ? co.famFg : "var(--ink)"} initials={co ? co.initials : "??"} size="34px" radius="11px" fontSize="12px" />
                   <div style={cs("min-width:0;flex:1")}>
                     <button onClick={() => v.openToken(t.id)} style={cs("border:0;background:transparent;cursor:pointer;padding:0;text-align:left;font-size:13.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%")}>{co ? co.ticker + " · " + co.name : t.id.slice(0, 10)}</button>
                     <div style={cs("font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.family} · {ageLabel(Math.round((Date.now() / 1000 - Number(t.createdAt)) / 60))} old</div>

@@ -831,7 +831,7 @@ function buildViewModel(ctx) {
   const isInstant = (c) => c.family === "INSTANT";
   const shape = (c) => ({
     id: c.id, family: c.family === "CURVE" ? "BONDING" : c.family === "INSTANT" ? "INSTANT LAUNCH" : "CROWDLAUNCH",
-    famBg: c.famBg, famFg: c.famFg, initials: c.initials, symbol: c.ticker, name: c.name,
+    famBg: c.famBg, famFg: c.famFg, initials: c.initials, imageUrl: c.imageUrl, symbol: c.ticker, name: c.name,
     creator: shortAddress(c.creator), age: ageLabel(c.ageMin),
     price: usdOrQuote(c.priceUsd, c.price, c.quote),
     chg: c.chg != null ? (c.chg >= 0 ? "+" : "") + c.chg.toFixed(1) + "%" : "—",
@@ -966,7 +966,7 @@ function buildViewModel(ctx) {
     coin: c,
     sel: c ? {
       name: c.name, symbol: c.ticker, family: c.family === "CURVE" ? "BONDING" : c.family === "INSTANT" ? "INSTANT LAUNCH" : "CROWDLAUNCH",
-      famBg: c.famBg, famFg: c.famFg, initials: c.initials, address: shortAddress(c.id), quote: c.quote,
+      famBg: c.famBg, famFg: c.famFg, initials: c.initials, imageUrl: c.imageUrl, address: shortAddress(c.id), quote: c.quote,
       price: ohlc ? "$" + ohlc.c : c.curveSeed ? "$" + compactNumber(c.curveSeed.price) : "—",
       chg: ohlc ? (ohlc.pctChange >= 0 ? "+" : "−") + Math.abs(ohlc.pctChange).toFixed(1) + "%" : "—",
       chgColor: ohlc ? (ohlc.up ? "var(--pos)" : "var(--neg)") : "var(--mute)",
@@ -1153,7 +1153,7 @@ function buildCampaignModel(c, s, myContribution) {
   }
 
   return {
-    initials: c.initials, name: c.name, symbol: c.ticker, token: shortAddress(c.id), tokenAddress: c.id, status, stBg, stFg,
+    initials: c.initials, imageUrl: c.imageUrl, name: c.name, symbol: c.ticker, token: shortAddress(c.id), tokenAddress: c.id, status, stBg, stFg,
     desc: c.desc, socials: c.socials,
     raised: raised.toFixed(4), goal: goal.toFixed(4), pct: Math.round(pct) + "%",
     backers: detail ? String(detail.contributions?.length ?? 0) : "…",
