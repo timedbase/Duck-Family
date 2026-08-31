@@ -115,29 +115,36 @@ router.get("/:address/trades", async (req, res) => {
     const data = await querySubgraph<{
       trades: SubgraphTrade[];
       token: { quoteToken: string | null } | null;
-      pools: { id: string }[];
+      // A token can only ever get one locked LP position, ever --
+      // DuckLocker.registerPosition reverts if positions[token] is already
+      // set (Position.id is the token address itself, a 1:1 mapping
+      // enforced on-chain). Position.poolId is therefore THE one real pool
+      // this token trades on, if any -- reading it this way, instead of
+      // searching Pool by token, holds regardless of whether Pool's own
+      // schema happens to allow more than one row per token.
+      position: { poolId: string } | null;
     }>(
       `query TokenTrades($token: String!, $first: Int!) {
         trades(first: $first, orderBy: blockNumber, orderDirection: desc, where: { token: $token }) {
           id trader side quoteAmount tokenAmount tokensToDead raisedQuoteAfter timestamp blockNumber txHash
         }
         token(id: $token) { quoteToken }
-        pools(where: { token: $token }) { id }
+        position(id: $token) { poolId }
       }`,
       { token: address, first: limit }
     );
 
     let poolTrades: SubgraphTrade[] = [];
-    if (data.pools.length > 0) {
+    if (data.position?.poolId) {
       const quoteToken = data.token?.quoteToken ?? ZERO_ADDRESS;
       const tokenIsCurrency0 = BigInt(address) < BigInt(quoteToken);
       const swapData = await querySubgraph<{ poolSwaps: PoolSwapRow[] }>(
-        `query PoolSwaps($pools: [String!]!, $first: Int!) {
-          poolSwaps(first: $first, orderBy: blockNumber, orderDirection: desc, where: { pool_in: $pools }) {
+        `query PoolSwaps($pool: String!, $first: Int!) {
+          poolSwaps(first: $first, orderBy: blockNumber, orderDirection: desc, where: { pool: $pool }) {
             id sender amount0 amount1 timestamp blockNumber txHash
           }
         }`,
-        { pools: data.pools.map((p) => p.id), first: limit }
+        { pool: data.position.poolId, first: limit }
       );
       poolTrades = swapData.poolSwaps.map((s) => poolSwapToTrade(s, tokenIsCurrency0));
     }

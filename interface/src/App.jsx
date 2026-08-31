@@ -518,14 +518,18 @@ export default function App() {
       const tokenId = position?.[0] ?? 0n;
       const poolId = position?.[3] ?? null;
       const hasPool = !!poolId && poolId !== "0x0000000000000000000000000000000000000000000000000000000000000";
-      let pool = null, ctoApp = null, hookAccrued = 0n, hookSplits = [], ctoFee = null;
+      let pool = null, ctoApp = null, hookAccrued = 0n, hookAccruedFailed = false, hookSplits = [], ctoFee = null;
       if (hasPool) {
-        [pool, ctoApp, hookAccrued, hookSplits, ctoFee] = await Promise.all([
-          getPool(poolId, coin.hook).catch(() => null), getCtoApplication(poolId, coin.hook).catch(() => null), getHookAccruedFees(poolId, coin.hook).catch(() => 0n),
+        let hookAccruedResult;
+        [pool, ctoApp, hookAccruedResult, hookSplits, ctoFee] = await Promise.all([
+          getPool(poolId, coin.hook).catch(() => null), getCtoApplication(poolId, coin.hook).catch(() => null),
+          getHookAccruedFees(poolId, coin.hook).then((v) => ({ ok: true, v })).catch(() => ({ ok: false, v: 0n })),
           getHookFeeSplits(poolId, coin.hook).catch(() => []), getCtoFee(coin.hook).catch(() => null),
         ]);
+        hookAccrued = hookAccruedResult.v;
+        hookAccruedFailed = !hookAccruedResult.ok;
       }
-      set({ creatorData: { hasPool, tokenId, poolId, pool, creator, ctoApp, hookAccrued, hookSplits, ctoFee }, creatorLoading: false });
+      set({ creatorData: { hasPool, tokenId, poolId, pool, creator, ctoApp, hookAccrued, hookAccruedFailed, hookSplits, ctoFee }, creatorLoading: false });
     } catch (e) {
       console.error("failed to load creator data", e);
       set({ creatorData: null, creatorLoading: false });
@@ -797,6 +801,7 @@ function buildViewModel(ctx) {
       blurb: "Anyone can pay the CTO fee to apply to take over the creator fee stream. The owner approves or rejects the application. Metadata, supply and pool can never change — a takeover moves the fee claim, not the token.",
     } : null,
     hookAccrued: s.creatorData ? Number(s.creatorData.hookAccrued || 0n) / 1e18 : 0,
+    hookAccruedFailed: !!s.creatorData?.hookAccruedFailed,
     hookSplits: s.creatorData?.hookSplits || [],
     buying, amt, myBalanceTokens, myContribution,
     buy: (amtEth) => ctx.buy(c, amtEth), sell: (tokenAmt) => ctx.sell(c, tokenAmt),

@@ -207,8 +207,8 @@ export default function TokenPage({ v }) {
                       <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;align-items:start")}>
                         <div style={cs("border:2px solid var(--ink);background:var(--lime);padding:18px")}>
                           <div style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>HOOK SELL-FEE ACCRUED (YOURS)</div>
-                          <div style={cs("font-family:'DM Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-.04em;margin:7px 0 3px")}>{v.hookAccrued.toFixed(5)} {sel.quote}</div>
-                          <div style={cs("font-family:'DM Mono',monospace;font-size:11.5px;margin-bottom:16px")}>This same claim also sweeps the LP position's trading fee — that side is always burned (token) / sent to the platform (quote), never paid to you</div>
+                          <div style={cs("font-family:'DM Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-.04em;margin:7px 0 3px")}>{v.hookAccruedFailed ? "—" : v.hookAccrued.toFixed(5) + " " + sel.quote}</div>
+                          <div style={cs("font-family:'DM Mono',monospace;font-size:11.5px;margin-bottom:16px")}>{v.hookAccruedFailed ? "Couldn't read this from the chain — try reopening this tab." : "This same claim also sweeps the LP position's trading fee — that side is always burned (token) / sent to the platform (quote), never paid to you"}</div>
                           <button onClick={v.claimCreatorAndHookFees} disabled={v.txPending} style={cs("width:100%;padding:13px;border:2px solid var(--ink);background:var(--ink);color:var(--card);font-size:14px;font-weight:700;cursor:pointer")}>Claim your hook fee</button>
                         </div>
                         {tok.family === "CURVE" && (
