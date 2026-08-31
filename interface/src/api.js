@@ -42,4 +42,5 @@ export const api = {
   curve: () => getJSON("/curve"),
   launcher: () => getJSON("/launcher"),
   raise: () => getJSON("/raise"),
+  stats: () => getJSON("/stats"),
 };

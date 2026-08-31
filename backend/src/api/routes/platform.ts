@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { publicClient } from "../../chain/client.js";
+import { querySubgraph } from "../../subgraph/client.js";
 import {
   DUCK_INCUBATION,
   DUCK_LAUNCHER,
@@ -41,12 +42,13 @@ router.get("/locker", async (_req, res) => {
 
 router.get("/hook", async (_req, res) => {
   try {
-    const [owner, platformWallet, ctoFee] = await Promise.all([
+    const [owner, platformWallet, ctoFee, hookFeeDefaultBps] = await Promise.all([
       publicClient.readContract({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "owner" }),
       publicClient.readContract({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "platformWallet" }),
       publicClient.readContract({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "ctoFee" }),
+      publicClient.readContract({ address: DUCK_HOOK, abi: DUCK_HOOK_ABI, functionName: "HOOK_FEE_DEFAULT_BPS" }),
     ]);
-    res.json({ address: DUCK_HOOK, owner, platformWallet, ctoFee: ctoFee.toString() });
+    res.json({ address: DUCK_HOOK, owner, platformWallet, ctoFee: ctoFee.toString(), hookFeeDefaultBps: Number(hookFeeDefaultBps) });
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }
@@ -165,6 +167,69 @@ router.get("/quote-assets", async (_req, res) => {
       ...RAISE_DEFAULT_QUOTE_ASSETS.map((t, i) => ({ address: t.address, symbol: t.symbol, allowed: results[i] })),
     ];
     res.json(assets);
+  } catch (err) {
+    res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Stats-page aggregates, queried from the subgraph rather than the chain
+// directly (unlike every other route in this file). `first: 1000` on each
+// query is a real cap -- fine at today's trade volume, not fine forever;
+// revisit with a paginated or bucketed count once any of these routinely
+// hits it.
+router.get("/stats", async (_req, res) => {
+  const now = Math.floor(Date.now() / 1000);
+  const cutoff24h = now - 24 * 60 * 60;
+
+  try {
+    const data = await querySubgraph<{
+      tokens: { id: string; family: "CURVE" | "INSTANT" | "CAMPAIGN"; createdAt: string }[];
+      tokenHourDatas: { token: { family: "CURVE" | "INSTANT" | "CAMPAIGN"; migrated: boolean | null }; volumeUsd: string }[];
+      trades: { id: string }[];
+      poolSwaps: { id: string }[];
+      contributions: { amount: string }[];
+    }>(
+      `query PlatformStats($cutoff: BigInt!) {
+        tokens(first: 1000) { id family createdAt }
+        tokenHourDatas(first: 1000, where: { hourStartUnix_gte: $cutoff }) {
+          token { family migrated }
+          volumeUsd
+        }
+        trades(first: 1000, where: { timestamp_gte: $cutoff }) { id }
+        poolSwaps(first: 1000, where: { timestamp_gte: $cutoff }) { id }
+        contributions(first: 1000, where: { firstContributedAt_gte: $cutoff }) { amount }
+      }`,
+      { cutoff: String(cutoff24h) }
+    );
+
+    const launches24h = data.tokens.filter((t) => Number(t.createdAt) >= cutoff24h).length;
+    const trades24h = data.trades.length + data.poolSwaps.length;
+
+    let dexVolumeUsd = 0;
+    let curveVolumeUsd = 0;
+    for (const row of data.tokenHourDatas) {
+      const usd = Number(row.volumeUsd || 0);
+      if (row.token.migrated || row.token.family === "INSTANT") dexVolumeUsd += usd;
+      else if (row.token.family === "CURVE") curveVolumeUsd += usd;
+    }
+    const tradingVolumeUsd = dexVolumeUsd + curveVolumeUsd;
+
+    // Crowdlaunch contributions are raw native ETH, not USD-resolved volume
+    // -- reported separately rather than blended into the same percentage
+    // split as dex/curve (which IS real USD), to avoid implying a false
+    // apples-to-apples comparison the way a single fabricated pie would.
+    const raiseContributedEth = data.contributions.reduce((sum, c) => sum + Number(c.amount) / 1e18, 0);
+
+    res.json({
+      launches24h,
+      trades24h,
+      tradingVolumeUsd,
+      venues: [
+        { key: "dex", label: "DEX pools (V4)", volumeUsd: dexVolumeUsd, pct: tradingVolumeUsd > 0 ? (dexVolumeUsd / tradingVolumeUsd) * 100 : 0 },
+        { key: "curve", label: "Bonding curves", volumeUsd: curveVolumeUsd, pct: tradingVolumeUsd > 0 ? (curveVolumeUsd / tradingVolumeUsd) * 100 : 0 },
+      ],
+      raiseContributedEth,
+    });
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }

@@ -14,6 +14,10 @@ export const DUCK_HOOK_ABI = [
   { type: "function", name: "owner", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
   { type: "function", name: "platformWallet", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
   { type: "function", name: "ctoFee", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  // Public constant -- the sell-fee bps applied unless a pool was created
+  // with a nonzero hookFeeBps override (rare; the platform's own launch
+  // flows all pass 0, meaning "use this default").
+  { type: "function", name: "HOOK_FEE_DEFAULT_BPS", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
 ] as const;
 
 export const DUCK_INCUBATION_ABI = [

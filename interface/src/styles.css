@@ -1,13 +1,14 @@
 :root {
-  --paper: #ece8df;
+  --paper: #f2efe8;
   --card: #fffefb;
-  --ink: #111110;
-  --soft: #dcd6c8;
-  --mute: #6b665c;
-  --lime: #c8f169;
-  --orange: #ff5c3a;
-  --pos: #0f8a4f;
-  --neg: #d2331a;
+  --ink: #1a1917;
+  --line: #e0dbd0;
+  --soft: #e6e1d6;
+  --mute: #77726a;
+  --lime: #d6ee8f;
+  --orange: #ee6b4d;
+  --pos: #137f4c;
+  --neg: #c23d24;
 }
 html, body { margin: 0; padding: 0; background: var(--paper); }
 * { box-sizing: border-box; }
@@ -18,6 +19,10 @@ a:hover { border-color: var(--ink); }
 input, button, textarea, select { font-family: inherit; color: inherit; }
 input:focus, textarea:focus, select:focus { outline: none; }
 input::placeholder, textarea::placeholder { color: var(--mute); }
+input, select, textarea { border-radius: 8px; }
+button { border-radius: 0; transition: background .14s ease, color .14s ease, border-color .14s ease; }
+.d-hover-line:hover { border-color: var(--mute) !important; }
+.d-hover-lime:hover { background: var(--lime) !important; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes popin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes slidein { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }

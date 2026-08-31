@@ -10,6 +10,11 @@ export const DUCK_LAUNCHER = getAddress("0x2A84711A5c0Ee62118CEee1A37C0dA46a6980
 export const DUCK_RAISE = getAddress("0x39D17950BaaD5737d08b027F0494E2C261B37Cf2");
 export const DUCK_LOCKER = getAddress("0x74738a87e4D4E0eB2706724a9314d1b4452ecdFE");
 export const DUCK_HOOK = getAddress("0xA547E097bCcA60737b8264C4dDB9bC3bE74880C4");
+// Standalone, platform-owned metadata-override registry -- see
+// contracts/common/DuckMetaOverride.sol. The backend has no route reading
+// this directly today (the subgraph indexes its events onto
+// Token.metaOverrideUri instead); kept here for parity / future use.
+export const DUCK_META_OVERRIDE = getAddress("0x0BC85b468f74959d743551948a5474Ab95Db73B1");
 
 // Verified Ink-chain (57073) infrastructure.
 export const WETH = getAddress("0x4200000000000000000000000000000000000006");

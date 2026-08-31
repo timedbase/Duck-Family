@@ -15,16 +15,16 @@ function Field({ label, hint, children }) {
   );
 }
 function TextInput(props) {
-  return <input {...props} style={cs("padding:12px;border:2px solid var(--ink);background:var(--paper);font-size:14px;outline:0")} />;
+  return <input {...props} style={cs("padding:12px;border:1px solid var(--line);background:var(--paper);font-size:14px;outline:0")} />;
 }
 function LockedInput({ value }) {
-  return <input value={value} readOnly style={cs("padding:12px;border:2px solid var(--ink);background:var(--card);font-size:14px;outline:0;color:var(--mute);font-family:'DM Mono',monospace")} />;
+  return <input value={value} readOnly style={cs("padding:12px;border:1px solid var(--line);background:var(--card);font-size:14px;outline:0;color:var(--mute);font-family:'DM Mono',monospace")} />;
 }
 function QuoteChips({ options, value, onPick }) {
   return (
     <div style={cs("display:grid;grid-template-columns:repeat(3,1fr);gap:8px")}>
       {options.map((o) => (
-        <button key={o.address} onClick={() => onPick(o.address)} style={cs(`border:2px solid var(--ink);cursor:pointer;padding:11px 10px;font-family:'DM Mono',monospace;font-size:12.5px;font-weight:700;background:${value.toLowerCase() === o.address.toLowerCase() ? "var(--ink)" : "var(--card)"};color:${value.toLowerCase() === o.address.toLowerCase() ? "var(--card)" : "var(--ink)"}`)}>{o.label}</button>
+        <button key={o.address} onClick={() => onPick(o.address)} style={cs(`border:1px solid var(--line);border-radius:8px;cursor:pointer;padding:11px 10px;font-family:'DM Mono',monospace;font-size:12.5px;font-weight:700;background:${value.toLowerCase() === o.address.toLowerCase() ? "var(--ink)" : "var(--card)"};color:${value.toLowerCase() === o.address.toLowerCase() ? "var(--card)" : "var(--ink)"}`)}>{o.label}</button>
       ))}
     </div>
   );
@@ -79,8 +79,8 @@ export default function CreateFormPage({ v }) {
       <button onClick={v.backToChooser} style={cs("border:0;background:transparent;font-family:'DM Mono',monospace;font-size:11.5px;letter-spacing:.1em;color:var(--mute);cursor:pointer;padding:0 0 14px")}>← ALL LAUNCH TYPES</button>
 
       <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 336px"};gap:16px;align-items:start`)}>
-        <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink)")}>
-          <div style={cs(`padding:${v.isMobile ? "18px" : "22px 24px"};border-bottom:2px solid var(--ink);background:${FORM.accent};color:${FORM.accentFg}`)}>
+        <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
+          <div style={cs(`padding:${v.isMobile ? "18px" : "22px 24px"};border-bottom:1px solid var(--line);background:${FORM.accent};color:${FORM.accentFg}`)}>
             <div style={cs(`font-size:${v.isMobile ? "21px" : "26px"};font-weight:700;letter-spacing:-.04em;line-height:1.05`)}>{FORM.title}</div>
             <div style={cs("font-size:13.5px;line-height:1.55;margin-top:10px;max-width:66ch;opacity:.85")}>{FORM.sub}</div>
           </div>
@@ -153,7 +153,7 @@ export default function CreateFormPage({ v }) {
               <span style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>DESCRIPTION</span>
               <textarea rows="3" placeholder="What is this token for?" value={family === "incubation" ? v.draftCurve.desc : family === "launcher" ? v.draftInstant.desc : v.draftCampaign.desc}
                 onChange={(e) => (family === "incubation" ? v.setCurve({ desc: e.target.value.slice(0, 140) }) : family === "launcher" ? v.setInstant({ desc: e.target.value.slice(0, 140) }) : v.setCampaign({ desc: e.target.value.slice(0, 140) }))}
-                style={cs("padding:12px;border:2px solid var(--ink);background:var(--paper);font-size:14px;outline:0;resize:vertical")} />
+                style={cs("padding:12px;border:1px solid var(--line);background:var(--paper);font-size:14px;outline:0;resize:vertical")} />
             </label>
 
             <div>
@@ -166,8 +166,8 @@ export default function CreateFormPage({ v }) {
             </div>
           </div>
 
-          <div style={cs("border-top:2px solid var(--ink);padding:20px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap")}>
-            <label style={cs("width:56px;height:56px;border:2px dashed var(--mute);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;color:var(--mute);text-align:center;line-height:1.2;flex:none;cursor:pointer;overflow:hidden")}>
+          <div style={cs("border-top:1px solid var(--line);padding:20px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap")}>
+            <label style={cs("width:56px;height:56px;border:2px dashed var(--mute);border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;color:var(--mute);text-align:center;line-height:1.2;flex:none;cursor:pointer;overflow:hidden")}>
               <input type="file" accept="image/*" onChange={v.onImagePick} style={cs("display:none")} />
               {v.draftImage.previewUrl ? <img src={v.draftImage.previewUrl} alt="" style={cs("width:100%;height:100%;object-fit:cover")} /> : <>TOKEN<br />LOGO</>}
             </label>
@@ -179,23 +179,23 @@ export default function CreateFormPage({ v }) {
             </div>
           </div>
 
-          <div style={cs("border-top:2px solid var(--ink);padding:20px 24px")}>
-            <button onClick={v.submitCreate} style={cs("padding:15px 26px;border:2px solid var(--ink);background:var(--ink);color:var(--card);font-size:15px;font-weight:700;cursor:pointer;box-shadow:3px 3px 0 var(--ink)")}>{v.createCta}</button>
+          <div style={cs("border-top:1px solid var(--line);padding:20px 24px")}>
+            <button onClick={v.submitCreate} style={cs("padding:15px 26px;border:1px solid var(--line);border-radius:9px;background:var(--ink);color:var(--card);font-size:15px;font-weight:700;cursor:pointer")}>{v.createCta}</button>
           </div>
         </div>
 
         <div style={cs(`display:flex;flex-direction:column;gap:16px;${v.isMobile ? "" : "position:sticky;top:80px"}`)}>
-          <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink)")}>
-            <div style={cs("padding:11px 15px;border-bottom:2px solid var(--ink);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>ON SUBMIT</div>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
+            <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>ON SUBMIT</div>
             {ON_SUBMIT[family].map((t, i) => (
               <div key={i} style={cs("display:flex;gap:12px;padding:13px 15px;border-bottom:1px solid var(--soft)")}>
-                <span style={cs("width:20px;height:20px;border:2px solid var(--ink);font-family:'DM Mono',monospace;font-size:10.5px;display:flex;align-items:center;justify-content:center;flex:none")}>{i + 1}</span>
+                <span style={cs("width:20px;height:20px;border-radius:999px;border:1px solid var(--line);font-family:'DM Mono',monospace;font-size:10.5px;display:flex;align-items:center;justify-content:center;flex:none")}>{i + 1}</span>
                 <span style={cs("font-size:12.5px;line-height:1.45")}>{t}</span>
               </div>
             ))}
           </div>
-          <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink)")}>
-            <div style={cs("padding:11px 15px;border-bottom:2px solid var(--ink);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>NOTES</div>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
+            <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>NOTES</div>
             {costs.map((c, i) => (
               <div key={i} style={cs("display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12.5px")}>
                 <span style={cs("color:var(--mute)")}>{c.k}</span><span style={cs("font-weight:500;text-align:right")}>{c.v}</span>

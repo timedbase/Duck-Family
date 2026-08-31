@@ -44,6 +44,15 @@ type Token @entity(immutable: false) {
   symbol: String
   metaUri: String
 
+  # Set by DuckMetaOverride (a standalone, platform-owned registry) when the
+  # platform has registered this token with a replacement metaURI -- e.g. to
+  # fix wrong metadata from creation, or for a CTO whose takeover needs the
+  # presentation corrected. Null means not overridden -- metaUri above is
+  # still the one to use. Non-null means every consumer (backend, interface)
+  # should treat THIS as authoritative instead of metaUri, without the
+  # original ever actually changing on-chain.
+  metaOverrideUri: String
+
   # Running total of every Transfer to the standard 0x…dEaD burn address,
   # across every family -- the curve-migration penalty burn, DuckLocker's
   # LP-fee token-side burn, and any manual send all land here identically,

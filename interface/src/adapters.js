@@ -44,6 +44,47 @@ export function labelFor(address, extraLabels) {
   return (extraLabels && extraLabels[key]) || STATIC_LABELS[key] || null;
 }
 
+// Compact "leading zero count" notation for small decimals -- the same
+// convention pump.fun/Photon/etc. use, e.g. 0.000004338325 becomes
+// "0.0₄4338" instead of a hard-to-scan run of zeros. Only kicks in below
+// 0.0001, where plain fixed-decimal formatting stops being scannable;
+// anything at or above that (including large numbers like a market cap)
+// uses normal formatting.
+const SUBSCRIPT_DIGITS = "₀₁₂₃₄₅₆₇₈₉";
+function toSubscript(num) {
+  return String(num).split("").map((d) => SUBSCRIPT_DIGITS[+d]).join("");
+}
+export function compactNumber(n) {
+  if (n === 0) return "0";
+  if (n >= 0.0001) return n.toLocaleString(undefined, { maximumFractionDigits: n < 1 ? 6 : n < 1000 ? 3 : 2 });
+  const str = n.toFixed(24);
+  const match = str.match(/^0\.(0+)(\d+)/);
+  if (!match) return n.toString();
+  const zeroCount = match[1].length;
+  const significant = match[2].slice(0, 4);
+  return "0.0" + toSubscript(zeroCount - 1) + significant;
+}
+
+// mc/raised/vol are denominated in whatever quote asset a token trades
+// against (ETH, USDC, USDT0, or a platform token) -- never real USD without
+// an actual conversion (see usdOrQuote below). Shows the real
+// quote-denominated number with its real unit instead of a fabricated
+// dollar sign.
+export function quoteAmount(n, symbol) {
+  if (n == null) return "—";
+  return compactNumber(n) + " " + symbol;
+}
+
+// Real USD, resolved via the subgraph's ETH/USDC-USDT0 reference price (or
+// the 1:1 stablecoin peg) -- shown when available. Null for a platform-
+// token-quoted pool (that token's own USD value isn't resolvable without
+// its own tracked market) -- falls back to the honest quote-denominated
+// figure instead of fabricating a dollar amount.
+export function usdOrQuote(usd, quote, symbol) {
+  if (usd != null) return "$" + compactNumber(usd);
+  return quoteAmount(quote, symbol);
+}
+
 // `meta`: for CURVE/INSTANT tokens, { name, symbol } fetched separately via
 // chain/tokenMeta.js's fetchTokenMeta (see its header comment for why —
 // neither TokenCreated nor TokenLaunched carries name/symbol). CAMPAIGN
@@ -132,6 +173,10 @@ export function tokenToCoin(t, i, meta) {
     holders: Number(t.holderCount || 0),
     mint: shortAddress(t.id),
     metaUri: t.metaUri || null, // indexed directly now; loadTokenMeta falls back to an on-chain read if still empty (e.g. a token created moments ago, ahead of the subgraph)
+    // Set by DuckMetaOverride (platform-controlled) when this token's
+    // original metadata has been replaced -- App.jsx's loadTokenMeta prefers
+    // this over metaUri whenever it's present.
+    metaOverrideUri: t.metaOverrideUri || null,
     imageUrl: null,
     rawTrades: [],
     holderRows: [],
@@ -168,13 +213,6 @@ export function buildSparkline(rawTrades, count = 26) {
   const up = bucketed[bucketed.length - 1] >= bucketed[0];
   const color = up ? "var(--lime)" : "var(--orange)";
   return bucketed.map((p) => ({ h: (18 + ((p - lo) / span) * 82).toFixed(0), c: color }));
-}
-
-// Progress ticks (curve fill / raise progress) as an array of filled/unfilled
-// cell colors for the tick-strip visual.
-export function buildTicks(count, pct, onColor, offColor = "var(--paper)") {
-  const filled = Math.round((count * Math.min(100, Math.max(0, pct))) / 100);
-  return Array.from({ length: count }, (_, i) => (i < filled ? onColor : offColor));
 }
 
 export function tradeToRow(tr, labels, quoteSymbolLabel = "ETH") {
@@ -274,7 +312,7 @@ export function holderToRow(h, i, totalSupply, labels) {
     tag,
     tagBg: tagged ? "var(--paper)" : "transparent",
     tagFg: tagged ? "var(--mute)" : "var(--mute)",
-    tagBd: tagged ? "2px solid var(--ink)" : "0",
+    tagBd: tagged ? "1px solid var(--line)" : "0",
   };
 }
 

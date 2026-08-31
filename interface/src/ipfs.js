@@ -75,3 +75,16 @@ export function resolveTokenSocials(metaUri) {
 export function resolveTokenDescription(metaUri) {
   return resolveTokenMeta(metaUri).then((data) => (typeof data?.description === "string" ? data.description : ""));
 }
+
+// Only meaningful for a DuckMetaOverride override URI -- the normal pipeline
+// always shows the on-chain ERC20 name()/symbol() (indexed once at creation,
+// immutable), never these JSON fields. An override can't touch the real
+// contract, so this is how it corrects what's *displayed* instead. Returns
+// null for either field the JSON doesn't provide, so callers can fall back
+// to the original on-chain values field-by-field rather than blanking both.
+export function resolveTokenNameSymbol(metaUri) {
+  return resolveTokenMeta(metaUri).then((data) => ({
+    name: typeof data?.name === "string" && data.name.trim() ? data.name.trim() : null,
+    symbol: typeof data?.symbol === "string" && data.symbol.trim() ? data.symbol.trim() : null,
+  }));
+}

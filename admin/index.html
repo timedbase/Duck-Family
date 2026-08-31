@@ -1,0 +1,19 @@
+<!--
+  duckfun.family — admin dashboard. Internal, owner-only tool: every action
+  here is a transaction the connected wallet signs itself (RainbowKit), the
+  same trust model as the public interface's trades. Talks directly to the
+  chain (writes + simple view reads) and to the public subgraph endpoint
+  (lists) -- no dependency on ../backend.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>duckfun.family — Admin</title>
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="/src/main.jsx"></script>
+</body>
+</html>

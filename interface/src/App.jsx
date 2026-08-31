@@ -9,8 +9,11 @@ import CreateChooserPage from "./pages/CreateChooserPage.jsx";
 import CreateFormPage from "./pages/CreateFormPage.jsx";
 import CampaignPage from "./pages/CampaignPage.jsx";
 import PortfolioPage from "./pages/PortfolioPage.jsx";
+import StatsPage from "./pages/StatsPage.jsx";
+import HowItWorksPage from "./pages/HowItWorksPage.jsx";
+import DocsPage from "./pages/DocsPage.jsx";
 import { api, shortAddress, quoteSymbol, API_BASE } from "./api.js";
-import { tokenToCoin, tradeToRow, holderToRow, buildCandles, buildSparkline, buildTicks, labelFor } from "./adapters.js";
+import { tokenToCoin, tradeToRow, holderToRow, buildCandles, buildSparkline, labelFor, compactNumber, quoteAmount, usdOrQuote } from "./adapters.js";
 import {
   createCurveToken, buyCurve, buyCurveWithNative, sellCurve, claimCurveFee,
   launchInstant,
@@ -24,7 +27,7 @@ import { previewCurveBuy, previewCurveSell, previewCurveBuyWithNative, previewPo
 import { ZERO_ADDRESS, DEFAULT_QUOTE_TOKENS, RAISE_DEFAULT_QUOTE_ASSETS } from "./chain/addresses.js";
 import { fetchTokenMeta, fetchTokenMetaUri } from "./chain/tokenMeta.js";
 import { findBlockedTerm } from "./moderation.js";
-import { resolveTokenImage, resolveTokenSocials, resolveTokenDescription } from "./ipfs.js";
+import { resolveTokenImage, resolveTokenSocials, resolveTokenDescription, resolveTokenNameSymbol } from "./ipfs.js";
 
 const REFRESH_MS = 15000;
 const GAS_RESERVE_WEI = parseEther("0.005");
@@ -33,56 +36,6 @@ const INK = "var(--ink)", CARD = "var(--card)", LIME = "var(--lime)", ORANGE = "
 function truncateDecimals(numStr, decimals) {
   const [whole, frac = ""] = numStr.split(".");
   return frac.length > decimals ? `${whole}.${frac.slice(0, decimals)}` : numStr;
-}
-
-// money()'s "$" prefix implies real USD -- wrong for a value actually
-// denominated in whatever quote asset a token trades against (ETH, USDC,
-// USDT0, or a platform token), which is all mc/raised/vol ever are without
-// a real USD conversion (not built yet -- see the subgraph-level spot-price
-// plan). A tiny ETH-scale number like 2.5 rendered as money() would show
-// "$3", implying a $3 market cap when it's actually ~2.5 ETH. Shows the
-// real quote-denominated number with its real unit instead of a fabricated
-// dollar sign.
-const SUBSCRIPT_DIGITS = "₀₁₂₃₄₅₆₇₈₉";
-function toSubscript(num) {
-  return String(num).split("").map((d) => SUBSCRIPT_DIGITS[+d]).join("");
-}
-
-// Compact "leading zero count" notation for small decimals -- the same
-// convention pump.fun/Photon/etc. use, e.g. 0.000004338325 becomes
-// "0.0₄4338" instead of a hard-to-scan run of zeros. Only kicks in below
-// 0.0001, where plain fixed-decimal formatting stops being scannable;
-// anything at or above that (including large numbers like a market cap)
-// uses normal formatting.
-function compactNumber(n) {
-  if (n === 0) return "0";
-  if (n >= 0.0001) return n.toLocaleString(undefined, { maximumFractionDigits: n < 1 ? 6 : n < 1000 ? 3 : 2 });
-  const str = n.toFixed(24);
-  const match = str.match(/^0\.(0+)(\d+)/);
-  if (!match) return n.toString();
-  const zeroCount = match[1].length;
-  const significant = match[2].slice(0, 4);
-  return "0.0" + toSubscript(zeroCount - 1) + significant;
-}
-
-// mc/raised/vol are denominated in whatever quote asset a token trades
-// against (ETH, USDC, USDT0, or a platform token) -- never real USD without
-// an actual conversion (see usdOrQuote below). Shows the real
-// quote-denominated number with its real unit instead of a fabricated
-// dollar sign.
-function quoteAmount(n, symbol) {
-  if (n == null) return "—";
-  return compactNumber(n) + " " + symbol;
-}
-
-// Real USD, resolved via the subgraph's ETH/USDC-USDT0 reference price (or
-// the 1:1 stablecoin peg) -- shown when available. Null for a platform-
-// token-quoted pool (that token's own USD value isn't resolvable without
-// its own tracked market) -- falls back to the honest quote-denominated
-// figure instead of fabricating a dollar amount.
-function usdOrQuote(usd, quote, symbol) {
-  if (usd != null) return "$" + compactNumber(usd);
-  return quoteAmount(quote, symbol);
 }
 
 // ETH first (always tradeable directly), then the platform's default-allowed
@@ -116,7 +69,7 @@ export default function App() {
   const { openConnectModal } = useConnectModal();
 
   const [s, setS] = useState({
-    mobile: false,
+    mobile: false, menuOpen: false,
     screen: "home", layout: "cards", filter: "All", query: "",
     tokenId: null, side: "buy", amount: "250", range: "1D", chartMode: "price", tab: "Trades", chatDraft: "",
     family: null, contribAmount: "0.5", slippageBps: 500,
@@ -222,8 +175,9 @@ export default function App() {
   function resolveCoinImages() {
     setS((st) => {
       for (const coin of st.coins) {
-        if (coin.imageUrl || !coin.metaUri) continue;
-        resolveTokenImage(coin.metaUri).then((url) => {
+        const uri = coin.metaOverrideUri || coin.metaUri;
+        if (coin.imageUrl || !uri) continue;
+        resolveTokenImage(uri).then((url) => {
           if (!url) return;
           setS((s2) => ({ ...s2, coins: s2.coins.map((c) => (c.id === coin.id ? { ...c, imageUrl: url } : c)) }));
         });
@@ -258,22 +212,38 @@ export default function App() {
 
   // Shared by loadTokenDetail (CURVE/INSTANT) and loadCampaignDetail (RAISE)
   // -- metaURI() is the same ERC20 field on every family's token clone.
-  const loadTokenMeta = useCallback(async (address, knownUri) => {
+  // `overrideUri`, when given (DuckMetaOverride has registered this token —
+  // see coin.metaOverrideUri), wins over both knownUri and the on-chain
+  // metaURI() fallback: the whole point of an override is that nothing else
+  // gets read once one exists. Only an override can also correct the
+  // *displayed* name/symbol (the real ones are immutable ERC20 fields this
+  // can't touch) -- resolveTokenNameSymbol is only even attempted in that
+  // case, so the non-override path's name/symbol behavior is unchanged.
+  const loadTokenMeta = useCallback(async (address, knownUri, overrideUri) => {
     try {
-      const uri = knownUri || (await fetchTokenMetaUri(address));
+      const originalUri = knownUri || (overrideUri ? null : await fetchTokenMetaUri(address));
+      const uri = overrideUri || originalUri;
       if (!uri) return;
-      const [desc, imageUrl, socials] = await Promise.all([
+      const [desc, imageUrl, socials, nameSymbol] = await Promise.all([
         resolveTokenDescription(uri), resolveTokenImage(uri), resolveTokenSocials(uri),
+        overrideUri ? resolveTokenNameSymbol(uri) : Promise.resolve(null),
       ]);
       setS((st) => ({
         ...st,
-        coins: st.coins.map((c) => (c.id === address ? { ...c, metaUri: uri, desc: desc || c.desc, imageUrl: imageUrl || c.imageUrl, socials } : c)),
+        coins: st.coins.map((c) => {
+          if (c.id !== address) return c;
+          const patch = { desc: desc || c.desc, imageUrl: imageUrl || c.imageUrl, socials };
+          if (originalUri) patch.metaUri = originalUri;
+          if (nameSymbol?.name) patch.name = nameSymbol.name;
+          if (nameSymbol?.symbol) { patch.symbol = nameSymbol.symbol; patch.ticker = "$" + nameSymbol.symbol; patch.initials = nameSymbol.symbol.slice(0, 2).toUpperCase(); }
+          return { ...c, ...patch };
+        }),
       }));
     } catch (e) { console.error("failed to load token metadata", e); }
   }, []);
 
-  const loadTokenDetail = useCallback(async (address, knownMetaUri) => {
-    loadTokenMeta(address, knownMetaUri);
+  const loadTokenDetail = useCallback(async (address, knownMetaUri, overrideUri) => {
+    loadTokenMeta(address, knownMetaUri, overrideUri);
     try {
       const [trades, holders] = await Promise.all([api.trades(address), api.holders(address)]);
       setS((st) => {
@@ -320,11 +290,11 @@ export default function App() {
     if (coin && coin.family === "CAMPAIGN") {
       set({ screen: "campaign", tokenId: id, campaignDetail: null });
       if (coin.campaignId) loadCampaignDetail(coin.campaignId);
-      loadTokenMeta(id, coin.metaUri);
+      loadTokenMeta(id, coin.metaUri, coin.metaOverrideUri);
       getRaiseDefaults().then((d) => set({ raiseDefaults: d })).catch(() => {});
     } else {
       set({ screen: "token", tokenId: id, tab: "Trades", side: "buy", amount: "250" });
-      loadTokenDetail(id, coin?.metaUri);
+      loadTokenDetail(id, coin?.metaUri, coin?.metaOverrideUri);
     }
     window.scrollTo(0, 0);
   }
@@ -387,7 +357,7 @@ export default function App() {
     } catch (e) {
       return flash("Couldn't get a price quote — try again. (" + errorText(e, "unknown") + ")");
     }
-    if (hash) { await Promise.all([loadPortfolio(), loadTokenDetail(coin.id)]); flash("Bought " + coin.ticker + " for " + amtEth + " ETH"); }
+    if (hash) { await Promise.all([loadPortfolio(), loadTokenDetail(coin.id, coin.metaUri, coin.metaOverrideUri)]); flash("Bought " + coin.ticker + " for " + amtEth + " ETH"); }
   }
 
   async function sell(coin, tokenAmount) {
@@ -411,7 +381,7 @@ export default function App() {
       return flash("Couldn't get a price quote — try again. (" + errorText(e, "unknown") + ")");
     }
     if (hash) {
-      await Promise.all([loadPortfolio(), loadTokenDetail(coin.id)]);
+      await Promise.all([loadPortfolio(), loadTokenDetail(coin.id, coin.metaUri, coin.metaOverrideUri)]);
       flash(isPool ? "Sold " + coin.ticker : "Sold " + coin.ticker + (coin.quote !== "ETH" ? " (proceeds landed as " + coin.quote + ")" : ""));
     }
   }
@@ -672,13 +642,10 @@ export default function App() {
   const m = v.isMobile;
   return (
     <div style={cs("min-height:100vh;display:flex;flex-direction:column;background:var(--paper)")}>
-      <header style={cs(`position:sticky;top:0;z-index:40;background:var(--paper);border-bottom:2px solid var(--ink)`)}>
+      <header style={cs(`position:sticky;top:0;z-index:40;background:var(--paper);border-bottom:1px solid var(--line)`)}>
         <div style={cs(`max-width:1420px;margin:0 auto;padding:0 ${m ? "12px" : "20px"};display:flex;align-items:stretch;height:${m ? "52px" : "58px"}`)}>
           <div onClick={v.goHome} style={cs(`display:flex;align-items:center;gap:${m ? "8px" : "11px"};cursor:pointer;padding-right:${m ? "10px" : "26px"};min-width:0`)}>
-            <div style={cs("width:24px;height:24px;border:2px solid var(--ink);background:var(--lime);position:relative;flex:none")}>
-              <div style={cs("position:absolute;left:4px;top:5px;width:5px;height:5px;background:var(--ink)")}></div>
-              <div style={cs("position:absolute;left:11px;top:10px;width:9px;height:4px;background:var(--orange)")}></div>
-            </div>
+            <img src="/duckfun-logo.png" alt="duckfun" style={cs(`width:${m ? "26px" : "32px"};height:${m ? "26px" : "32px"};object-fit:contain;flex:none;display:block`)} />
             <span style={cs(`font-size:${m ? "15px" : "17px"};font-weight:700;letter-spacing:-.03em;white-space:nowrap`)}>duckfun<span style={cs("color:var(--mute);font-weight:500")}>.family</span></span>
           </div>
           {!m && (
@@ -691,54 +658,67 @@ export default function App() {
           <div style={cs("flex:1;min-width:0")}></div>
           <div style={cs("display:flex;align-items:center;gap:8px;flex:none")}>
             {!m && (
-              <div style={cs("display:flex;align-items:center;gap:7px;padding:6px 11px;border:2px solid var(--ink);background:var(--lime);font-family:'DM Mono',monospace;font-size:11.5px;white-space:nowrap")}>
+              <div style={cs("display:flex;align-items:center;gap:7px;padding:6px 11px;border:1px solid var(--line);border-radius:8px;background:var(--lime);font-family:'DM Mono',monospace;font-size:11.5px;white-space:nowrap")}>
                 <span style={cs("width:6px;height:6px;background:var(--ink);flex:none")}></span>INK 57073
               </div>
             )}
-            <button onClick={v.toggleWallet} style={cs(`padding:${m ? "7px 11px" : "8px 15px"};border:2px solid var(--ink);background:${v.walletBg};color:${v.walletFg};font-size:${m ? "11.5px" : "12.5px"};font-weight:700;cursor:pointer;font-family:${v.walletFont};white-space:nowrap`)}>{v.walletLabel}</button>
+            <button onClick={v.toggleWallet} style={cs(`padding:${m ? "7px 11px" : "8px 15px"};border:1px solid var(--line);border-radius:8px;background:${v.walletBg};color:${v.walletFg};font-size:${m ? "11.5px" : "12.5px"};font-weight:700;cursor:pointer;font-family:${v.walletFont};white-space:nowrap`)}>{v.walletLabel}</button>
+            {m && (
+              <button onClick={v.openMenu} aria-label="Menu" style={cs("display:flex;width:38px;height:38px;align-items:center;justify-content:center;flex-direction:column;gap:4px;border:1px solid var(--line);border-radius:8px;background:var(--card);cursor:pointer;padding:0")}>
+                <span style={cs("width:16px;height:1.5px;background:var(--ink);display:block")}></span>
+                <span style={cs("width:16px;height:1.5px;background:var(--ink);display:block")}></span>
+                <span style={cs("width:16px;height:1.5px;background:var(--ink);display:block")}></span>
+              </button>
+            )}
           </div>
         </div>
       </header>
 
-      <main style={cs(`flex:1;max-width:1420px;width:100%;margin:0 auto;padding:${m ? "14px 12px 84px" : "22px 20px 72px"};min-width:0`)}>
+      <main style={cs(`flex:1;max-width:1420px;width:100%;margin:0 auto;padding:${m ? "14px 12px 32px" : "22px 20px 72px"};min-width:0`)}>
         {v.isHome && <DiscoverPage v={v} />}
         {v.isToken && (v.coin ? <TokenPage v={v} /> : <PendingLaunchPanel v={v} />)}
         {v.isCreate && <CreateChooserPage v={v} />}
         {v.isCreateForm && <CreateFormPage v={v} />}
         {v.isCampaign && (v.camp ? <CampaignPage v={v} /> : <PendingLaunchPanel v={v} />)}
         {v.isPortfolio && <PortfolioPage v={v} />}
+        {v.isStats && <StatsPage v={v} />}
+        {v.isHow && <HowItWorksPage v={v} />}
+        {v.isDocs && <DocsPage v={v} />}
       </main>
 
-      {!m && (
-        <footer style={cs("border-top:2px solid var(--ink);background:var(--card)")}>
-          <div style={cs("max-width:1420px;margin:0 auto;padding:16px 20px;display:flex;gap:20px;flex-wrap:wrap;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--mute)")}>
-            <span>DUCKFUN.FAMILY</span>
-            <span>INK 57073</span>
-            <a href="https://explorer.inkonchain.com" target="_blank" rel="noreferrer">BLOCKSCOUT</a>
-            <span style={cs("margin-left:auto")}>SUBGRAPH DUCKFUN-INK 1.0.0 · SYNCED</span>
-          </div>
-        </footer>
-      )}
+      <footer style={cs("border-top:1px solid var(--line);background:var(--card)")}>
+        <div style={cs("max-width:1420px;margin:0 auto;padding:16px 20px;display:flex;gap:20px;flex-wrap:wrap;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--mute)")}>
+          <span>DUCKFUN.FAMILY</span>
+          <span>INK 57073</span>
+          <a href="https://explorer.inkonchain.com" target="_blank" rel="noreferrer">BLOCKSCOUT</a>
+          <span style={cs("margin-left:auto")}>SUBGRAPH DUCKFUN-INK · CURRENT · SYNCED</span>
+        </div>
+      </footer>
 
-      {m && (
-        <nav style={cs("position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;border-top:2px solid var(--ink);background:var(--card)")}>
-          {v.nav.map((n, i) => (
-            <button key={i} onClick={n.go} style={cs(`flex:1;min-height:56px;border:0;border-top:3px solid ${n.u};background:transparent;color:${n.c};font-size:12.5px;font-weight:${n.w};cursor:pointer`)}>{n.label}</button>
-          ))}
-        </nav>
+      {m && v.menuOpen && (
+        <div onClick={v.closeMenu} style={cs("position:fixed;inset:0;z-index:80;background:rgba(26,25,23,.45)")}>
+          <div onClick={(e) => e.stopPropagation()} style={cs("position:absolute;top:0;right:0;bottom:0;width:78vw;max-width:320px;background:var(--card);border-left:1px solid var(--line);display:flex;flex-direction:column;padding:16px")}>
+            <div style={cs("display:flex;justify-content:flex-end;margin-bottom:10px")}>
+              <button onClick={v.closeMenu} aria-label="Close menu" style={cs("width:34px;height:34px;border:1px solid var(--line);border-radius:8px;background:var(--paper);cursor:pointer;font-size:15px")}>✕</button>
+            </div>
+            {v.nav.map((n, i) => (
+              <button key={i} onClick={() => { n.go(); v.closeMenu(); }} style={cs(`text-align:left;padding:14px 10px;border:0;border-bottom:1px solid var(--soft);background:transparent;color:${n.c};font-size:16px;font-weight:${n.w};cursor:pointer`)}>{n.label}</button>
+            ))}
+          </div>
+        </div>
       )}
 
       {v.txOpen && (
-        <div style={cs("position:fixed;inset:0;z-index:95;background:rgba(17,17,16,.5);display:flex;align-items:center;justify-content:center;padding:20px")}>
-          <div style={cs("width:100%;max-width:400px;border:2px solid var(--ink);background:var(--card);box-shadow:5px 5px 0 var(--ink)")}>
-            <div style={cs(`padding:26px 22px;border-bottom:2px solid var(--ink);text-align:center;background:${v.tx.headBg};color:${v.tx.headFg}`)}>
-              <div style={cs(`width:46px;height:46px;margin:0 auto 16px;border:3px solid var(--ink);border-top-color:${v.tx.ringTop};animation:${v.tx.anim};display:flex;align-items:center;justify-content:center;font-size:19px`)}>{v.tx.glyph}</div>
+        <div style={cs("position:fixed;inset:0;z-index:95;background:rgba(26,25,23,.5);display:flex;align-items:center;justify-content:center;padding:20px")}>
+          <div style={cs("width:100%;max-width:400px;border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
+            <div style={cs(`padding:26px 22px;border-bottom:1px solid var(--line);text-align:center;background:${v.tx.headBg};color:${v.tx.headFg}`)}>
+              <div style={cs(`width:46px;height:46px;margin:0 auto 16px;border:3px solid var(--ink);border-radius:999px;border-top-color:${v.tx.ringTop};animation:${v.tx.anim};display:flex;align-items:center;justify-content:center;font-size:19px`)}>{v.tx.glyph}</div>
               <div style={cs("font-size:19px;font-weight:700;letter-spacing:-.03em")}>{v.tx.title}</div>
               <div style={cs(`font-size:12.5px;margin-top:7px;line-height:1.5;opacity:${v.tx.headFg === "#fff" ? ".9" : "1"};color:${v.tx.headFg === "#fff" ? "#fff" : "var(--mute)"}`)}>{v.tx.sub}</div>
             </div>
-            <div style={cs("padding:14px 18px;border-bottom:2px solid var(--ink);font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);word-break:break-all;line-height:1.5")}>{v.tx.hash}</div>
+            <div style={cs("padding:14px 18px;border-bottom:1px solid var(--line);font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);word-break:break-all;line-height:1.5")}>{v.tx.hash}</div>
             <div style={cs("display:flex")}>
-              <a href={v.tx.explorerUrl} target="_blank" rel="noreferrer" style={cs("flex:1;padding:14px;text-align:center;font-size:13.5px;font-weight:600;border:0;border-right:2px solid var(--ink)")}>Explorer ↗</a>
+              <a href={v.tx.explorerUrl} target="_blank" rel="noreferrer" style={cs("flex:1;padding:14px;text-align:center;font-size:13.5px;font-weight:600;border:0;border-right:1px solid var(--line)")}>Explorer ↗</a>
               <button onClick={v.closeTx} style={cs("flex:1;padding:14px;border:0;background:var(--ink);color:var(--card);font-size:13.5px;font-weight:600;cursor:pointer")}>{v.tx.cta}</button>
             </div>
           </div>
@@ -746,7 +726,7 @@ export default function App() {
       )}
 
       {v.toast && (
-        <div style={cs(`position:fixed;z-index:60;left:50%;bottom:${m ? "68px" : "28px"};transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:13px 20px;border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink);animation:slidein .22s ease both;max-width:90vw`)}>
+        <div style={cs(`position:fixed;z-index:60;left:50%;bottom:28px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:13px 20px;border:1px solid var(--line);border-radius:8px;background:var(--card);animation:slidein .22s ease both;max-width:90vw`)}>
           <span style={cs("width:7px;height:7px;background:var(--ink);flex:none")}></span>
           <span style={cs("font-size:13px")}>{v.toast}</span>
         </div>
@@ -761,7 +741,7 @@ function buildViewModel(ctx) {
   const { s, set, account, isConnected, disconnect, openConnectModal } = ctx;
   const scr = s.screen;
 
-  const nav = [["Discover", "home"], ["Launch", "create"], ["Portfolio", "portfolio"]].map(([label, key]) => {
+  const nav = [["Discover", "home"], ["Launch", "create"], ["Stats", "stats"], ["Portfolio", "portfolio"], ["How it works", "how"], ["Docs", "docs"]].map(([label, key]) => {
     const active = scr === key
       || (key === "home" && (scr === "token" || scr === "campaign"))
       || (key === "create" && scr === "createForm");
@@ -774,7 +754,7 @@ function buildViewModel(ctx) {
   const filters = ["All", "CURVE", "INSTANT", "CAMPAIGN", "Migrated"].map((key) => {
     const label = key === "CURVE" ? "Incubation" : key === "INSTANT" ? "Launcher" : key === "CAMPAIGN" ? "Raise" : key;
     const shortLabel = key === "CURVE" ? "Curve" : key === "INSTANT" ? "Launch" : label;
-    return Object.assign({ key, label: s.mobile ? shortLabel : label, dv: key === "All" ? "0" : "2px solid var(--ink)", go: () => set({ filter: key }) }, block(s.filter === key));
+    return Object.assign({ key, label: s.mobile ? shortLabel : label, dv: key === "All" ? "0" : "1px solid var(--line)", go: () => set({ filter: key }) }, block(s.filter === key));
   });
 
   let list = s.coins.slice();
@@ -793,7 +773,8 @@ function buildViewModel(ctx) {
     bars: buildSparkline(c.rawTrades),
     progLabel: c.family === "CAMPAIGN" ? "RAISE · ILLIQUID" : c.migrated ? "MIGRATED → V4" : "CURVE",
     progPct: Math.round(c.pct) + "%",
-    ticks: buildTicks(20, c.pct, INK),
+    progWidth: Math.min(100, Math.max(0, c.pct)),
+    progFill: INK,
     open: () => ctx.openToken(c.id),
   });
   const feed = list.map(shape);
@@ -858,8 +839,10 @@ function buildViewModel(ctx) {
     nav,
     isHome: scr === "home", isToken: scr === "token", isCreate: scr === "create",
     isCreateForm: scr === "createForm", isCampaign: scr === "campaign", isPortfolio: scr === "portfolio",
+    isStats: scr === "stats", isHow: scr === "how", isDocs: scr === "docs",
     goHome: () => set({ screen: "home" }), goCreate: () => set({ screen: "create" }),
     goPortfolio: () => set({ screen: "portfolio" }),
+    menuOpen: s.menuOpen, openMenu: () => set({ menuOpen: true }), closeMenu: () => set({ menuOpen: false }),
 
     stats: [
       { label: "TOKENS LISTED", value: String(s.coins.length), sub: "across three families", bg: CARD },
@@ -895,7 +878,7 @@ function buildViewModel(ctx) {
     curve: c && c.family === "CURVE" ? {
       title: c.migrated ? "Migrated to Uniswap V4" : "Curve → V4 migration",
       headline: c.migrated ? "LP LOCKED FOREVER" : Math.round(c.pct) + "% filled",
-      ticks: buildTicks(28, c.pct, INK),
+      progWidth: Math.min(100, Math.max(0, c.pct)), progFill: INK,
       blurb: c.migrated
         ? "This token cleared its target. The contract opened a V4 pool, minted a full-range position and handed it to DuckLocker — it can never be withdrawn."
         : `Targets are raw ${c.quote} amounts — there is no oracle. At the migration target the contract opens a Uniswap V4 pool, mints a full-range position, and hands it to the locker permanently.`,
@@ -927,7 +910,7 @@ function buildViewModel(ctx) {
     buyBg: buying ? LIME : CARD, buyFg: INK, sellBg: buying ? CARD : ORANGE, sellFg: buying ? "var(--mute)" : "#fff",
     amount: s.amount, onAmount: (e) => set({ amount: e.target.value.replace(/[^0-9.]/g, "") }),
     presets: [25, 100, 250, "MAX"].map((label, i) => ({
-      label: String(label), dv: i === 0 ? "0" : "2px solid var(--ink)",
+      label: String(label), dv: i === 0 ? "0" : "1px solid var(--line)",
       go: () => {
         if (label === "MAX") {
           if (!buying) return set({ amount: String(myBalanceTokens) });
@@ -967,7 +950,7 @@ function buildViewModel(ctx) {
       if (!text || !c) return;
       set((st) => ({
         chatDraft: "",
-        coins: st.coins.map((x) => x.id === c.id ? { ...x, chat: [{ wallet: account ? shortAddress(account) : "anon", tag: "HOLDER", tagBg: "var(--paper)", tagFg: "var(--mute)", tagBd: "2px solid var(--ink)", age: "now", body: text }].concat(x.chat) } : x),
+        coins: st.coins.map((x) => x.id === c.id ? { ...x, chat: [{ wallet: account ? shortAddress(account) : "anon", tag: "HOLDER", tagBg: "var(--paper)", tagFg: "var(--mute)", tagBd: "1px solid var(--line)", age: "now", body: text }].concat(x.chat) } : x),
       }));
     },
 
@@ -1025,10 +1008,10 @@ function buildViewModel(ctx) {
 // be a blank screen.
 function PendingLaunchPanel({ v }) {
   return (
-    <div style={cs("border:2px solid var(--ink);background:var(--card);box-shadow:3px 3px 0 var(--ink);padding:40px 24px;text-align:center")}>
+    <div style={cs("border:1px solid var(--line);background:var(--card);padding:40px 24px;text-align:center")}>
       <div style={cs("font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.1em;color:var(--mute)")}>CONFIRMING YOUR LAUNCH</div>
       <div style={cs("font-size:15px;margin-top:10px")}>This'll appear here as soon as it's indexed — usually just a few seconds.</div>
-      <button onClick={v.goHome} style={cs("margin-top:18px;padding:10px 20px;border:2px solid var(--ink);background:var(--paper);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer")}>Back to Discover</button>
+      <button onClick={v.goHome} style={cs("margin-top:18px;padding:10px 20px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer")}>Back to Discover</button>
     </div>
   );
 }
@@ -1068,7 +1051,7 @@ function buildCampaignModel(c, s, myContribution) {
     backers: detail ? String(detail.contributions?.length ?? 0) : "…",
     deadline: resolved ? (c.campaignSucceeded ? "FINALIZED" : "FINALIZED — MISSED") : deadlinePassed ? "DEADLINE PASSED" : "RAISING",
     deadlineC: c.campaignSucceeded ? "var(--pos)" : c.campaignFailed ? "var(--neg)" : INK,
-    ticks: buildTicks(28, pct, c.campaignFailed ? ORANGE : INK),
+    progWidth: Math.min(100, Math.max(0, pct)), progFill: c.campaignFailed ? ORANGE : INK,
     note: c.campaignSucceeded
       ? "Raise complete. The escrowed supply is released — claim your pro-rata allocation. The V4 pool is seeded and LP is locked in DuckLocker."
       : c.campaignFailed
