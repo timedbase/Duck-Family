@@ -40,11 +40,11 @@ const ON_SUBMIT = {
   launcher: [
     "Clone DuckLauncherToken and mint the full supply.",
     "The launcher initializes the pool directly and mints a full-range position.",
-    "The position transfers into DuckLocker — permanently locked.",
+    "The position transfers into DuckLocker, permanently locked.",
     "Optional instant buy routes via LaunchRouting's bounded fallback.",
   ],
   raise: [
-    "Clone DuckRaiseToken immediately — verifiable on Blockscout before a single contribution.",
+    "Clone DuckRaiseToken immediately, verifiable on Blockscout before a single contribution.",
     "Full supply is minted to the raise contract. No transfers, no pool, no price.",
     "Native ETH contributions accrue until the deadline.",
     "Goal cleared → ETH swaps to the quote asset, seeds a two-sided V4 pool, LP locks, claims open.",
@@ -110,7 +110,7 @@ export default function CreateFormPage({ v }) {
 
             <div>
               <div style={cs("font-size:17px;font-weight:700;letter-spacing:-.03em")}>Socials</div>
-              <div style={cs("font-size:12.5px;color:var(--mute);margin:7px 0 14px;line-height:1.55;max-width:70ch")}>Written into the token metadata at creation. The token renounces ownership on deploy, so these are permanent — check them carefully before you submit.</div>
+              <div style={cs("font-size:12.5px;color:var(--mute);margin:7px 0 14px;line-height:1.55;max-width:70ch")}>Written into the token metadata at creation. The token renounces ownership on deploy, so these are permanent. Check them carefully before you submit.</div>
               <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px")}>
                 <TextInput value={v.socials.website} onChange={(e) => v.setSocial("website", e.target.value)} placeholder="Website URL" />
                 <TextInput value={v.socials.twitter} onChange={(e) => v.setSocial("twitter", e.target.value)} placeholder="X / Twitter URL" />
@@ -120,7 +120,7 @@ export default function CreateFormPage({ v }) {
 
             {family === "incubation" && (
               <>
-                <Field label="QUOTE ASSET" hint="Only USDC/USDT0 have a real ETH route for buyWithNative — pick ETH if unsure">
+                <Field label="QUOTE ASSET" hint="Only USDC/USDT0 have a real ETH route for buyWithNative; pick ETH if unsure">
                   <QuoteChips options={v.quoteOptions} value={v.draftCurve.quoteToken} onPick={(a) => v.setCurve({ quoteToken: a, earlyBuyAmount: "0" })} />
                 </Field>
                 <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "1fr" : "1fr 1fr"};gap:18px`)}>
@@ -136,13 +136,11 @@ export default function CreateFormPage({ v }) {
                     <TextInput value={v.draftCurve.earlyBuyAmount} onChange={(e) => v.setCurve({ earlyBuyAmount: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="0" />
                   </Field>
                 )}
-                <Field label="SUPPLY / SPLIT (THIS APP'S DEFAULT)" hint="Fixed at deploy, no mint function ever — deflationary by default"><LockedInput value="1,000,000,000 — 80% curve / 20% liquidity" /></Field>
               </>
             )}
 
             {family === "launcher" && (
               <>
-                <Field label="TOTAL SUPPLY" hint="Fixed at deploy, no mint function ever — deflationary by default"><LockedInput value="1,000,000,000 — fixed, no further mint path" /></Field>
                 <Field label="QUOTE ASSET" hint="Paired side of the V4 pool">
                   <QuoteChips options={v.quoteOptions} value={v.draftInstant.quoteToken} onPick={(a) => v.setInstant({ quoteToken: a, buyAmountHype: "0" })} />
                 </Field>
@@ -160,17 +158,13 @@ export default function CreateFormPage({ v }) {
 
             {family === "raise" && (
               <>
-                <Field label="TOTAL SUPPLY" hint="Fixed at deploy, no mint function ever — deflationary by default"><LockedInput value="1,000,000,000" /></Field>
-                <Field label="GOAL (ETH)" hint="Native ETH only — no quote asset during the raise">
+                <Field label="GOAL (ETH)" hint="Native ETH only; no quote asset during the raise">
                   <TextInput value={v.draftCampaign.goalNative} onChange={(e) => v.setCampaign({ goalNative: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="50" />
                 </Field>
                 <Field label="QUOTE AT FINALIZE" hint="Raised ETH swaps into this to seed the pool">
                   <QuoteChips options={v.raiseQuoteOptions} value={v.draftCampaign.dexQuoteAsset} onPick={(a) => v.setCampaign({ dexQuoteAsset: a })} />
                 </Field>
-                <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "1fr" : "1fr 1fr"};gap:18px`)}>
-                  <Field label="DEADLINE (PLATFORM SETTING)"><LockedInput value={v.raiseDefaults ? Math.round(Number(v.raiseDefaults.duration) / 3600) + " hours from launch" : "loading…"} /></Field>
-                  <Field label="SUPPLY TO BACKERS (PLATFORM SETTING)"><LockedInput value={v.raiseDefaults ? (Number(v.raiseDefaults.contributorBps) / 100) + "% — remainder seeds the pool" : "loading…"} /></Field>
-                </div>
+                <Field label="DEADLINE (PLATFORM SETTING)"><LockedInput value={v.raiseDefaults ? Math.round(Number(v.raiseDefaults.duration) / 3600) + " hours from launch" : "loading…"} /></Field>
               </>
             )}
 

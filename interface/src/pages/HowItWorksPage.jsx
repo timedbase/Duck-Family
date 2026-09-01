@@ -2,30 +2,30 @@ import { useState } from "react";
 import { cs } from "../cs.js";
 
 const LAUNCH_STEPS = [
-  { n: "1", k: "Choose a family", v: "Bonding curve for price discovery from block one, instant launch for a real V4 pool immediately, or crowdfund raise to collect ETH toward a goal first.", bg: "var(--lime)", fg: "var(--on)" },
-  { n: "2", k: "Set the parameters", v: "Name, symbol, quote asset and targets. Targets are raw quote amounts — there is no oracle anywhere in the system.", bg: "var(--paper)" },
-  { n: "3", k: "Add socials once", v: "X, Telegram and website are written into metadata at creation. The token is a fixed-supply clone with no owner-mint path, so this is effectively permanent.", bg: "var(--paper)" },
-  { n: "4", k: "Sign one transaction", v: "The factory clones the token, wires the shared anti-MEV hook, and — for instant launches — opens the V4 pool and locks LP in the same call. Total supply is minted once and fixed forever: every duckfun token is deflationary by default, since nothing can ever mint more of it.", bg: "var(--paper)" },
+  { n: "1", k: "Choose a family", v: "Bonding curve for price discovery from block one, instant launch for a real V4 pool right away, or crowdfund raise to collect ETH toward a goal first.", bg: "var(--lime)", fg: "var(--on)" },
+  { n: "2", k: "Set the parameters", v: "Name, symbol, quote asset and targets. There's no oracle involved, so targets are just raw quote amounts you pick yourself.", bg: "var(--paper)" },
+  { n: "3", k: "Add socials once", v: "X, Telegram and website get written into the metadata at creation. The token can't be re-minted or edited later, so this is effectively permanent.", bg: "var(--paper)" },
+  { n: "4", k: "Sign one transaction", v: "The factory clones the token and wires up the shared anti-MEV hook. Instant launches also open the V4 pool and lock the LP in that same transaction. Supply is minted once and fixed forever, so every duckfun token is deflationary by default.", bg: "var(--paper)" },
 ];
 
 const TRADE_STEPS = [
-  { n: "1", k: "Connect on Ink", v: "Any injected wallet or WalletConnect. duckfun never asks for a signature just to browse — only to trade.", bg: "var(--lime)", fg: "var(--on)" },
-  { n: "2", k: "Pick a venue", v: "Bonding-curve tokens trade against the curve; migrated and instant-launch tokens trade on a real Uniswap V4 pool. Crowdlaunch tokens are not tradeable until the raise finalizes.", bg: "var(--paper)" },
-  { n: "3", k: "Size the trade", v: "Enter an amount and check the live quote before you sign — tokens received, plus a slippage tolerance you control.", bg: "var(--paper)" },
-  { n: "4", k: "Sign and settle", v: "The hook rejects a second buy/sell pair from the same address in the same block, so a sandwich attempt reverts at the pool. Sells on a V4 pool carry a 2% creator fee, paid straight to the token's creator.", bg: "var(--paper)" },
+  { n: "1", k: "Connect on Ink", v: "Any injected wallet or WalletConnect works. duckfun only asks for a signature when you're actually trading, never just to browse.", bg: "var(--lime)", fg: "var(--on)" },
+  { n: "2", k: "Pick a venue", v: "Bonding-curve tokens trade against the curve. Migrated and instant-launch tokens trade on a real Uniswap V4 pool. Crowdlaunch tokens aren't tradeable until the raise finalizes.", bg: "var(--paper)" },
+  { n: "3", k: "Size the trade", v: "Enter an amount and check the live quote before you sign. You'll see the tokens you'd receive, and you set your own slippage tolerance.", bg: "var(--paper)" },
+  { n: "4", k: "Sign and settle", v: "The hook blocks a buy and sell from the same address in the same block, so a sandwich attempt just reverts at the pool. Sells on a V4 pool carry a 2% fee that goes straight to the creator.", bg: "var(--paper)" },
 ];
 
 const FAQS = [
-  { k: "Can a creator rug the pool?", v: "No. The LP position is minted directly into DuckLocker, which has no withdraw function. Only accrued trading fees are claimable, and only the 2% creator sell-fee actually pays the creator — the LP position's own trading fee is always burned (token side) or sent to the platform wallet (quote side)." },
-  { k: "Can the total supply ever go up?", v: "No. Every duckfun token is a fixed-supply clone with no mint function reachable after deployment — the full supply is minted once, at creation, and that is the only mint event that will ever happen. That makes every token deflationary by default: supply can only ever stay flat or shrink (via the LP-fee token-side burn), never inflate." },
-  { k: "What happens if a crowdlaunch misses its goal?", v: "No pool is seeded and the escrowed supply is never released. Every contributor can claim a full refund of their ETH." },
-  { k: "What quote assets are supported?", v: "Native ETH is the default and always tradeable directly. USDC and USDT0 are the two ERC20 alternates with real liquidity on Ink, used for the bounded-fallback swap route when a token is quoted in one of them instead of ETH." },
-  { k: "What is a CTO (community takeover)?", v: "If a creator goes quiet, anyone can pay the takeover price to inherit the creator's fee stream. Supply, pool, locked LP and the token's metadata are untouched — a takeover moves the fee claim, not the token." },
+  { k: "Can a creator rug the pool?", v: "Not really. The LP position sits in DuckLocker, which has no withdraw function at all. Creators only ever earn the 2% sell fee; the LP's own trading fee gets burned or sent to the platform, never to them." },
+  { k: "Can the total supply ever go up?", v: "No. Every duckfun token mints its full supply once at creation, and there's no mint function left reachable after that. Supply can only stay flat or shrink over time (from the LP-fee burn). It never inflates." },
+  { k: "What happens if a crowdlaunch misses its goal?", v: "No pool gets seeded, and the escrowed supply never releases. Everyone who contributed can claim a full refund of their ETH." },
+  { k: "What quote assets are supported?", v: "Native ETH is the default and always tradeable directly. USDC and USDT0 are the two other options with real liquidity on Ink, used for the fallback route when a token is quoted in one of them instead of ETH." },
+  { k: "What is a CTO (community takeover)?", v: "If a creator goes quiet, anyone can pay the takeover price to inherit their fee stream. That's all it moves, though: supply, pool and the locked LP stay exactly as they are." },
 ];
 
 const HOW_NOTE = {
-  launch: { k: "Fixed supply, locked liquidity — deflationary by default", v: "Every family mints its full supply exactly once at creation, with no mint function left reachable afterward — supply can never increase. The LP position that backs it is full-range and minted straight into DuckLocker, which has no withdrawal path at all. Creators keep the sell-fee stream that comes out of trading; they can never touch the liquidity itself or print more supply." },
-  trade: { k: "What you are actually trading against", v: "Before migration you trade the curve, and your counterparty is the contract itself — price moves purely off the constant-product math, no oracle involved. After migration it is an ordinary Uniswap V4 pool whose LP sits in DuckLocker and can never be pulled, so the liquidity you see on-screen cannot quietly disappear underneath a trade." },
+  launch: { k: "Fixed supply, locked liquidity", v: "Every family mints its full supply once, at creation, and there's no mint function left reachable afterward, so supply can never go up. The LP position backing it is full-range and sits in DuckLocker permanently, with no withdrawal path at all. Creators keep the fee stream that comes from trading, but they can never touch the liquidity itself or print more supply." },
+  trade: { k: "What you're actually trading against", v: "Before migration, you're trading against the curve itself: price moves purely off the math, no oracle involved. After migration it's an ordinary Uniswap V4 pool, and the LP sitting in DuckLocker can never be pulled, so the liquidity you see on screen isn't going anywhere." },
 };
 
 export default function HowItWorksPage({ v }) {

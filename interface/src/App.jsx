@@ -289,7 +289,7 @@ export default function App() {
     waitForTx(hash)
       .then((receipt) => {
         if (receipt.status === "success") pollUntilFound(address);
-        else { flash("Launch reverted on-chain — nothing was created."); set({ screen: "createForm" }); }
+        else { flash("Launch reverted on-chain. Nothing was created."); set({ screen: "createForm" }); }
       })
       .catch(() => flash("Could not confirm the launch transaction."));
   }
@@ -514,7 +514,7 @@ export default function App() {
   // ---------- trading ----------
 
   async function buy(coin, amtEth) {
-    if (coin.family === "CAMPAIGN") return flash("This token is a campaign — use Contribute instead of Buy.");
+    if (coin.family === "CAMPAIGN") return flash("This token is a campaign. Use Contribute instead of Buy.");
     if (!amtEth || amtEth <= 0) return flash("Enter an amount.");
     const valueWei = parseEther(String(amtEth));
     if (valueWei > s.nativeBalance) return flash("Not enough ETH. Need " + amtEth + ".");
@@ -539,7 +539,7 @@ export default function App() {
         hash = await runTx("Buy", () => buyCurveWithNative({ account, token: coin.id, amountInWei: valueWei, minQuoteOut, minOut }));
       }
     } catch (e) {
-      return flash("Couldn't get a price quote — try again. (" + errorText(e, "unknown") + ")");
+      return flash("Couldn't get a price quote. Try again. (" + errorText(e, "unknown") + ")");
     }
     if (hash) { await Promise.all([loadPortfolio(), loadTokenDetail(coin.id, coin.metaUri, coin.metaOverrideUri, coin.imageUrl)]); flash("Bought " + coin.ticker + " for " + amtEth + " ETH"); }
   }
@@ -562,7 +562,7 @@ export default function App() {
         hash = await runTx("Sell", () => sellCurve({ account, token: coin.id, amountIn, minQuoteOut }));
       }
     } catch (e) {
-      return flash("Couldn't get a price quote — try again. (" + errorText(e, "unknown") + ")");
+      return flash("Couldn't get a price quote. Try again. (" + errorText(e, "unknown") + ")");
     }
     if (hash) {
       await Promise.all([loadPortfolio(), loadTokenDetail(coin.id, coin.metaUri, coin.metaOverrideUri, coin.imageUrl)]);
@@ -739,7 +739,7 @@ export default function App() {
           dryRun: true,
         });
       }
-      flash("Simulation succeeded — this would launch successfully.");
+      flash("Simulation succeeded. This would launch successfully.");
     } catch (e) {
       flash("Simulation failed: " + errorText(e, "unknown error"));
     } finally {
@@ -1226,8 +1226,8 @@ function buildViewModel(ctx) {
       headline: c.migrated ? "LP LOCKED FOREVER" : Math.round(c.pct) + "% filled",
       progWidth: Math.min(100, Math.max(0, c.pct)), progFill: INK,
       blurb: c.migrated
-        ? "This token cleared its target. The contract opened a V4 pool, minted a full-range position and handed it to DuckLocker — it can never be withdrawn."
-        : `Targets are raw ${c.quote} amounts — there is no oracle. At the migration target the contract opens a Uniswap V4 pool, mints a full-range position, and hands it to the locker permanently.`,
+        ? "This token cleared its target. The contract opened a V4 pool, minted a full-range position, and handed it to DuckLocker. It can never be withdrawn."
+        : `Targets are raw ${c.quote} amounts. There's no oracle involved. At the migration target the contract opens a Uniswap V4 pool, mints a full-range position, and hands it to the locker permanently.`,
     } : null,
     liq: c && s.creatorData ? {
       status: s.creatorData.hasPool ? "LP LOCKED · PERMANENT" : "NO POOL YET",
@@ -1245,7 +1245,7 @@ function buildViewModel(ctx) {
       price: s.creatorData.ctoFee != null ? formatEther(s.creatorData.ctoFee) + " ETH" : "…",
       creator: s.creatorData.creator ? shortAddress(s.creatorData.creator) : "—",
       applicant: s.creatorData.ctoApp?.applicant && s.creatorData.ctoApp.applicant !== ZERO_ADDRESS ? shortAddress(s.creatorData.ctoApp.applicant) : null,
-      blurb: "Anyone can pay the CTO fee to apply to take over the creator fee stream. The owner approves or rejects the application. Metadata, supply and pool can never change — a takeover moves the fee claim, not the token.",
+      blurb: "Anyone can pay the CTO fee to apply to take over the creator fee stream. The owner approves or rejects the application. A takeover only moves the fee claim; metadata, supply and pool can never change.",
     } : null,
     hookAccrued: s.creatorData ? Number(s.creatorData.hookAccrued || 0n) / 1e18 : 0,
     hookAccruedFailed: !!s.creatorData?.hookAccruedFailed,
@@ -1362,7 +1362,7 @@ function PendingLaunchPanel({ v }) {
   return (
     <div style={cs("border:1px solid var(--line);background:var(--card);padding:40px 24px;text-align:center")}>
       <div style={cs("font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.1em;color:var(--mute)")}>CONFIRMING YOUR LAUNCH</div>
-      <div style={cs("font-size:15px;margin-top:10px")}>This'll appear here as soon as it's indexed — usually just a few seconds.</div>
+      <div style={cs("font-size:15px;margin-top:10px")}>This'll appear here as soon as it's indexed, usually just a few seconds.</div>
       <button onClick={v.goHome} style={cs("margin-top:18px;padding:10px 20px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer")}>Back to Discover</button>
     </div>
   );
@@ -1385,7 +1385,7 @@ function buildCampaignModel(c, s, myContribution) {
   let cta = "Contribute ETH", ctaBg = LIME, ctaFg = "var(--on)", ctaNote = "Your allocation is recorded now; tokens are claimable only after finalize.";
   let canContribute = !resolved && !deadlinePassed;
   if (!resolved && deadlinePassed) {
-    actionTitle = "Ready to finalize"; actionSub = "Deadline passed — anyone can trigger finalize.";
+    actionTitle = "Ready to finalize"; actionSub = "Deadline passed. Anyone can trigger finalize.";
     cta = "Finalize"; ctaBg = CARD; ctaFg = INK; ctaNote = "Finalize checks whether the goal was met and either seeds the pool or unlocks refunds.";
   } else if (c.campaignSucceeded) {
     actionTitle = "Claim your tokens"; actionSub = "Allocation is your ETH in ÷ total raised, applied to the backer supply.";
@@ -1401,11 +1401,11 @@ function buildCampaignModel(c, s, myContribution) {
     desc: c.desc, socials: c.socials,
     raised: raised.toFixed(4), goal: goal.toFixed(4), pct: Math.round(pct) + "%",
     backers: detail ? String(detail.contributions?.length ?? 0) : "…",
-    deadline: resolved ? (c.campaignSucceeded ? "FINALIZED" : "FINALIZED — MISSED") : deadlinePassed ? "DEADLINE PASSED" : "RAISING",
+    deadline: resolved ? (c.campaignSucceeded ? "FINALIZED" : "FINALIZED · MISSED") : deadlinePassed ? "DEADLINE PASSED" : "RAISING",
     deadlineC: c.campaignSucceeded ? "var(--pos)" : c.campaignFailed ? "var(--neg)" : INK,
     progWidth: Math.min(100, Math.max(0, pct)), progFill: c.campaignFailed ? ORANGE : INK,
     note: c.campaignSucceeded
-      ? "Raise complete. The escrowed supply is released — claim your pro-rata allocation. The V4 pool is seeded and LP is locked in DuckLocker."
+      ? "Raise complete. The escrowed supply is released, so you can claim your pro-rata allocation. The V4 pool is seeded and LP is locked in DuckLocker."
       : c.campaignFailed
       ? "The goal was not cleared, so no pool was seeded and the escrowed supply was never released. Contributions are refundable in full."
       : "Tokens are already deployed but held by the raise contract. Nothing is transferable or tradeable until the raise completes.",
@@ -1435,7 +1435,7 @@ function buildCampaignModel(c, s, myContribution) {
       { k: "TRANSFERS", v: c.campaignSucceeded ? "enabled" : "disabled", c: c.campaignSucceeded ? "var(--pos)" : "var(--neg)" },
     ],
     timeline: [
-      { k: "Token deployed", v: "At creation — verifiable on Blockscout before a single contribution.", on: true },
+      { k: "Token deployed", v: "At creation, verifiable on Blockscout before a single contribution.", on: true },
       { k: "Supply escrowed", v: "Full backer supply minted to the raise contract; transfers disabled.", on: true },
       { k: "Contributions open", v: "Native ETH accrues until the deadline. No price, no trading.", on: !resolved || true },
       { k: "Goal cleared", v: "ETH swaps to the quote asset, seeds a two-sided V4 pool, LP locks, claims open.", on: c.campaignSucceeded },
@@ -1456,7 +1456,7 @@ function buildTxModel(s, account) {
   }
   if (s.tx.stage === "reverted") {
     return {
-      title: "Transaction reverted", sub: "Included on Ink, but it reverted on-chain — nothing happened.", glyph: "✕", headBg: "var(--neg)", headFg: "#fff", ringTop: INK, anim: "none", cta: "Dismiss",
+      title: "Transaction reverted", sub: "Included on Ink, but it reverted on-chain. Nothing happened.", glyph: "✕", headBg: "var(--neg)", headFg: "#fff", ringTop: INK, anim: "none", cta: "Dismiss",
       hash: s.tx.hash, explorerUrl: `https://explorer.inkonchain.com/tx/${s.tx.hash}`,
     };
   }

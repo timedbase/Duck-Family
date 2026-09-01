@@ -262,7 +262,7 @@ export default function TokenPage({ v }) {
                   <input value={v.chatDraft} onChange={v.setChatDraft} placeholder={`Say something about ${sel.symbol}…`} style={cs("flex:1;min-width:0;padding:14px 18px;border:0;outline:0;background:var(--card);font-size:13.5px")} />
                   <button onClick={v.postChat} style={cs("padding:0 22px;border:0;border-left:1px solid var(--line);background:var(--ink);color:var(--card);font-size:13px;font-weight:600;cursor:pointer;flex:none")}>Post</button>
                 </div>
-                {tok.chat.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No comments yet — this session only, not persisted.</div>}
+                {tok.chat.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No comments yet. This session only, not persisted.</div>}
                 {tok.chat.map((c, i) => (
                   <div key={i} style={cs("padding:15px 18px;border-bottom:1px solid var(--soft)")}>
                     <div style={cs("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
@@ -294,7 +294,7 @@ export default function TokenPage({ v }) {
                           </div>
                         ))}
                       </div>
-                      <div style={cs("font-size:12.5px;color:var(--mute);margin-top:12px;line-height:1.55;max-width:76ch")}>The position is minted full-range and held by DuckLocker. It can never be withdrawn — only accrued trading fees are claimable.</div>
+                      <div style={cs("font-size:12.5px;color:var(--mute);margin-top:12px;line-height:1.55;max-width:76ch")}>The position is minted full-range and held by DuckLocker. It can never be withdrawn; only accrued trading fees are claimable.</div>
                     </div>
 
                     <div style={cs("padding:20px;border-bottom:1px solid var(--line)")}>
@@ -303,7 +303,7 @@ export default function TokenPage({ v }) {
                         <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--lime);color:var(--on);box-shadow:var(--sh);padding:18px")}>
                           <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--acc)")}>CREATOR FEE ACCRUED (YOURS)</div>
                           <div style={cs("font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-.04em;margin:7px 0 3px")}>{v.hookAccruedFailed ? "—" : v.hookAccrued.toFixed(5) + " " + sel.quote}</div>
-                          {v.hookAccruedFailed && <div style={cs("font-family:'JetBrains Mono',monospace;font-size:11.5px;margin-bottom:16px")}>Couldn't read this from the chain — try reopening this tab.</div>}
+                          {v.hookAccruedFailed && <div style={cs("font-family:'JetBrains Mono',monospace;font-size:11.5px;margin-bottom:16px")}>Couldn't read this from the chain. Try reopening this tab.</div>}
                           <button onClick={v.claimCreatorAndHookFees} disabled={v.txPending} style={cs("width:100%;padding:13px;border:1px solid var(--line);border-radius:9px;background:var(--ink);color:var(--card);font-size:14px;font-weight:700;cursor:pointer")}>Claim your creator fee</button>
                         </div>
                         {tok.family === "CURVE" && (
@@ -335,7 +335,7 @@ export default function TokenPage({ v }) {
                             </div>
                             <div style={cs("padding:0 16px 16px")}>
                               <button onClick={submitSplits} disabled={v.txPending} style={cs("padding:12px 20px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:13.5px;font-weight:600;cursor:pointer")}>Save fee settings</button>
-                              <div style={cs("font-size:12px;color:var(--mute);margin-top:12px;line-height:1.55;max-width:76ch")}>Leave blank to reset to 100% direct to the creator. This only routes the creator's sell-fee skim — not the LP-position fee.</div>
+                              <div style={cs("font-size:12px;color:var(--mute);margin-top:12px;line-height:1.55;max-width:76ch")}>Leave blank to reset to 100% direct to the creator. This only routes the creator's sell-fee skim, not the LP-position fee.</div>
                             </div>
                           </>
                         )}

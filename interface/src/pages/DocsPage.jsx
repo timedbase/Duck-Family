@@ -86,12 +86,12 @@ export default function DocsPage({ v }) {
           { k: "Instant launch", v: "DuckLauncher" },
           { k: "Crowdlaunch", v: "DuckRaise" },
           { k: "Clone standard", v: "EIP-1167 minimal proxy" },
-          { k: "Oracle", v: "none — every target is a raw quote amount" },
+          { k: "Oracle", v: "none, every target is a raw quote amount" },
         ]} blurb="Three launcher families share one hook and one locker. Every token is an EIP-1167 minimal-proxy clone of its family implementation, so deployment cost stays flat regardless of supply or parameters." />
 
         <div id="supply" style={cs("border:1px solid var(--line);background:var(--lime);color:var(--on);border-radius:10px;box-shadow:var(--sh);padding:22px 24px;margin-bottom:16px;scroll-margin-top:80px")}>
           <div style={cs("font-size:19px;font-weight:700;letter-spacing:-.03em;margin-bottom:9px")}>Every token is deflationary by default</div>
-          <div style={cs("font-size:13.5px;line-height:1.6;max-width:78ch")}>All three families mint their full supply exactly once, at creation — none of the three token contracts exposes a mint function after deploy, so total supply can never increase. The only thing that ever moves it is the LP-position fee's token-side burn on migrated/instant/raise pools (see DuckLocker below), which only ever pushes supply down. There is no owner switch, no upgrade path, and no exception: this holds for every token this platform has ever created.</div>
+          <div style={cs("font-size:13.5px;line-height:1.6;max-width:78ch")}>All three families mint their full supply exactly once, at creation. None of the three token contracts exposes a mint function after deploy, so total supply can never increase. The only thing that ever moves it is the LP-position fee's token-side burn on migrated/instant/raise pools (see DuckLocker below), which only ever pushes supply down. There's no owner switch and no upgrade path. That holds for every token this platform has ever created.</div>
         </div>
 
         <Section id="hook" title="DuckHookV4" rows={[
@@ -100,14 +100,14 @@ export default function DocsPage({ v }) {
           { k: "Sell fee recipient", v: "creator (100%, unless a split is configured)" },
           { k: "CTO fee", v: cfg ? eth(cfg.hook.ctoFee) : "…" },
           { k: "Attached at", v: "pool init, every family" },
-        ]} blurb="A single Uniswap V4 hook attached to every pool from block one. It enforces the anti-MEV window and skims the sell fee before the swap settles — the only fee that actually reaches the creator." />
+        ]} blurb="A single Uniswap V4 hook attached to every pool from block one. It enforces the anti-MEV window and skims the sell fee before the swap settles. That sell fee is the only one that actually reaches the creator." />
 
         <Section id="locker" title="DuckLocker" rows={[
           { k: "Withdraw path", v: "none" },
           { k: "Range", v: "full" },
           { k: "Fee / tick spacing (this platform's pools)", v: "10000 / 200 (1%)" },
           { k: "LP-position fee routing", v: "token side burned, quote side to platform wallet" },
-        ]} blurb="One vault holding every LP position the platform mints. Positions are full-range and permanent; the contract exposes fee collection and nothing else. The LP-position's own trading fee is never paid to the creator — only the hook's sell-fee skim is." />
+        ]} blurb="One vault holding every LP position the platform mints. Positions are full-range and permanent; the contract exposes fee collection and nothing else. The LP-position's own trading fee is never paid to the creator. Only the hook's sell-fee skim is." />
 
         <Section id="fees" title="Fees" rows={[
           { k: "Curve creation", v: cfg ? eth(cfg.curve.creationFee) : "…" },
@@ -115,12 +115,12 @@ export default function DocsPage({ v }) {
           { k: "Crowdlaunch", v: cfg ? eth(cfg.raise.campaignFee) : "…" },
           { k: "Curve trading fee (pre-migration)", v: "1.00%, both buy and sell" },
           { k: "Creator sell fee (post-migration / instant / raise pools)", v: cfg ? pct(cfg.hook.hookFeeDefaultBps) : "…" },
-        ]} blurb="Creation fees are a flat native-ETH amount charged at deploy, read live above — not a percentage of anything raised. Crowdlaunch's fee is the same flat structure; there is no separate percentage cut taken on a successful finalize." />
+        ]} blurb="Creation fees are a flat native-ETH amount charged at deploy, read live above, not a percentage of anything raised. Crowdlaunch's fee is the same flat structure; there is no separate percentage cut taken on a successful finalize." />
 
         <div id="deploy" className="d-lift" style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);overflow:hidden;margin-bottom:16px;scroll-margin-top:80px")}>
           <div style={cs("padding:16px 20px;border-bottom:1px solid var(--line)")}>
             <div style={cs("font-size:19px;font-weight:700;letter-spacing:-.03em;margin-bottom:8px")}>Deployments</div>
-            <div style={cs("font-size:13.5px;color:var(--mute);line-height:1.55;max-width:70ch")}>duckfun runs on Ink mainnet. Every contract below is verified on Blockscout — tap an address to copy it, or check it yourself.</div>
+            <div style={cs("font-size:13.5px;color:var(--mute);line-height:1.55;max-width:70ch")}>duckfun runs on Ink mainnet. Every contract below is verified on Blockscout: tap an address to copy it, or check it yourself.</div>
           </div>
           <div style={cs("display:flex;justify-content:space-between;gap:14px;padding:12px 20px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px")}>
             <span style={cs("color:var(--mute)")}>Chain</span><span style={cs("font-weight:500")}>Ink · 57073</span>
