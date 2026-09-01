@@ -46,7 +46,7 @@ export default function StatsPage({ v }) {
       <div style={cs("display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px")}>
         <div>
           <h1 style={cs(`margin:0;font-size:${v.isMobile ? "26px" : "38px"};letter-spacing:-.04em;font-weight:700;line-height:1`)}>Stats</h1>
-          <div style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--mute);margin-top:9px")}>FROM THE SUBGRAPH · LAST 24 HOURS</div>
+          <div style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--mute);margin-top:9px")}>PLATFORM-WIDE ACTIVITY</div>
         </div>
         {updatedSecondsAgo != null && (
           <div style={cs("display:flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mute)")}>
