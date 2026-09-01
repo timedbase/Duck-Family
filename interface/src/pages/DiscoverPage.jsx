@@ -31,36 +31,59 @@ function ProgressRow({ t, height = "6px", fontSize = "10px" }) {
   );
 }
 
-function HeroSlide({ t }) {
+// Small per-card social icon row -- X/Telegram/Website, only the ones a
+// creator actually filled in. stopPropagation so tapping an icon opens the
+// link instead of also triggering the card's own onClick (open token).
+function SocialRow({ socials, size = "22px" }) {
+  const items = [
+    socials?.twitter && { href: socials.twitter, glyph: "𝕏" },
+    socials?.telegram && { href: socials.telegram, glyph: "✈" },
+    socials?.website && { href: socials.website, glyph: "🌐" },
+  ].filter(Boolean);
+  if (items.length === 0) return null;
   return (
-    <div onClick={t.open} className="d-lift" style={cs(`flex:${t.flex} 0 ${t.basis};min-width:${t.minw};cursor:pointer;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)`)}>
-      <ImageBlock t={t} badgeSize={t.symType === "19px" ? "10px" : "9px"} />
-      <div style={cs("padding:12px 14px;display:flex;flex-direction:column;gap:10px;flex:1")}>
-        <div>
-          <div style={cs("display:flex;align-items:baseline;gap:7px;min-width:0")}>
-            <span style={cs(`font-size:${t.symType};font-weight:700;letter-spacing:-.03em;flex:none`)}>{t.symbol}</span>
-            <span style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.name}</span>
-          </div>
-          <div style={cs("font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>by {t.creator}</div>
+    <div style={cs("display:flex;gap:6px")}>
+      {items.map((it, i) => (
+        <a key={i} href={it.href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+          style={cs(`width:${size};height:${size};flex:none;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--mute);font-size:11px;border-bottom:1px solid var(--line)`)}>{it.glyph}</a>
+      ))}
+    </div>
+  );
+}
+
+// The single highest-mcap live coin, unfiltered by the feed's own filters --
+// a permanent showcase slot rather than a rotating rail. Sits beside a
+// static intro card with the platform's real CTAs.
+function KingOfDucksCard({ v }) {
+  const t = v.kingCoin;
+  return (
+    <div onClick={t.open} className="d-lift" style={cs("flex:1;min-width:280px;cursor:pointer;display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card);box-shadow:var(--sh)")}>
+      <div style={cs("width:120px;flex:none")}><ImageBlock t={t} badgeSize="10px" /></div>
+      <div style={cs("flex:1;min-width:0;padding:14px 16px;display:flex;flex-direction:column;gap:9px")}>
+        <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;color:var(--lime)")}>KING OF DUCKS · TOP MARKET CAP</div>
+        <div style={cs("display:flex;align-items:baseline;gap:8px;min-width:0")}>
+          <span style={cs("font-size:19px;font-weight:700;letter-spacing:-.03em;flex:none")}>{t.symbol}</span>
+          <span style={cs("font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mute);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.name}</span>
         </div>
-
-        <div style={cs("display:flex;align-items:baseline;gap:8px;font-family:'JetBrains Mono',monospace;flex-wrap:wrap")}>
-          <span style={cs(`font-size:${t.priceType};font-weight:500;letter-spacing:-.03em;color:var(--pos);flex:none`)}>MC {t.mcap}</span>
-          <span style={cs(`font-size:12px;color:${t.chgColor};flex:none`)}>{t.chg}</span>
+        <div style={cs("display:flex;align-items:baseline;gap:9px;font-family:'JetBrains Mono',monospace;flex-wrap:wrap")}>
+          <span style={cs("font-size:17px;font-weight:500;letter-spacing:-.03em;color:var(--pos)")}>MC {t.mcapLabel}</span>
+          <span style={cs(`font-size:12px;color:${t.chgColor}`)}>{t.chg}</span>
         </div>
+        <div style={cs("height:34px")}><Sparkline bars={t.bars} height="34px" /></div>
+        <SocialRow socials={t.socials} />
+      </div>
+    </div>
+  );
+}
 
-        <div style={cs(`height:${t.sparkH}`)}>
-          <Sparkline bars={t.bars} height={t.sparkH} />
-        </div>
-
-        <div style={cs("flex:1;min-height:0")}></div>
-
-        <ProgressRow t={t} />
-
-        <div style={cs("display:flex;gap:12px;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute);min-width:0")}>
-          <span style={cs("white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>VOL <span style={cs("color:var(--ink)")}>{t.vol}</span></span>
-          <span style={cs("margin-left:auto;flex:none;white-space:nowrap")}>{t.sideMetric} <span style={cs("color:var(--ink)")}>{t.sideValue}</span></span>
-        </div>
+function IntroCard({ v }) {
+  return (
+    <div style={cs("flex:1;min-width:240px;border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);padding:18px;display:flex;flex-direction:column;gap:10px;justify-content:center")}>
+      <div style={cs("font-size:18px;font-weight:700;letter-spacing:-.03em")}>Launch a token on Ink</div>
+      <div style={cs("font-size:12.5px;color:var(--mute);line-height:1.5")}>Bonding curve, instant V4 pool, or a crowdlaunch you set the terms for.</div>
+      <div style={cs("display:flex;gap:8px;flex-wrap:wrap")}>
+        <button onClick={v.goCreate} style={cs("padding:10px 16px;border:1px solid var(--line);border-radius:6px;background:var(--lime);color:var(--on);font-size:13px;font-weight:700;cursor:pointer")}>Launch a coin</button>
+        <button onClick={v.goHow} style={cs("padding:10px 16px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--ink);font-size:13px;font-weight:600;cursor:pointer")}>How it works</button>
       </div>
     </div>
   );
@@ -68,7 +91,7 @@ function HeroSlide({ t }) {
 
 function FeedCard({ t }) {
   return (
-    <div onClick={t.open} className="d-lift" style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;cursor:pointer;overflow:hidden;display:flex;flex-direction:column")}>
+    <div onClick={t.open} className="d-lift" style={cs("border:1px solid var(--line);background:var(--card);border-radius:10px;box-shadow:var(--sh);cursor:pointer;overflow:hidden;display:flex;flex-direction:column")}>
       <ImageBlock t={t} />
       <div style={cs("padding:12px 14px;display:flex;flex-direction:column;gap:8px;flex:1")}>
         <div>
@@ -88,10 +111,11 @@ function FeedCard({ t }) {
 
         <ProgressRow t={t} height="5px" fontSize="9.5px" />
 
-        <div style={cs("display:flex;gap:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mute)")}>
+        <div style={cs("display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mute)")}>
           <span style={cs("white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>VOL <span style={cs("color:var(--ink)")}>{t.vol}</span></span>
           <span style={cs("margin-left:auto;white-space:nowrap")}>{t.holders} hldrs</span>
         </div>
+        <SocialRow socials={t.socials} size="20px" />
       </div>
     </div>
   );
@@ -108,24 +132,15 @@ function FilterSelect({ value, onChange, options, isMobile }) {
 export default function DiscoverPage({ v }) {
   return (
     <div>
-      <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden;margin-bottom:18px")}>
-        <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
-          <div style={cs("display:flex;overflow-x:auto")}>
-            {v.heroTabs.map((h, i) => (
-              <button key={i} onClick={h.go} style={cs(`padding:12px 18px;border:0;border-right:1px solid var(--line);background:${h.bg};color:${h.fg};font-size:13.5px;font-weight:600;letter-spacing:-.01em;cursor:pointer;white-space:nowrap`)}>{h.label}</button>
-            ))}
-          </div>
-          {!v.isMobile && <div style={cs("flex:1;display:flex;align-items:center;padding:0 18px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:var(--mute)")}>{v.heroCaption}</div>}
-          <div style={cs("display:flex;flex:none")}>
-            <button onClick={v.heroPrev} className="d-hover-lime" style={cs("width:46px;border:0;border-left:1px solid var(--line);background:var(--card);font-size:15px;cursor:pointer")}>←</button>
-            <button onClick={v.heroNext} className="d-hover-lime" style={cs("width:46px;border:0;border-left:1px solid var(--line);background:var(--card);font-size:15px;cursor:pointer")}>→</button>
-          </div>
-        </div>
+      <div style={cs(`display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px`)}>
+        <IntroCard v={v} />
+        {v.kingCoin && <KingOfDucksCard v={v} />}
+      </div>
 
-        <div style={cs(`display:flex;align-items:stretch;gap:12px;overflow-x:auto;padding:14px`)}>
-          {v.heroSlides.length === 0 && <div style={cs("padding:20px;color:var(--mute);font-size:13px")}>Nothing launched yet.</div>}
-          {v.heroSlides.map((t) => <HeroSlide key={t.id} t={t} />)}
-        </div>
+      <div style={cs(`display:flex;border:1px solid var(--line);border-radius:8px;overflow-x:auto;margin-bottom:10px;${v.isMobile ? "width:100%" : "width:fit-content"}`)}>
+        {v.sortTabs.map((h, i) => (
+          <button key={i} onClick={h.go} style={cs(`padding:${v.isMobile ? "7px 10px" : "8px 15px"};border:0;border-left:${i === 0 ? "0" : "1px solid var(--line)"};background:${h.bg};color:${h.fg};font-size:${v.isMobile ? "11px" : "12.5px"};font-weight:600;white-space:nowrap;cursor:pointer`)}>{h.label}</button>
+        ))}
       </div>
 
       <div style={cs("display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px")}>

@@ -192,6 +192,9 @@ export function tokenToCoin(t, i, meta) {
     // token is brand new and this is a stale merged-in coin from before the
     // backend restart picked up the fix).
     imageUrl: t.imageUrl || null,
+    // Same backend resolution as imageUrl above (one shared metadata fetch) --
+    // powers Discover's per-card social icons without a per-card client fetch.
+    socials: t.socials || {},
     rawTrades: [],
     holderRows: [],
     trades: [],

@@ -143,7 +143,7 @@ export default function App() {
   const skipNextPush = useRef(false);
 
   const [s, setS] = useState({
-    mobile: false, menuOpen: false, hero: "Last activity", heroIdx: 0,
+    mobile: false, menuOpen: false, sort: "Last activity",
     layout: "cards", filter: "All", query: "",
     mcapFilter: "any", launchedFilter: "any", quoteFilter: "any",
     tokenId: null, side: "buy", amount: "250", range: "1D", chartMode: "price", tab: "Trades", chatDraft: "",
@@ -1004,6 +1004,7 @@ function buildViewModel(ctx) {
     chgColor: c.chg != null ? (c.chg >= 0 ? "var(--pos)" : "var(--neg)") : "var(--mute)",
     mcap: usdOrQuote(c.mcUsd, c.mc, c.quote), vol: usdOrQuote(c.volUsd, c.vol, c.quote),
     holders: c.holders.toLocaleString(), quote: c.quote,
+    socials: c.socials || {},
     bars: buildSparkline(c.rawTrades),
     // Instant-launch tokens land straight on a V4 pool -- no curve to fill,
     // so the handoff hides the progress bar entirely for them (a permanent
@@ -1016,56 +1017,26 @@ function buildViewModel(ctx) {
     ticks: buildTicks(20, c.pct, INK),
     open: () => ctx.openToken(c.id),
   });
-  const feed = list.map(shape);
 
-  // Hero rail: three real ranking modes over every launched token,
-  // unfiltered by the Discover page's own filter/search. "Last activity"
+  // Three real ranking modes over the launched-token list. "Last activity"
   // ranks by real last-trade time (Token.lastTradeAt, tracked alongside
   // lastPrice) -- tokens that have never traded sort last, never faked into
-  // looking recently active.
-  const HERO_MODES = {
-    "Last activity": {
-      sort: (a, b) => (a.lastActiveMin ?? Infinity) - (b.lastActiveMin ?? Infinity),
-      caption: "MOST RECENT TRADES ACROSS ALL FAMILIES",
-      metric: (c) => ({ k: "LAST TRADE", v: c.lastActiveMin != null ? ageLabel(c.lastActiveMin) : "—" }),
-    },
-    "Top market cap": {
-      sort: (a, b) => (b.mcUsd ?? b.mc) - (a.mcUsd ?? a.mc),
-      caption: "LARGEST POOLS BY MARKET CAP",
-      metric: (c) => ({ k: "MKT CAP", v: usdOrQuote(c.mcUsd, c.mc, c.quote) }),
-    },
-    New: {
-      sort: (a, b) => a.ageMin - b.ageMin,
-      caption: "LAUNCHED IN THE LAST 24 HOURS FIRST",
-      metric: (c) => ({ k: "AGE", v: ageLabel(c.ageMin) }),
-    },
+  // looking recently active. Used two ways: as the feed's own sort order
+  // (sortTabs, scoped by whatever family/search filters are active), and,
+  // unfiltered, to pick the single highest-mcap coin for the King of Ducks
+  // hero card below.
+  const SORT_MODES = {
+    "Last activity": { sort: (a, b) => (a.lastActiveMin ?? Infinity) - (b.lastActiveMin ?? Infinity) },
+    "Top market cap": { sort: (a, b) => (b.mcUsd ?? b.mc) - (a.mcUsd ?? a.mc) },
+    New: { sort: (a, b) => a.ageMin - b.ageMin },
   };
-  const heroMode = HERO_MODES[s.hero] || HERO_MODES["Last activity"];
-  const heroTabs = Object.keys(HERO_MODES).map((label) =>
-    Object.assign({ label, go: () => set({ hero: label, heroIdx: 0 }) }, block(s.hero === label)));
-  const heroPool = s.coins.slice().sort(heroMode.sort);
-  const heroWindowSize = Math.min(4, heroPool.length);
-  const heroWindow = Array.from({ length: heroWindowSize }, (_, i) => heroPool[(s.heroIdx + i) % heroPool.length]);
-  const heroSlides = heroWindow.map((coin, i) => {
-    const row = shape(coin);
-    const lead = i === 0;
-    const m = heroMode.metric(coin);
-    return {
-      ...row,
-      // On mobile the hero rail is a swipeable strip, not a fixed grid --
-      // size each card in vw so the lead card fits within one screen (with
-      // a peek of the next) instead of the desktop px basis clipping mid-
-      // card on a narrow phone before the user even scrolls.
-      flex: lead ? "1.6" : "1",
-      basis: s.mobile ? (lead ? "80vw" : "62vw") : (lead ? "360px" : "268px"),
-      minw: s.mobile ? (lead ? "80vw" : "62vw") : (lead ? "320px" : "268px"),
-      sparkH: lead ? "52px" : "38px", logoSize: lead ? "86px" : "62px", logoType: lead ? "72px" : "52px",
-      symType: lead ? "19px" : "16px", priceType: lead ? "17px" : "14px",
-      sideMetric: m.k, sideValue: m.v,
-    };
-  });
-  const heroPrev = () => heroPool.length > 0 && set((st) => ({ heroIdx: (st.heroIdx + heroPool.length - 1) % heroPool.length }));
-  const heroNext = () => heroPool.length > 0 && set((st) => ({ heroIdx: (st.heroIdx + 1) % heroPool.length }));
+  const sortMode = SORT_MODES[s.sort] || SORT_MODES["Last activity"];
+  const sortTabs = Object.keys(SORT_MODES).map((label) =>
+    Object.assign({ label, go: () => set({ sort: label }) }, block(s.sort === label)));
+  const feed = list.slice().sort(sortMode.sort).map(shape);
+
+  const kingPool = s.coins.slice().sort(SORT_MODES["Top market cap"].sort);
+  const kingCoin = kingPool.length > 0 ? { ...shape(kingPool[0]), mcapLabel: usdOrQuote(kingPool[0].mcUsd, kingPool[0].mc, kingPool[0].quote) } : null;
 
   const c = s.coins.find((x) => x.id === s.tokenId);
   const buying = s.side === "buy";
@@ -1142,11 +1113,11 @@ function buildViewModel(ctx) {
     isCreateForm: scr === "createForm", isCampaign: scr === "campaign", isPortfolio: scr === "portfolio",
     isStats: scr === "stats", isHow: scr === "how", isDocs: scr === "docs",
     goHome: () => set({ screen: "home" }), goCreate: () => set({ screen: "create" }),
-    goPortfolio: () => set({ screen: "portfolio" }),
+    goPortfolio: () => set({ screen: "portfolio" }), goHow: () => set({ screen: "how" }),
     menuOpen: s.menuOpen, openMenu: () => set({ menuOpen: true }), closeMenu: () => set({ menuOpen: false }),
 
     filters, feed, isEmpty: feed.length === 0,
-    heroTabs, heroSlides, heroCaption: heroMode.caption, heroPrev, heroNext,
+    sortTabs, kingCoin,
     layoutCards: s.layout === "cards", layoutTable: s.layout === "table",
     setLayoutCards: () => set({ layout: "cards" }), setLayoutTable: () => set({ layout: "table" }),
     lcBg: block(s.layout === "cards").bg, lcFg: block(s.layout === "cards").fg,

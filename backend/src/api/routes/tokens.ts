@@ -122,6 +122,9 @@ function ipfsToHttp(uri: string | null | undefined): string | null {
   return null;
 }
 
+type ResolvedMeta = { imageUrl: string | null; socials: { website?: string; twitter?: string; telegram?: string } };
+const EMPTY_SOCIALS = {};
+
 // Every browser was independently doing this exact fetch (metaURI JSON off
 // IPFS, just to read its `image` field) and hitting Pinata's slow shared
 // public gateway cold every time -- the reported "images load really slow"
@@ -135,35 +138,40 @@ function ipfsToHttp(uri: string | null | undefined): string | null {
 // needs to re-derive that). A failed resolution is deliberately NOT cached
 // (evicted before returning), so a transient gateway hiccup self-heals on
 // the next request instead of permanently pinning a token to "no image".
-const imageUrlCache = new Map<string, Promise<string | null>>();
-function resolveImageUrl(metaUri: string | null | undefined): Promise<string | null> {
-  if (!metaUri) return Promise.resolve(null);
-  const cached = imageUrlCache.get(metaUri);
+//
+// `socials` rides along on this same fetch -- the metadata JSON already has
+// it (see App.jsx's buildMetaURI), so surfacing it here for Discover's
+// per-card social icons costs nothing extra; a second, separate fetch just
+// to read the same document would undo the point of caching it at all.
+const metaCache = new Map<string, Promise<ResolvedMeta>>();
+function resolveMeta(metaUri: string | null | undefined): Promise<ResolvedMeta> {
+  if (!metaUri) return Promise.resolve({ imageUrl: null, socials: EMPTY_SOCIALS });
+  const cached = metaCache.get(metaUri);
   if (cached) return cached;
-  const promise = (async () => {
+  const promise = (async (): Promise<ResolvedMeta> => {
     try {
       const url = ipfsToHttp(metaUri);
-      if (!url) return null;
+      if (!url) return { imageUrl: null, socials: EMPTY_SOCIALS };
       const res = await fetch(url);
       if (!res.ok) throw new Error(`gateway ${res.status}`);
-      const data = (await res.json()) as { image?: string };
-      const resolved = ipfsToHttp(data.image);
-      if (!resolved) imageUrlCache.delete(metaUri);
-      return resolved;
+      const data = (await res.json()) as { image?: string; socials?: ResolvedMeta["socials"] };
+      const imageUrl = ipfsToHttp(data.image);
+      if (!imageUrl) metaCache.delete(metaUri);
+      return { imageUrl, socials: data.socials || EMPTY_SOCIALS };
     } catch {
-      imageUrlCache.delete(metaUri);
-      return null;
+      metaCache.delete(metaUri);
+      return { imageUrl: null, socials: EMPTY_SOCIALS };
     }
   })();
-  imageUrlCache.set(metaUri, promise);
+  metaCache.set(metaUri, promise);
   return promise;
 }
 
 async function attachImageUrls<T extends { metaUri: string | null; metaOverrideUri: string | null }>(
   tokens: T[]
-): Promise<(T & { imageUrl: string | null })[]> {
-  const imageUrls = await Promise.all(tokens.map((t) => resolveImageUrl(t.metaOverrideUri || t.metaUri)));
-  return tokens.map((t, i) => ({ ...t, imageUrl: imageUrls[i] }));
+): Promise<(T & ResolvedMeta)[]> {
+  const metas = await Promise.all(tokens.map((t) => resolveMeta(t.metaOverrideUri || t.metaUri)));
+  return tokens.map((t, i) => ({ ...t, ...metas[i] }));
 }
 
 router.get("/", async (req, res) => {
