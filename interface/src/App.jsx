@@ -1257,7 +1257,7 @@ function buildViewModel(ctx) {
       price: s.creatorData.ctoFee != null ? formatEther(s.creatorData.ctoFee) + " ETH" : "…",
       creator: s.creatorData.creator ? shortAddress(s.creatorData.creator) : "—",
       applicant: s.creatorData.ctoApp?.applicant && s.creatorData.ctoApp.applicant !== ZERO_ADDRESS ? shortAddress(s.creatorData.ctoApp.applicant) : null,
-      blurb: "Anyone can pay the CTO fee to apply to take over the creator fee stream. The owner approves or rejects the application. A takeover only moves the fee claim; metadata, supply and pool can never change.",
+      blurb: "Anyone can pay the CTO fee to apply to take over the creator fee stream. After paying, post the transaction hash on X and tag @duckfunfamily so the team can review the application, including anything else worth knowing about the request. The owner approves or rejects it from that review; a takeover only moves the fee claim, metadata, supply and pool can never change.",
     } : null,
     hookAccrued: s.creatorData ? Number(s.creatorData.hookAccrued || 0n) / 1e18 : 0,
     hookAccruedFailed: !!s.creatorData?.hookAccruedFailed,

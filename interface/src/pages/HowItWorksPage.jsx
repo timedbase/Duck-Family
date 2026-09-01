@@ -20,7 +20,7 @@ const FAQS = [
   { k: "Can the total supply ever go up?", v: "No. Every duckfun token mints its full supply once at creation, and there's no mint function left reachable after that. Supply can only stay flat or shrink over time (from the LP-fee burn). It never inflates." },
   { k: "What happens if a crowdlaunch misses its goal?", v: "No pool gets seeded, and the escrowed supply never releases. Everyone who contributed can claim a full refund of their ETH." },
   { k: "What quote assets are supported?", v: "Native ETH is the default and always tradeable directly. USDC and USDT0 are the two other options with real liquidity on Ink, used for the fallback route when a token is quoted in one of them instead of ETH." },
-  { k: "What is a CTO (community takeover)?", v: "If a creator goes quiet, anyone can pay the takeover price to inherit their fee stream. That's all it moves, though: supply, pool and the locked LP stay exactly as they are." },
+  { k: "What is a CTO (community takeover)?", v: "If a creator goes quiet, anyone can pay the takeover price to inherit their fee stream, then post the transaction on X tagging @duckfunfamily so the team can review it. That's all it moves, though: supply, pool and the locked LP stay exactly as they are." },
 ];
 
 const HOW_NOTE = {
