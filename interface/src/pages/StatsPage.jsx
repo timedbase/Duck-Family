@@ -35,7 +35,11 @@ export default function StatsPage({ v }) {
     { k: "24H VOLUME", v: money(stats.tradingVolumeUsd), sub: "DEX pools + bonding curves, USD-resolved trades only", bg: "var(--lime)", fg: "var(--on)", subFg: "var(--acc)" },
     { k: "24H LAUNCHES", v: String(stats.launches24h), sub: "across three families", bg: "var(--card)", fg: "var(--ink)", subFg: "var(--mute)" },
     { k: "24H TRADES", v: stats.trades24h.toLocaleString(), sub: "curve trades + V4 pool swaps", bg: "var(--card)", fg: "var(--ink)", subFg: "var(--mute)" },
+    { k: "30D VOLUME", v: money(stats.volume30dUsd), sub: "USD-resolved trades only", bg: "var(--card)", fg: "var(--ink)", subFg: "var(--mute)" },
+    { k: "ALL-TIME VOLUME", v: money(stats.volumeAllTimeUsd), sub: "USD-resolved trades only", bg: "var(--card)", fg: "var(--ink)", subFg: "var(--mute)" },
   ] : [];
+
+  const fmtAmt = (n) => (n === 0 ? "0" : n < 0.001 ? n.toFixed(6) : n.toFixed(4));
 
   return (
     <div>
@@ -97,6 +101,36 @@ export default function StatsPage({ v }) {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);padding:20px;margin-top:16px")}>
+            <div style={cs("display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px")}>
+              <h2 style={cs("margin:0;font-size:17px;font-weight:700;letter-spacing:-.03em")}>Fees, all-time</h2>
+              <span style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute)")}>by quote asset -- not USD-blended</span>
+            </div>
+            <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px")}>
+              <div>
+                <div style={cs("font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute);margin-bottom:9px")}>CREATOR FEES PAID</div>
+                {stats.creatorFeesPaid.length === 0 && <div style={cs("font-size:13px;color:var(--mute)")}>None claimed yet.</div>}
+                {stats.creatorFeesPaid.map((row, i) => (
+                  <div key={i} style={cs("display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--soft)")}>
+                    <span style={cs("font-size:13px;color:var(--mute)")}>{row.symbol}</span>
+                    <span style={cs("font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:500")}>{fmtAmt(row.amount)}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <div style={cs("font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute);margin-bottom:9px")}>PLATFORM REVENUE</div>
+                {stats.platformRevenue.length === 0 && <div style={cs("font-size:13px;color:var(--mute)")}>None collected yet.</div>}
+                {stats.platformRevenue.map((row, i) => (
+                  <div key={i} style={cs("display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--soft)")}>
+                    <span style={cs("font-size:13px;color:var(--mute)")}>{row.symbol}</span>
+                    <span style={cs("font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:500")}>{fmtAmt(row.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={cs("font-size:11.5px;color:var(--mute);line-height:1.55;margin-top:16px")}>Creator fees: the curve's creator-side cut plus the hook's 2% sell fee, both paid straight to creators. Platform revenue: the curve's platform-side cut plus the pool's 0.5% sell-side LP fee -- the matching burn isn't counted here since it's supply shrinkage, not revenue.</div>
           </div>
         </>
       )}

@@ -172,14 +172,56 @@ router.get("/quote-assets", async (_req, res) => {
   }
 });
 
+// Every quote asset the curve/launcher/raise contracts can be paired with
+// (see DEFAULT_QUOTE_TOKENS) plus native ETH -- used to label the raw,
+// mixed-currency fee totals below by their real quote asset rather than
+// blending them into one fabricated USD figure (fee-claim entities don't
+// carry a resolved USD value the way TokenHourData.volumeUsd does).
+const QUOTE_ASSET_META: Record<string, { symbol: string; decimals: number }> = {
+  ["0x0000000000000000000000000000000000000000"]: { symbol: "ETH", decimals: 18 },
+  ...Object.fromEntries(DEFAULT_QUOTE_TOKENS.map((t) => [t.address.toLowerCase(), { symbol: t.symbol, decimals: 6 }])),
+};
+function quoteMetaFor(address: string | null | undefined) {
+  return QUOTE_ASSET_META[(address || "").toLowerCase()] || { symbol: "?", decimals: 18 };
+}
+
+// Cursor-paginated fetch (id_gt, orderBy id asc) so a query genuinely past
+// 1000 rows -- e.g. 30-day hourly buckets, or the full history of fee
+// claims -- doesn't silently under-count instead of erroring. Cheap no-op
+// loop (one request) at today's data volume.
+async function fetchAllPaged<T extends { id: string }>(
+  queryFor: (lastId: string) => string,
+  field: string,
+  variables: Record<string, unknown>
+): Promise<T[]> {
+  const out: T[] = [];
+  let lastId = "";
+  for (;;) {
+    const data = await querySubgraph<Record<string, T[]>>(queryFor(lastId), { ...variables, lastId });
+    const batch = data[field];
+    out.push(...batch);
+    if (batch.length < 1000) break;
+    lastId = batch[batch.length - 1].id;
+  }
+  return out;
+}
+
+function sumByQuote(rows: { amountRaw: string; quoteToken: string | null | undefined }[]) {
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    const meta = quoteMetaFor(row.quoteToken);
+    const amount = Number(row.amountRaw) / 10 ** meta.decimals;
+    totals.set(meta.symbol, (totals.get(meta.symbol) || 0) + amount);
+  }
+  return [...totals.entries()].map(([symbol, amount]) => ({ symbol, amount })).sort((a, b) => b.amount - a.amount);
+}
+
 // Stats-page aggregates, queried from the subgraph rather than the chain
-// directly (unlike every other route in this file). `first: 1000` on each
-// query is a real cap -- fine at today's trade volume, not fine forever;
-// revisit with a paginated or bucketed count once any of these routinely
-// hits it.
+// directly (unlike every other route in this file).
 router.get("/stats", async (_req, res) => {
   const now = Math.floor(Date.now() / 1000);
   const cutoff24h = now - 24 * 60 * 60;
+  const cutoff30d = now - 30 * 24 * 60 * 60;
 
   try {
     const data = await querySubgraph<{
@@ -220,15 +262,89 @@ router.get("/stats", async (_req, res) => {
     // apples-to-apples comparison the way a single fabricated pie would.
     const raiseContributedEth = data.contributions.reduce((sum, c) => sum + Number(c.amount) / 1e18, 0);
 
+    const [hourRows30d, allTokens, curveFeeClaims, hookFeeClaims, lpFeeClaims] = await Promise.all([
+      fetchAllPaged<{ id: string; volumeUsd: string }>(
+        (lastId) => `query Vol30d($cutoff: BigInt!, $lastId: String!) {
+          tokenHourDatas(first: 1000, orderBy: id, orderDirection: asc, where: { hourStartUnix_gte: $cutoff, id_gt: $lastId }) {
+            id volumeUsd
+          }
+        }`,
+        "tokenHourDatas",
+        { cutoff: String(cutoff30d) }
+      ),
+      fetchAllPaged<{ id: string; volumeAllTimeUsd: string }>(
+        (lastId) => `query AllTokenVolume($lastId: String!) {
+          tokens(first: 1000, orderBy: id, orderDirection: asc, where: { id_gt: $lastId }) {
+            id volumeAllTimeUsd
+          }
+        }`,
+        "tokens",
+        {}
+      ),
+      fetchAllPaged<{ id: string; creatorAmount: string; platformAmount: string; token: { quoteToken: string | null } }>(
+        (lastId) => `query AllCurveFeeClaims($lastId: String!) {
+          curveFeeClaims(first: 1000, orderBy: id, orderDirection: asc, where: { id_gt: $lastId }) {
+            id creatorAmount platformAmount token { quoteToken }
+          }
+        }`,
+        "curveFeeClaims",
+        {}
+      ),
+      fetchAllPaged<{ id: string; amount: string; pool: { token: { quoteToken: string | null } } }>(
+        (lastId) => `query AllHookFeeClaims($lastId: String!) {
+          hookFeeClaims(first: 1000, orderBy: id, orderDirection: asc, where: { id_gt: $lastId }) {
+            id amount pool { token { quoteToken } }
+          }
+        }`,
+        "hookFeeClaims",
+        {}
+      ),
+      fetchAllPaged<{ id: string; toPlatform: string; position: { token: { quoteToken: string | null } } }>(
+        (lastId) => `query AllLpFeeClaims($lastId: String!) {
+          lpfeeClaims(first: 1000, orderBy: id, orderDirection: asc, where: { id_gt: $lastId }) {
+            id toPlatform position { token { quoteToken } }
+          }
+        }`,
+        "lpfeeClaims",
+        {}
+      ),
+    ]);
+
+    const volume30dUsd = hourRows30d.reduce((sum, r) => sum + Number(r.volumeUsd || 0), 0);
+    const volumeAllTimeUsd = allTokens.reduce((sum, t) => sum + Number(t.volumeAllTimeUsd || 0), 0);
+
+    // Creator fee paid: curve's creator-side cut (pre-migration) plus the
+    // hook's entire 2% sell fee, which is paid to the creator in full (see
+    // DuckHookV4.claimFees -- the platform's cut of pool revenue comes from
+    // the separate LP-position fee below, never from this one). Platform
+    // revenue: curve's platform-side cut plus DuckLocker's sell-side
+    // LP-position fee (the 0.5% quote-side skim; the matching burn is
+    // supply-shrinkage, not revenue, so it's excluded here). Grouped by
+    // quote asset rather than blended into one fabricated USD figure, since
+    // none of these fee-claim entities carry a resolved USD value the way
+    // TokenHourData.volumeUsd does.
+    const creatorFeesPaid = sumByQuote([
+      ...curveFeeClaims.map((c) => ({ amountRaw: c.creatorAmount, quoteToken: c.token.quoteToken })),
+      ...hookFeeClaims.map((c) => ({ amountRaw: c.amount, quoteToken: c.pool.token.quoteToken })),
+    ]);
+    const platformRevenue = sumByQuote([
+      ...curveFeeClaims.map((c) => ({ amountRaw: c.platformAmount, quoteToken: c.token.quoteToken })),
+      ...lpFeeClaims.map((c) => ({ amountRaw: c.toPlatform, quoteToken: c.position.token.quoteToken })),
+    ]);
+
     res.json({
       launches24h,
       trades24h,
       tradingVolumeUsd,
+      volume30dUsd,
+      volumeAllTimeUsd,
       venues: [
         { key: "dex", label: "DEX pools (V4)", volumeUsd: dexVolumeUsd, pct: tradingVolumeUsd > 0 ? (dexVolumeUsd / tradingVolumeUsd) * 100 : 0 },
         { key: "curve", label: "Bonding curves", volumeUsd: curveVolumeUsd, pct: tradingVolumeUsd > 0 ? (curveVolumeUsd / tradingVolumeUsd) * 100 : 0 },
       ],
       raiseContributedEth,
+      creatorFeesPaid,
+      platformRevenue,
     });
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
