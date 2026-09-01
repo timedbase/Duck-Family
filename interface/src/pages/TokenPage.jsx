@@ -1,8 +1,29 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cs } from "../cs.js";
 import PriceChart from "../PriceChart.jsx";
 import Thumb from "../Thumb.jsx";
 import { AddressChip, LinkChip } from "../MetaChips.jsx";
+
+// Numbered pager over an already-fetched, ever-growing row list (App.jsx
+// appends full pages as "load more" fires) -- shown pages are just a slice
+// of what's loaded; the last number doubles as "fetch the next page" when
+// `hasMore` says the backend has more rows than we've pulled down yet.
+function Pager({ page, setPage, totalPages, hasMore, loading, onLoadMore }) {
+  if (totalPages <= 1 && !hasMore) return null;
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+  return (
+    <div style={cs("display:flex;align-items:center;gap:6px;padding:14px 18px;min-width:460px;flex-wrap:wrap")}>
+      <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} style={cs(`width:30px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:13px;cursor:pointer;opacity:${page === 1 ? .4 : 1}`)}>‹</button>
+      {pages.map((p) => (
+        <button key={p} onClick={() => setPage(p)} style={cs(`min-width:30px;height:30px;padding:0 8px;border:1px solid var(--line);border-radius:6px;background:${p === page ? "var(--ink)" : "var(--card)"};color:${p === page ? "var(--card)" : "var(--ink)"};font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer`)}>{p}</button>
+      ))}
+      {hasMore && (
+        <button onClick={async () => { await onLoadMore(); setPage(totalPages + 1); }} disabled={loading} style={cs("min-width:30px;height:30px;padding:0 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer")}>{loading ? "…" : totalPages + 1}</button>
+      )}
+      <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} style={cs(`width:30px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:13px;cursor:pointer;opacity:${page === totalPages ? .4 : 1}`)}>›</button>
+    </div>
+  );
+}
 
 // The Buy/Sell form -- identical content whether it sits inline in the
 // sticky desktop sidebar or inside the mobile bottom sheet; only its
@@ -54,7 +75,18 @@ export default function TokenPage({ v }) {
   const [splitWallet, setSplitWallet] = useState("");
   const [splitPct, setSplitPct] = useState("");
   const [tradeSheetOpen, setTradeSheetOpen] = useState(false);
+  const [loadingMoreTrades, setLoadingMoreTrades] = useState(false);
+  const [loadingMoreHolders, setLoadingMoreHolders] = useState(false);
+  const [tradePage, setTradePage] = useState(1);
+  const [holderPage, setHolderPage] = useState(1);
+  useEffect(() => { setTradePage(1); setHolderPage(1); }, [tok?.id]);
   if (!sel || !tok) return null;
+
+  const pageSize = v.pageSize;
+  const tradeTotalPages = Math.max(1, Math.ceil(tok.trades.length / pageSize));
+  const tradePageRows = tok.trades.slice((tradePage - 1) * pageSize, tradePage * pageSize);
+  const holderTotalPages = Math.max(1, Math.ceil(tok.holderRows.length / pageSize));
+  const holderPageRows = tok.holderRows.slice((holderPage - 1) * pageSize, holderPage * pageSize);
 
   const submitSplits = () => {
     const poolId = v.liq && v.creatorData?.poolId;
@@ -191,7 +223,7 @@ export default function TokenPage({ v }) {
                   <span>SIDE</span><span style={cs("text-align:right")}>{sel.quote}</span><span style={cs("text-align:right")}>{sel.symbol.replace("$", "")}</span><span>WALLET</span><span style={cs("text-align:right")}>AGE</span>
                 </div>
                 {tok.trades.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No trades yet.</div>}
-                {tok.trades.map((r, i) => (
+                {tradePageRows.map((r, i) => (
                   <div key={i} style={cs("display:grid;min-width:460px;grid-template-columns:86px 1fr 1fr 1.3fr 70px;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px;align-items:center")}>
                     <span><span title={r.side} style={cs(`width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;background:${r.bg};color:${r.fg};font-size:10.5px;font-weight:500;border-radius:999px`)}>{r.sideLabel}</span></span>
                     <span style={cs("text-align:right")}>{r.quote}</span>
@@ -200,6 +232,8 @@ export default function TokenPage({ v }) {
                     <span style={cs("text-align:right;color:var(--mute)")}>{r.ago}</span>
                   </div>
                 ))}
+                <Pager page={tradePage} setPage={setTradePage} totalPages={tradeTotalPages} hasMore={tok.tradesHasMore}
+                  loading={loadingMoreTrades} onLoadMore={async () => { setLoadingMoreTrades(true); await v.loadMoreTrades(); setLoadingMoreTrades(false); }} />
               </div>
             )}
 
@@ -209,7 +243,7 @@ export default function TokenPage({ v }) {
                   <span>#</span><span>WALLET</span><span style={cs("text-align:right")}>BALANCE</span><span style={cs("text-align:right")}>SHARE</span><span style={cs("text-align:right")}>TAG</span>
                 </div>
                 {tok.holderRows.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No holders indexed yet.</div>}
-                {tok.holderRows.map((h, i) => (
+                {holderPageRows.map((h, i) => (
                   <div key={i} style={cs("display:grid;min-width:460px;grid-template-columns:44px 1.4fr 1fr .8fr 90px;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px;align-items:center")}>
                     <span style={cs("color:var(--mute)")}>{h.rank}</span>
                     <a href={`https://explorer.inkonchain.com/address/${h.full}`} target="_blank" rel="noreferrer" title={h.full}>{h.who}</a>
@@ -218,6 +252,8 @@ export default function TokenPage({ v }) {
                     <div style={cs("text-align:right")}><span style={cs(`font-size:10px;letter-spacing:.08em;padding:2px 8px;border-radius:999px;border:${h.tagBd};background:${h.tagBg};color:${h.tagFg}`)}>{h.tag}</span></div>
                   </div>
                 ))}
+                <Pager page={holderPage} setPage={setHolderPage} totalPages={holderTotalPages} hasMore={tok.holdersHasMore}
+                  loading={loadingMoreHolders} onLoadMore={async () => { setLoadingMoreHolders(true); await v.loadMoreHolders(); setLoadingMoreHolders(false); }} />
               </div>
             )}
 
@@ -347,14 +383,14 @@ export default function TokenPage({ v }) {
 
       {v.isMobile && (
         <>
-          {/* Fixed trade bar -- always reachable while scrolled, opens the
-              same Buy/Sell form as a bottom sheet instead of it stacking
+          {/* Floating trade button -- always reachable while scrolled, opens
+              the same Buy/Sell form as a bottom sheet instead of it stacking
               inline below everything else on the page. */}
-          <div onClick={() => setTradeSheetOpen(true)} style={cs("position:fixed;left:0;right:0;bottom:0;z-index:70;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px;border-top:1px solid var(--line);background:var(--pop);cursor:pointer")}>
-            <span style={cs("font-size:14px;font-weight:700")}>Trade {sel.symbol}</span>
-            <span style={cs("font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--mute)")}>{sel.price}</span>
-          </div>
-          <div style={cs("height:60px")}></div>
+          <button onClick={() => setTradeSheetOpen(true)} style={cs("position:fixed;left:16px;right:16px;bottom:16px;z-index:70;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;border:1px solid var(--line);border-radius:14px;background:var(--lime);color:var(--on);box-shadow:0 10px 24px -8px rgba(0,0,0,.55);cursor:pointer")}>
+            <span style={cs("font-size:14.5px;font-weight:700")}>Trade {sel.symbol}</span>
+            <span style={cs("font-family:'JetBrains Mono',monospace;font-size:13px")}>{sel.price}</span>
+          </button>
+          <div style={cs("height:76px")}></div>
 
           {tradeSheetOpen && (
             <div onClick={() => setTradeSheetOpen(false)} style={cs("position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.6);display:flex;align-items:flex-end")}>

@@ -47,7 +47,7 @@ export default function HowItWorksPage({ v }) {
 
       <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:18px")}>
         {steps.map((s, i) => (
-          <div key={i} className="d-lift" style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;padding:20px;display:flex;flex-direction:column")}>
+          <div key={i} className="d-lift" style={cs("border:1px solid var(--line);background:var(--card);border-radius:10px;box-shadow:var(--sh);padding:20px;display:flex;flex-direction:column")}>
             <span style={cs(`width:32px;height:32px;border-radius:999px;background:${s.bg};color:${s.fg || "var(--ink)"};display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;flex:none`)}>{s.n}</span>
             <div style={cs("font-size:16px;font-weight:700;letter-spacing:-.025em;margin-top:14px")}>{s.k}</div>
             <div style={cs("font-size:13.5px;color:var(--mute);line-height:1.6;margin-top:8px")}>{s.v}</div>
@@ -55,7 +55,7 @@ export default function HowItWorksPage({ v }) {
         ))}
       </div>
 
-      <div style={cs("border:1px solid var(--line);background:var(--lime);color:var(--on);border-radius:10px;padding:20px;margin-bottom:18px")}>
+      <div style={cs("border:1px solid var(--line);background:var(--lime);color:var(--on);border-radius:10px;box-shadow:var(--sh);padding:20px;margin-bottom:18px")}>
         <div style={cs("font-size:16px;font-weight:700;letter-spacing:-.025em")}>{note.k}</div>
         <div style={cs("font-size:13.5px;line-height:1.6;margin-top:8px;max-width:78ch")}>{note.v}</div>
       </div>
@@ -64,7 +64,7 @@ export default function HowItWorksPage({ v }) {
         <h2 style={cs("margin:0 0 12px;font-size:19px;font-weight:700;letter-spacing:-.03em")}>Common questions</h2>
         <div style={cs("display:flex;flex-direction:column;gap:10px")}>
           {FAQS.map((f, i) => (
-            <div key={i} className="d-lift" style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;padding:16px 18px")}>
+            <div key={i} className="d-lift" style={cs("border:1px solid var(--line);background:var(--card);border-radius:10px;box-shadow:var(--sh);padding:16px 18px")}>
               <div style={cs("font-size:14px;font-weight:600;letter-spacing:-.01em")}>{f.k}</div>
               <div style={cs("font-size:13px;color:var(--mute);line-height:1.6;margin-top:7px")}>{f.v}</div>
             </div>

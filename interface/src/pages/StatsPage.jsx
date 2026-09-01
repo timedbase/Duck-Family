@@ -51,15 +51,15 @@ export default function StatsPage({ v }) {
         )}
       </div>
 
-      {error && <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);padding:24px;color:var(--neg);font-size:13.5px;margin-bottom:16px")}>Couldn't load stats: {error}</div>}
+      {error && <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);padding:24px;color:var(--neg);font-size:13.5px;margin-bottom:16px")}>Couldn't load stats: {error}</div>}
 
-      {!stats && !error && <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);padding:40px;text-align:center;color:var(--mute);font-size:13.5px")}>Loading…</div>}
+      {!stats && !error && <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);padding:40px;text-align:center;color:var(--mute);font-size:13.5px")}>Loading…</div>}
 
       {stats && (
         <>
           <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:16px")}>
             {cards.map((c, i) => (
-              <div key={i} style={cs(`border:1px solid var(--line);border-radius:14px;background:${c.bg};color:${c.fg};padding:20px`)}>
+              <div key={i} style={cs(`border:1px solid var(--line);border-radius:10px;background:${c.bg};color:${c.fg};box-shadow:var(--sh);padding:20px`)}>
                 <div style={cs(`font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:${c.subFg}`)}>{c.k}</div>
                 <div style={cs("font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-.03em;margin-top:9px")}>{c.v}</div>
                 <div style={cs(`font-size:11.5px;color:${c.subFg};margin-top:5px`)}>{c.sub}</div>
@@ -67,7 +67,7 @@ export default function StatsPage({ v }) {
             ))}
           </div>
 
-          <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);padding:20px")}>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);padding:20px")}>
             <div style={cs("display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px")}>
               <h2 style={cs("margin:0;font-size:17px;font-weight:700;letter-spacing:-.03em")}>24h volume by venue</h2>
               <span style={cs("font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mute)")}>{money(stats.tradingVolumeUsd)} total</span>

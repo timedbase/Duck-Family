@@ -15,14 +15,14 @@ const FAMILIES = [
 export default function CreateChooserPage({ v }) {
   return (
     <div style={cs("max-width:1120px;margin:0 auto")}>
-      <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);padding:26px 24px;margin-bottom:18px")}>
+      <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);padding:26px 24px;margin-bottom:18px")}>
         <h1 style={cs(`margin:0 0 9px;font-size:${v.isMobile ? "26px" : "38px"};letter-spacing:-.045em;font-weight:700;line-height:1.05`)}>Launch a token</h1>
         <p style={cs("margin:0;color:var(--mute);font-size:14.5px;line-height:1.55;max-width:66ch")}>Three families. All of them mint EIP-1167 clones, wire the anti-MEV hook, and lock LP permanently in DuckLocker.</p>
       </div>
 
       <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px")}>
         {FAMILIES.map((f) => (
-          <div key={f.key} onClick={() => v.setFamily(f.key)} className="d-hover-line" style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);cursor:pointer;display:flex;flex-direction:column;overflow:hidden")}>
+          <div key={f.key} onClick={() => v.setFamily(f.key)} className="d-hover-line" style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);cursor:pointer;display:flex;flex-direction:column;overflow:hidden")}>
             <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line)")}>
               <div style={cs(`width:64px;flex:none;border-right:1px solid var(--line);background:${f.accent};color:${f.accentFg};display:flex;align-items:center;justify-content:center;font-size:24px`)}>{f.glyph}</div>
               <div style={cs("padding:14px 16px;flex:1;min-width:0")}>
@@ -32,7 +32,7 @@ export default function CreateChooserPage({ v }) {
             </div>
             <div style={cs("padding:16px")}>
               <div style={cs("font-size:13.5px;color:var(--mute);line-height:1.55")}>{f.desc}</div>
-              <div style={cs("display:flex;flex-direction:column;gap:0;margin-top:16px;border:1px solid var(--line);border-radius:9px;overflow:hidden")}>
+              <div style={cs("display:flex;flex-direction:column;gap:0;margin-top:16px;border:1px solid var(--line);border-radius:10px;overflow:hidden")}>
                 {f.bullets.map((b, i) => (
                   <div key={i} style={cs("padding:10px 13px;border-bottom:1px solid var(--soft);font-size:12.5px;line-height:1.4")}>{b}</div>
                 ))}

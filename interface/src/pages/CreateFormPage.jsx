@@ -83,7 +83,7 @@ export default function CreateFormPage({ v }) {
       <button onClick={v.backToChooser} style={cs("border:0;background:transparent;font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.1em;color:var(--mute);cursor:pointer;padding:0 0 14px")}>← ALL LAUNCH TYPES</button>
 
       <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 336px"};gap:16px;align-items:start`)}>
-        <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
+        <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);overflow:hidden")}>
           <div style={cs(`padding:${v.isMobile ? "18px" : "22px 24px"};border-bottom:1px solid var(--line);background:${FORM.accent};color:${FORM.accentFg}`)}>
             <div style={cs(`font-size:${v.isMobile ? "21px" : "26px"};font-weight:700;letter-spacing:-.04em;line-height:1.05`)}>{FORM.title}</div>
             <div style={cs("font-size:13.5px;line-height:1.55;margin-top:10px;max-width:66ch;opacity:.85")}>{FORM.sub}</div>
@@ -183,13 +183,13 @@ export default function CreateFormPage({ v }) {
           </div>
 
           <div style={cs("border-top:1px solid var(--line);padding:20px 24px;display:flex;gap:12px;flex-wrap:wrap")}>
-            <button onClick={v.submitCreate} style={cs("padding:15px 26px;border:1px solid var(--line);border-radius:9px;background:var(--ink);color:var(--card);font-size:15px;font-weight:700;cursor:pointer")}>{v.createCta}</button>
-            <button onClick={v.simulateCreate} disabled={v.simulating} style={cs("padding:15px 24px;border:1px solid var(--line);border-radius:9px;background:var(--card);font-size:15px;font-weight:600;cursor:pointer")}>{v.simulating ? "Simulating…" : "Simulate first"}</button>
+            <button onClick={v.submitCreate} style={cs("padding:15px 26px;border:1px solid var(--line);border-radius:6px;background:var(--ink);color:var(--card);font-size:15px;font-weight:700;cursor:pointer")}>{v.createCta}</button>
+            <button onClick={v.simulateCreate} disabled={v.simulating} style={cs("padding:15px 24px;border:1px solid var(--line);border-radius:6px;background:var(--card);font-size:15px;font-weight:600;cursor:pointer")}>{v.simulating ? "Simulating…" : "Simulate first"}</button>
           </div>
         </div>
 
         <div style={cs(`display:flex;flex-direction:column;gap:16px;${v.isMobile ? "" : "position:sticky;top:80px"}`)}>
-          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);overflow:hidden")}>
             <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>ON SUBMIT</div>
             {ON_SUBMIT[family].map((t, i) => (
               <div key={i} style={cs("display:flex;gap:12px;padding:13px 15px;border-bottom:1px solid var(--soft)")}>
@@ -198,7 +198,7 @@ export default function CreateFormPage({ v }) {
               </div>
             ))}
           </div>
-          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);overflow:hidden")}>
             <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>COSTS</div>
             {costs.map((c, i) => (
               <div key={i} style={cs("display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px")}>

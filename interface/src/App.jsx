@@ -31,6 +31,7 @@ import { findBlockedTerm } from "./moderation.js";
 import { resolveTokenImage, resolveTokenSocials, resolveTokenDescription, resolveTokenNameSymbol } from "./ipfs.js";
 
 const REFRESH_MS = 15000;
+const PAGE_SIZE = 50; // Trades/Holders tabs page at this size, both server- and client-side.
 const GAS_RESERVE_WEI = parseEther("0.005");
 const INK = "var(--ink)", CARD = "var(--card)", LIME = "var(--lime)", ORANGE = "var(--orange)";
 
@@ -245,7 +246,10 @@ export default function App() {
         const byId = new Map(st.coins.map((c) => [c.id, c]));
         const merged = coins.map((next) => {
           const prev = byId.get(next.id);
-          return prev ? { ...next, trades: prev.trades, holderRows: prev.holderRows, rawTrades: prev.rawTrades, chat: prev.chat, imageUrl: prev.imageUrl, desc: prev.desc, metaUri: prev.metaUri, socials: prev.socials } : next;
+          return prev ? {
+            ...next, trades: prev.trades, holderRows: prev.holderRows, rawTrades: prev.rawTrades, chat: prev.chat, imageUrl: prev.imageUrl, desc: prev.desc, metaUri: prev.metaUri, socials: prev.socials,
+            tradesHasMore: prev.tradesHasMore, tradesOffset: prev.tradesOffset, holdersHasMore: prev.holdersHasMore, holdersOffset: prev.holdersOffset,
+          } : next;
         });
         return { ...st, coins: merged, coinsLoading: false, coinsError: "" };
       });
@@ -366,7 +370,7 @@ export default function App() {
   const loadTokenDetail = useCallback(async (address, knownMetaUri, overrideUri, knownImageUrl) => {
     loadTokenMeta(address, knownMetaUri, overrideUri, knownImageUrl);
     try {
-      const [trades, holders] = await Promise.all([api.trades(address), api.holders(address)]);
+      const [tradesRes, holdersRes] = await Promise.all([api.trades(address, PAGE_SIZE, 0), api.holders(address, PAGE_SIZE, 0)]);
       setS((st) => {
         const coin = st.coins.find((c) => c.id === address);
         if (!coin) return st;
@@ -377,14 +381,66 @@ export default function App() {
           ...st,
           coins: st.coins.map((c) => c.id === address ? {
             ...c,
-            trades: trades.map((tr) => tradeToRow(tr, labels, coin.quote)),
-            rawTrades: trades,
-            holderRows: holders.map((h, i) => holderToRow(h, i, totalSupply, labels)),
+            trades: tradesRes.items.map((tr) => tradeToRow(tr, labels, coin.quote)),
+            rawTrades: tradesRes.items, tradesHasMore: tradesRes.hasMore, tradesOffset: tradesRes.items.length,
+            holderRows: holdersRes.items.map((h, i) => holderToRow(h, i, totalSupply, labels)),
+            holdersHasMore: holdersRes.hasMore, holdersOffset: holdersRes.items.length,
           } : c),
         };
       });
     } catch (e) { console.error("failed to load token detail", e); }
   }, []);
+
+  // "Load more" for the Trades/Holders tabs -- appends the next page rather
+  // than re-fetching from the top, using each coin's own running offset so
+  // repeated clicks page forward instead of re-requesting the same rows.
+  async function loadMoreTrades(address) {
+    const coin = s.coins.find((c) => c.id === address);
+    if (!coin || !coin.tradesHasMore) return;
+    try {
+      const res = await api.trades(address, PAGE_SIZE, coin.tradesOffset || 0);
+      setS((st) => {
+        const cur = st.coins.find((c) => c.id === address);
+        if (!cur) return st;
+        const labels = {};
+        if (cur.creator) labels[cur.creator.toLowerCase()] = "Creator";
+        const newRows = res.items.map((tr) => tradeToRow(tr, labels, cur.quote));
+        return {
+          ...st,
+          coins: st.coins.map((c) => c.id === address ? {
+            ...c,
+            trades: [...c.trades, ...newRows], rawTrades: [...c.rawTrades, ...res.items],
+            tradesHasMore: res.hasMore, tradesOffset: (c.tradesOffset || 0) + res.items.length,
+          } : c),
+        };
+      });
+    } catch (e) { console.error("failed to load more trades", e); }
+  }
+
+  async function loadMoreHolders(address) {
+    const coin = s.coins.find((c) => c.id === address);
+    if (!coin || !coin.holdersHasMore) return;
+    try {
+      const res = await api.holders(address, PAGE_SIZE, coin.holdersOffset || 0);
+      setS((st) => {
+        const cur = st.coins.find((c) => c.id === address);
+        if (!cur) return st;
+        const totalSupply = cur.totalSupply ? Number(cur.totalSupply) / 1e18 : 1_000_000_000;
+        const labels = {};
+        if (cur.creator) labels[cur.creator.toLowerCase()] = "Creator";
+        const startRank = cur.holderRows.length;
+        const newRows = res.items.map((h, i) => holderToRow(h, startRank + i, totalSupply, labels));
+        return {
+          ...st,
+          coins: st.coins.map((c) => c.id === address ? {
+            ...c,
+            holderRows: [...c.holderRows, ...newRows],
+            holdersHasMore: res.hasMore, holdersOffset: (c.holdersOffset || 0) + res.items.length,
+          } : c),
+        };
+      });
+    } catch (e) { console.error("failed to load more holders", e); }
+  }
 
   function errorText(e, fallback) {
     const decoded = e?.cause?.data?.errorName;
@@ -825,7 +881,7 @@ export default function App() {
 
   const v = buildViewModel({
     s, set, account, isConnected, disconnect, openConnectModal,
-    loadCoins, loadPortfolio, loadTokenDetail, openToken, flash, requireWallet,
+    loadCoins, loadPortfolio, loadTokenDetail, loadMoreTrades, loadMoreHolders, openToken, flash, requireWallet,
     buy, sell, submitCreate, simulateCreate, onImagePick, clearImage, setSocial,
     contribute, claimCampaignTokens, claimCampaignRefundAction, finalizeCampaignAction,
     claimCreatorFees, claimAllCreatorFees, loadCreatorData, claimCreatorAndHookFees, claimCurveFeeAction, saveFeeSplits, buyTakeover,
@@ -861,7 +917,12 @@ export default function App() {
 
           <div style={cs("display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute)")}>
             <span style={cs("width:6px;height:6px;border-radius:99px;background:var(--lime);flex:none")}></span>Ink 57073 · synced
-            <a href="https://x.com/duckfunfamily" target="_blank" rel="noreferrer" title="duckfun on X" style={cs("margin-left:auto;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--mute);flex:none;border-bottom:1px solid var(--line)")}>𝕏</a>
+            <div style={cs("margin-left:auto;display:flex;gap:6px")}>
+              <a href="https://x.com/duckfunfamily" target="_blank" rel="noreferrer" title="duckfun on X" style={cs("width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--mute);flex:none;border-bottom:1px solid var(--line)")}>𝕏</a>
+              <a href="https://t.me/DuckFunFamily" target="_blank" rel="noreferrer" title="duckfun on Telegram" style={cs("width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--mute);flex:none;border-bottom:1px solid var(--line)")}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21.94 4.36a1.5 1.5 0 0 0-1.62-.2L2.7 11.4a1.4 1.4 0 0 0 .1 2.6l4.55 1.5 1.76 5.5a1.3 1.3 0 0 0 2.16.5l2.5-2.4 4.5 3.3a1.4 1.4 0 0 0 2.23-.85l3.1-14.9a1.5 1.5 0 0 0-.66-1.79zM9.4 14.9l-1.2 3.7-1.1-3.5 11.6-7.2z"/></svg>
+              </a>
+            </div>
           </div>
         </aside>
       )}
@@ -927,7 +988,12 @@ export default function App() {
             <div style={cs("flex:1")}></div>
             <div style={cs("display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute)")}>
               INK 57073 · SYNCED
-              <a href="https://x.com/duckfunfamily" target="_blank" rel="noreferrer" title="duckfun on X" style={cs("margin-left:auto;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--mute);flex:none;border-bottom:1px solid var(--line)")}>𝕏</a>
+              <div style={cs("margin-left:auto;display:flex;gap:6px")}>
+                <a href="https://x.com/duckfunfamily" target="_blank" rel="noreferrer" title="duckfun on X" style={cs("width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--mute);flex:none;border-bottom:1px solid var(--line)")}>𝕏</a>
+                <a href="https://t.me/DuckFunFamily" target="_blank" rel="noreferrer" title="duckfun on Telegram" style={cs("width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--mute);flex:none;border-bottom:1px solid var(--line)")}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21.94 4.36a1.5 1.5 0 0 0-1.62-.2L2.7 11.4a1.4 1.4 0 0 0 .1 2.6l4.55 1.5 1.76 5.5a1.3 1.3 0 0 0 2.16.5l2.5-2.4 4.5 3.3a1.4 1.4 0 0 0 2.23-.85l3.1-14.9a1.5 1.5 0 0 0-.66-1.79zM9.4 14.9l-1.2 3.7-1.1-3.5 11.6-7.2z"/></svg>
+              </a>
+              </div>
             </div>
           </div>
         </div>
@@ -1138,7 +1204,16 @@ function buildViewModel(ctx) {
       raised: c.raised.toFixed(4), startTarget: "—", migTarget: "—",
     } : null,
     tokenStats: c ? [
-      { k: "MCAP", v: usdOrQuote(c.mcUsd, c.mc, c.quote) }, { k: "RAISED", v: quoteAmount(c.raised, c.quote) }, { k: "24H VOL", v: usdOrQuote(c.volUsd, c.vol, c.quote) },
+      { k: "MCAP", v: usdOrQuote(c.mcUsd, c.mc, c.quote) },
+      // "Raised" is a bonding-curve/crowdlaunch concept (ETH collected before
+      // migration or finalize) -- an instant-launch token skips that phase
+      // entirely and opens straight on a V4 pool, so showing "RAISED 0 ETH"
+      // for one would misrepresent it as a stalled raise rather than what it
+      // actually is: not applicable. Show total supply there instead.
+      c.family === "INSTANT"
+        ? { k: "SUPPLY", v: compactNumber(Number(c.totalSupply || 0) / 1e18) }
+        : { k: "RAISED", v: quoteAmount(c.raised, c.quote) },
+      { k: "24H VOL", v: usdOrQuote(c.volUsd, c.vol, c.quote) },
       { k: "HOLDERS", v: c.holders.toLocaleString() },
       { k: c.family === "CURVE" && !c.migrated ? "CURVE" : "POOL", v: c.family === "CURVE" && !c.migrated ? Math.round(c.pct) + "%" : (c.migrated || c.family === "INSTANT") ? "V4 LIVE" : "—" },
       { k: "LP LOCK", v: (c.migrated || c.family === "INSTANT") ? "FOREVER" : "—" },
@@ -1215,6 +1290,7 @@ function buildViewModel(ctx) {
     range: s.range, ranges: ["5M", "1H", "4H", "1D", "ALL"].map((label) => Object.assign({ label, go: () => set({ range: label }) }, block(s.range === label))),
     tab: s.tab, tabs: ["Trades", "Holders", "Comments", "Creator + liquidity"].map((label) => Object.assign({ label, go: () => set({ tab: label }) }, block(s.tab === label))),
     tabTrades: s.tab === "Trades", tabHolders: s.tab === "Holders", tabComments: s.tab === "Comments", tabCreator: s.tab === "Creator + liquidity",
+    loadMoreTrades: () => c && ctx.loadMoreTrades(c.id), loadMoreHolders: () => c && ctx.loadMoreHolders(c.id), pageSize: PAGE_SIZE,
     chatDraft: s.chatDraft, setChatDraft: (e) => set({ chatDraft: e.target.value }),
     postChat: () => {
       const text = s.chatDraft.trim();

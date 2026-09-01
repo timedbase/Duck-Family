@@ -11,7 +11,7 @@ export default function CampaignPage({ v }) {
 
       <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 366px"};gap:16px;align-items:start`)}>
         <div style={cs("display:flex;flex-direction:column;gap:16px;min-width:0")}>
-          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);overflow:hidden")}>
             <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
               <div style={cs(`width:${v.isMobile ? "56px" : "84px"};height:${v.isMobile ? "56px" : "84px"};align-self:flex-start;flex:none;border-right:1px solid var(--line)`)}>
                 <Thumb url={camp.imageUrl} bg="var(--orange)" fg="#fff" initials={camp.initials} size="100%" fontSize={v.isMobile ? "18px" : "26px"} />
@@ -34,7 +34,7 @@ export default function CampaignPage({ v }) {
 
             <div style={cs("padding:20px;border-bottom:1px solid var(--line)")}>
               {camp.desc && <p style={cs("margin:0 0 18px;font-size:14px;color:var(--mute);line-height:1.6;max-width:72ch")}>{camp.desc}</p>}
-              <div style={cs(`border:1px solid var(--line);border-radius:9px;background:${camp.noteBg};color:${camp.noteFg};padding:14px 16px;font-size:13px;line-height:1.55;margin-bottom:20px`)}>{camp.note}</div>
+              <div style={cs(`border:1px solid var(--line);border-radius:10px;background:${camp.noteBg};color:${camp.noteFg};padding:14px 16px;font-size:13px;line-height:1.55;margin-bottom:20px`)}>{camp.note}</div>
               <div style={cs("display:flex;height:26px;border-radius:8px;background:var(--soft);padding:3px")}>
                 <div style={cs(`height:100%;border-radius:6px;width:${camp.progWidth}%;background:${camp.progFill}`)}></div>
               </div>
@@ -55,7 +55,7 @@ export default function CampaignPage({ v }) {
             </div>
           </div>
 
-          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow-x:auto")}>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);overflow-x:auto")}>
             <div style={cs("padding:13px 18px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap")}>
               <span style={cs("font-size:15px;font-weight:700;letter-spacing:-.02em")}>Contributions</span>
               <span style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute)")}>pro-rata · nothing transfers until finalize</span>
@@ -75,7 +75,7 @@ export default function CampaignPage({ v }) {
         </div>
 
         <div style={cs(`display:flex;flex-direction:column;gap:16px;${v.isMobile ? "" : "position:sticky;top:80px"}`)}>
-          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);overflow:hidden")}>
             <div style={cs("padding:16px 18px;border-bottom:1px solid var(--line)")}>
               <div style={cs("font-size:17px;font-weight:700;letter-spacing:-.03em")}>{camp.actionTitle}</div>
               <div style={cs("font-size:12.5px;color:var(--mute);line-height:1.5;margin-top:6px")}>{camp.actionSub}</div>
@@ -87,12 +87,12 @@ export default function CampaignPage({ v }) {
                   <span style={cs("padding:0 14px;border-left:1px solid var(--line);display:flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:13px")}>ETH</span>
                 </div>
               )}
-              <button onClick={v.submitCampaignAction} disabled={v.txPending} style={cs(`width:100%;padding:16px;border:1px solid var(--line);border-radius:9px;background:${camp.ctaBg};color:${camp.ctaFg};font-size:15.5px;font-weight:700;cursor:pointer`)}>{v.txPending ? "Confirming…" : camp.cta}</button>
+              <button onClick={v.submitCampaignAction} disabled={v.txPending} style={cs(`width:100%;padding:16px;border:1px solid var(--line);border-radius:6px;background:${camp.ctaBg};color:${camp.ctaFg};font-size:15.5px;font-weight:700;cursor:pointer`)}>{v.txPending ? "Confirming…" : camp.cta}</button>
               <div style={cs("font-size:12px;color:var(--mute);line-height:1.55;margin-top:14px")}>{camp.ctaNote}</div>
             </div>
           </div>
 
-          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);overflow:hidden")}>
             <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>ESCROW &amp; CUSTODY</div>
             {camp.custody.map((c, i) => (
               <div key={i} style={cs("display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px")}>
@@ -101,7 +101,7 @@ export default function CampaignPage({ v }) {
             ))}
           </div>
 
-          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);overflow:hidden")}>
             <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>RESOLUTION PATH</div>
             {camp.timeline.map((t, i) => (
               <div key={i} style={cs("display:flex;gap:12px;padding:13px 15px;border-bottom:1px solid var(--soft)")}>

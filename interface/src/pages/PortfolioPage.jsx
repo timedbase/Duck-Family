@@ -46,7 +46,7 @@ export default function PortfolioPage({ v }) {
 
       <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px")}>
         {pfStats.map((st, i) => (
-          <div key={i} style={cs(`border:1px solid var(--line);background:${st.bg};color:${st.fg};border-radius:14px;padding:16px 18px;display:flex;flex-direction:column`)}>
+          <div key={i} style={cs(`border:1px solid var(--line);background:${st.bg};color:${st.fg};border-radius:10px;box-shadow:var(--sh);padding:16px 18px;display:flex;flex-direction:column`)}>
             <div style={cs(`font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:${st.labelFg}`)}>{st.label}</div>
             <div style={cs("font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:500;letter-spacing:-.03em;margin-top:8px")}>{st.value}</div>
             <div style={cs(`font-size:11.5px;color:${st.labelFg};margin-top:6px`)}>{st.sub}</div>
@@ -60,7 +60,7 @@ export default function PortfolioPage({ v }) {
           <span style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute)")}>{held.length} position{held.length === 1 ? "" : "s"}</span>
         </div>
         {held.length === 0 && (
-          <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);padding:40px 0;display:flex;flex-direction:column;align-items:center;gap:10px")}>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);padding:40px 0;display:flex;flex-direction:column;align-items:center;gap:10px")}>
             <span style={cs("font-size:14.5px;font-weight:700")}>No token holdings yet.</span>
             <button onClick={v.goHome} style={cs("border:1px solid var(--line);border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;background:var(--lime);color:var(--on);padding:11px 22px")}>Browse coins</button>
           </div>
@@ -75,7 +75,7 @@ export default function PortfolioPage({ v }) {
               const value = co && co.price != null ? balanceTokens * co.price : null;
               const valueUsd = co && co.priceUsd != null ? balanceTokens * co.priceUsd : null;
               return (
-                <div key={i} style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;padding:14px;display:flex;gap:14px")}>
+                <div key={i} style={cs("border:1px solid var(--line);background:var(--card);border-radius:10px;box-shadow:var(--sh);padding:14px;display:flex;gap:14px")}>
                   <Thumb url={co?.imageUrl} bg={co ? co.famBg : "var(--card)"} fg={co ? co.famFg : "var(--ink)"} initials={co ? co.initials : "??"} size="56px" radius="11px" fontSize="17px" />
                   <div style={cs("flex:1;min-width:0;display:flex;flex-direction:column")}>
                     <div style={cs("display:flex;align-items:baseline;gap:7px;min-width:0")}>
@@ -98,9 +98,9 @@ export default function PortfolioPage({ v }) {
         <div>
           <h2 style={cs("margin:0 0 12px;font-size:19px;font-weight:700;letter-spacing:-.03em")}>Claims &amp; refunds</h2>
           <div style={cs("display:flex;flex-direction:column;gap:10px")}>
-            {claims.length === 0 && <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);padding:16px;font-size:13px;color:var(--mute)")}>Nothing to claim right now.</div>}
+            {claims.length === 0 && <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);padding:16px;font-size:13px;color:var(--mute)")}>Nothing to claim right now.</div>}
             {claims.map((cl, i) => (
-              <div key={i} style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px")}>
+              <div key={i} style={cs("border:1px solid var(--line);background:var(--card);border-radius:10px;box-shadow:var(--sh);padding:14px 16px;display:flex;align-items:center;gap:14px")}>
                 <div style={cs("min-width:0;flex:1")}>
                   <div style={cs("font-size:13.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{cl.title}</div>
                   <div style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{cl.sub}</div>
@@ -118,7 +118,7 @@ export default function PortfolioPage({ v }) {
           </div>
           <div style={cs("display:flex;flex-direction:column;gap:10px")}>
             {created.length === 0 && (
-              <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);padding:40px 0;display:flex;flex-direction:column;align-items:center;gap:10px")}>
+              <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);padding:40px 0;display:flex;flex-direction:column;align-items:center;gap:10px")}>
                 <span style={cs("font-size:14.5px;font-weight:700")}>You haven't created anything yet.</span>
                 <button onClick={v.goCreate} style={cs("border:1px solid var(--line);border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;background:var(--lime);color:var(--on);padding:11px 22px")}>Launch a coin</button>
               </div>
@@ -126,7 +126,7 @@ export default function PortfolioPage({ v }) {
             {created.map((t, i) => {
               const co = coinById.get(t.id);
               return (
-                <div key={i} style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px")}>
+                <div key={i} style={cs("border:1px solid var(--line);background:var(--card);border-radius:10px;box-shadow:var(--sh);padding:14px 16px;display:flex;align-items:center;gap:14px")}>
                   <Thumb url={co?.imageUrl} bg={co ? co.famBg : "var(--card)"} fg={co ? co.famFg : "var(--ink)"} initials={co ? co.initials : "??"} size="34px" radius="11px" fontSize="12px" />
                   <div style={cs("min-width:0;flex:1")}>
                     <button onClick={() => v.openToken(t.id)} style={cs("border:0;background:transparent;cursor:pointer;padding:0;text-align:left;font-size:13.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%")}>{co ? co.ticker + " · " + co.name : t.id.slice(0, 10)}</button>

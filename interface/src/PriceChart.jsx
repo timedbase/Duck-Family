@@ -15,12 +15,12 @@ export default function PriceChart({ candles, height = 320 }) {
   useEffect(() => {
     if (!containerRef.current) return;
     const styles = getComputedStyle(document.documentElement);
-    const ink = styles.getPropertyValue("--ink").trim() || "#111110";
-    const mute = styles.getPropertyValue("--mute").trim() || "#6b665c";
-    const soft = styles.getPropertyValue("--soft").trim() || "#dcd6c8";
-    const card = styles.getPropertyValue("--card").trim() || "#fffefb";
-    const pos = styles.getPropertyValue("--pos").trim() || "#0f8a4f";
-    const neg = styles.getPropertyValue("--neg").trim() || "#d2331a";
+    const ink = styles.getPropertyValue("--ink").trim() || "#fafafa";
+    const mute = styles.getPropertyValue("--mute").trim() || "#a0a0a0";
+    const soft = styles.getPropertyValue("--soft").trim() || "#252525";
+    const card = styles.getPropertyValue("--card").trim() || "#1f1f1f";
+    const pos = styles.getPropertyValue("--pos").trim() || "#a3e635";
+    const neg = styles.getPropertyValue("--neg").trim() || "#f0654a";
 
     const chart = createChart(containerRef.current, {
       layout: { background: { type: ColorType.Solid, color: card }, textColor: mute, fontFamily: "'JetBrains Mono',monospace", fontSize: 11 },

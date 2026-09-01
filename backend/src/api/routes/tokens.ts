@@ -278,6 +278,13 @@ function poolSwapToTrade(swap: PoolSwapRow, tokenIsCurrency0: boolean): Subgraph
 router.get("/:address/trades", async (req, res) => {
   const address = req.params.address.toLowerCase();
   const limit = Math.min(Number(req.query.limit ?? 50), 200);
+  const offset = Math.max(Number(req.query.offset ?? 0), 0);
+  // Trades merge two independently-paginated subgraph sources (curve Trade
+  // entities + raw PoolSwap rows) before sorting -- there's no single
+  // cursor that pages both at once, so each source is asked for enough rows
+  // to cover the requested page (offset + limit, +1 to detect a next page)
+  // and the real pagination happens after the merge/sort below.
+  const fetchCount = offset + limit + 1;
 
   try {
     const data = await querySubgraph<{
@@ -299,7 +306,7 @@ router.get("/:address/trades", async (req, res) => {
         token(id: $token) { quoteToken }
         position(id: $token) { poolId }
       }`,
-      { token: address, first: limit }
+      { token: address, first: fetchCount }
     );
 
     let poolTrades: SubgraphTrade[] = [];
@@ -312,15 +319,14 @@ router.get("/:address/trades", async (req, res) => {
             id sender amount0 amount1 timestamp blockNumber txHash
           }
         }`,
-        { pool: data.position.poolId, first: limit }
+        { pool: data.position.poolId, first: fetchCount }
       );
       poolTrades = swapData.poolSwaps.map((s) => poolSwapToTrade(s, tokenIsCurrency0));
     }
 
-    const merged = [...data.trades, ...poolTrades]
-      .sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber))
-      .slice(0, limit);
-    res.json(merged);
+    const merged = [...data.trades, ...poolTrades].sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
+    const items = merged.slice(offset, offset + limit);
+    res.json({ items, hasMore: merged.length > offset + limit });
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }
@@ -329,17 +335,18 @@ router.get("/:address/trades", async (req, res) => {
 router.get("/:address/holders", async (req, res) => {
   const address = req.params.address.toLowerCase();
   const limit = Math.min(Number(req.query.limit ?? 50), 200);
+  const offset = Math.max(Number(req.query.offset ?? 0), 0);
 
   try {
     const data = await querySubgraph<{ holders: unknown[] }>(
-      `query TokenHolders($token: String!, $first: Int!) {
-        holders(first: $first, orderBy: balance, orderDirection: desc, where: { token: $token, balance_gt: "0" }) {
+      `query TokenHolders($token: String!, $first: Int!, $skip: Int!) {
+        holders(first: $first, skip: $skip, orderBy: balance, orderDirection: desc, where: { token: $token, balance_gt: "0" }) {
           account balance updatedAt updatedAtBlock
         }
       }`,
-      { token: address, first: limit }
+      { token: address, first: limit + 1, skip: offset }
     );
-    res.json(data.holders);
+    res.json({ items: data.holders.slice(0, limit), hasMore: data.holders.length > limit });
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }

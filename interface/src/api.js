@@ -30,8 +30,8 @@ async function getJSON(path) {
 export const api = {
   tokens: (params = "") => getJSON("/tokens" + params),
   token: (address) => getJSON(`/tokens/${address}`),
-  trades: (address, limit = 50) => getJSON(`/tokens/${address}/trades?limit=${limit}`),
-  holders: (address, limit = 50) => getJSON(`/tokens/${address}/holders?limit=${limit}`),
+  trades: (address, limit = 50, offset = 0) => getJSON(`/tokens/${address}/trades?limit=${limit}&offset=${offset}`),
+  holders: (address, limit = 50, offset = 0) => getJSON(`/tokens/${address}/holders?limit=${limit}&offset=${offset}`),
   campaigns: () => getJSON("/campaigns"),
   campaign: (id) => getJSON(`/campaigns/${id}`),
   portfolio: (address) => getJSON(`/portfolio/${address}`),
