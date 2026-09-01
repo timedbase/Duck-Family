@@ -1196,7 +1196,11 @@ function buildViewModel(ctx) {
 
     coin: c,
     sel: c ? {
-      name: c.name, symbol: c.ticker, family: c.family === "CURVE" ? "BONDING" : c.family === "INSTANT" ? "INSTANT LAUNCH" : "CROWDLAUNCH",
+      // Short labels here on purpose -- this badge sits in the token-page
+      // header's single tight row alongside the logo, symbol and price, not
+      // the wider Discover card where the full "INSTANT LAUNCH"/"CROWDLAUNCH"
+      // labels fit fine.
+      name: c.name, symbol: c.ticker, family: c.family === "CURVE" ? "BONDING" : c.family === "INSTANT" ? "INSTANT" : "RAISE",
       famBg: c.famBg, famFg: c.famFg, initials: c.initials, imageUrl: c.imageUrl, address: shortAddress(c.id), quote: c.quote,
       price: ohlc ? "$" + ohlc.c : c.curveSeed ? "$" + compactNumber(c.curveSeed.price) : "—",
       chg: ohlc ? (ohlc.pctChange >= 0 ? "+" : "−") + Math.abs(ohlc.pctChange).toFixed(1) + "%" : "—",

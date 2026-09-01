@@ -107,18 +107,18 @@ export default function TokenPage({ v }) {
       <button onClick={v.goHome} style={cs("border:0;background:transparent;font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.1em;color:var(--mute);cursor:pointer;padding:0 0 14px")}>← DISCOVER</button>
 
       <div style={cs(`display:flex;flex-direction:column;gap:14px;padding:${v.isMobile ? "14px" : "18px"};border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);margin-bottom:16px`)}>
-        <div style={cs("display:flex;align-items:center;gap:14px;flex-wrap:wrap")}>
+        <div style={cs("display:flex;align-items:center;gap:12px")}>
           <Thumb url={sel.imageUrl} bg={sel.famBg} fg={sel.famFg} initials={sel.initials} size={v.isMobile ? "72px" : "84px"} radius="10px" fontSize={v.isMobile ? "24px" : "28px"} flex="none" />
-          <div style={cs("min-width:160px;flex:1")}>
-            <div style={cs("display:flex;align-items:center;gap:9px;flex-wrap:wrap")}>
-              <span style={cs(`font-size:${v.isMobile ? "19px" : "22px"};font-weight:700;letter-spacing:-.03em`)}>{sel.symbol}</span>
-              <span style={cs(`font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:${sel.famBg};color:${sel.famFg}`)}>{sel.family}</span>
+          <div style={cs("min-width:0;flex:1")}>
+            <div style={cs("display:flex;align-items:center;gap:8px;min-width:0")}>
+              <span style={cs(`font-size:${v.isMobile ? "19px" : "22px"};font-weight:700;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis`)}>{sel.symbol}</span>
+              <span style={cs(`font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:${sel.famBg};color:${sel.famFg};flex:none;white-space:nowrap`)}>{sel.family}</span>
             </div>
-            <div style={cs("font-size:13px;color:var(--mute);margin-top:5px")}>{sel.name}</div>
+            <div style={cs("font-size:13px;color:var(--mute);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{sel.name}</div>
           </div>
           <div style={cs("text-align:right;font-family:'JetBrains Mono',monospace;flex:none")}>
-            <div style={cs("font-size:16px;font-weight:500;letter-spacing:-.03em")}>{sel.price}</div>
-            <div style={cs(`font-size:11.5px;margin-top:3px;color:${sel.chgColor}`)}>{sel.chg} · {v.range}</div>
+            <div style={cs("font-size:16px;font-weight:500;letter-spacing:-.03em;white-space:nowrap")}>{sel.price}</div>
+            <div style={cs(`font-size:11.5px;margin-top:3px;color:${sel.chgColor};white-space:nowrap`)}>{sel.chg} · {v.range}</div>
           </div>
         </div>
         {tok.desc && <div style={cs("font-size:12.5px;color:var(--mute);max-width:70ch;line-height:1.5")}>{tok.desc}</div>}
