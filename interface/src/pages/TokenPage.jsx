@@ -82,7 +82,7 @@ export default function TokenPage({ v }) {
               <iframe
                 key={tok.poolId}
                 title={`${sel.symbol} chart on DEXTools`}
-                src={`https://www.dextools.io/widget-chart/en/ink/pe-light/${tok.poolId}?theme=light&chartType=1&chartResolution=30&drawingToolbars=false&showTradeHistory=true&chartInUsd=true`}
+                src={`https://www.dextools.io/widget-chart/en/ink/pe-light/${tok.poolId}?theme=light&chartType=1&chartResolution=30&drawingToolbars=false&showTradeHistory=false&chartInUsd=true`}
                 style={cs(`width:100%;height:${v.isMobile ? "420px" : "560px"};border:0;display:block`)}
                 loading="lazy"
               />
