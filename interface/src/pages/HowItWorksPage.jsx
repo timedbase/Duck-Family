@@ -2,14 +2,14 @@ import { useState } from "react";
 import { cs } from "../cs.js";
 
 const LAUNCH_STEPS = [
-  { n: "1", k: "Choose a family", v: "Bonding curve for price discovery from block one, instant launch for a real V4 pool immediately, or crowdfund raise to collect ETH toward a goal first.", bg: "var(--lime)" },
+  { n: "1", k: "Choose a family", v: "Bonding curve for price discovery from block one, instant launch for a real V4 pool immediately, or crowdfund raise to collect ETH toward a goal first.", bg: "var(--lime)", fg: "var(--on)" },
   { n: "2", k: "Set the parameters", v: "Name, symbol, quote asset and targets. Targets are raw quote amounts — there is no oracle anywhere in the system.", bg: "var(--paper)" },
   { n: "3", k: "Add socials once", v: "X, Telegram and website are written into metadata at creation. The token is a fixed-supply clone with no owner-mint path, so this is effectively permanent.", bg: "var(--paper)" },
   { n: "4", k: "Sign one transaction", v: "The factory clones the token, wires the shared anti-MEV hook, and — for instant launches — opens the V4 pool and locks LP in the same call. Total supply is minted once and fixed forever: every duckfun token is deflationary by default, since nothing can ever mint more of it.", bg: "var(--paper)" },
 ];
 
 const TRADE_STEPS = [
-  { n: "1", k: "Connect on Ink", v: "Any injected wallet or WalletConnect. duckfun never asks for a signature just to browse — only to trade.", bg: "var(--lime)" },
+  { n: "1", k: "Connect on Ink", v: "Any injected wallet or WalletConnect. duckfun never asks for a signature just to browse — only to trade.", bg: "var(--lime)", fg: "var(--on)" },
   { n: "2", k: "Pick a venue", v: "Bonding-curve tokens trade against the curve; migrated and instant-launch tokens trade on a real Uniswap V4 pool. Crowdlaunch tokens are not tradeable until the raise finalizes.", bg: "var(--paper)" },
   { n: "3", k: "Size the trade", v: "Enter an amount and check the live quote before you sign — tokens received, plus a slippage tolerance you control.", bg: "var(--paper)" },
   { n: "4", k: "Sign and settle", v: "The hook rejects a second buy/sell pair from the same address in the same block, so a sandwich attempt reverts at the pool. Sells on a V4 pool carry a 2% creator fee, paid straight to the token's creator.", bg: "var(--paper)" },
@@ -48,14 +48,14 @@ export default function HowItWorksPage({ v }) {
       <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:18px")}>
         {steps.map((s, i) => (
           <div key={i} className="d-lift" style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;padding:20px;display:flex;flex-direction:column")}>
-            <span style={cs(`width:32px;height:32px;border-radius:999px;background:${s.bg};display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;flex:none`)}>{s.n}</span>
+            <span style={cs(`width:32px;height:32px;border-radius:999px;background:${s.bg};color:${s.fg || "var(--ink)"};display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;flex:none`)}>{s.n}</span>
             <div style={cs("font-size:16px;font-weight:700;letter-spacing:-.025em;margin-top:14px")}>{s.k}</div>
             <div style={cs("font-size:13.5px;color:var(--mute);line-height:1.6;margin-top:8px")}>{s.v}</div>
           </div>
         ))}
       </div>
 
-      <div style={cs("border:1px solid var(--line);background:var(--lime);border-radius:14px;padding:20px;margin-bottom:18px")}>
+      <div style={cs("border:1px solid var(--line);background:var(--lime);color:var(--on);border-radius:10px;padding:20px;margin-bottom:18px")}>
         <div style={cs("font-size:16px;font-weight:700;letter-spacing:-.025em")}>{note.k}</div>
         <div style={cs("font-size:13.5px;line-height:1.6;margin-top:8px;max-width:78ch")}>{note.v}</div>
       </div>

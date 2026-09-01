@@ -32,9 +32,9 @@ export default function StatsPage({ v }) {
   const updatedSecondsAgo = fetchedAt ? Math.max(0, Math.round((nowTick - fetchedAt) / 1000)) : null;
 
   const cards = stats ? [
-    { k: "24H VOLUME", v: money(stats.tradingVolumeUsd), sub: "DEX pools + bonding curves, USD-resolved trades only", bg: "var(--lime)" },
-    { k: "24H LAUNCHES", v: String(stats.launches24h), sub: "across three families", bg: "var(--card)" },
-    { k: "24H TRADES", v: stats.trades24h.toLocaleString(), sub: "curve trades + V4 pool swaps", bg: "var(--card)" },
+    { k: "24H VOLUME", v: money(stats.tradingVolumeUsd), sub: "DEX pools + bonding curves, USD-resolved trades only", bg: "var(--lime)", fg: "var(--on)", subFg: "var(--acc)" },
+    { k: "24H LAUNCHES", v: String(stats.launches24h), sub: "across three families", bg: "var(--card)", fg: "var(--ink)", subFg: "var(--mute)" },
+    { k: "24H TRADES", v: stats.trades24h.toLocaleString(), sub: "curve trades + V4 pool swaps", bg: "var(--card)", fg: "var(--ink)", subFg: "var(--mute)" },
   ] : [];
 
   return (
@@ -59,10 +59,10 @@ export default function StatsPage({ v }) {
         <>
           <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:16px")}>
             {cards.map((c, i) => (
-              <div key={i} style={cs(`border:1px solid var(--line);border-radius:14px;background:${c.bg};padding:20px`)}>
-                <div style={cs("font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>{c.k}</div>
+              <div key={i} style={cs(`border:1px solid var(--line);border-radius:14px;background:${c.bg};color:${c.fg};padding:20px`)}>
+                <div style={cs(`font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:${c.subFg}`)}>{c.k}</div>
                 <div style={cs("font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-.03em;margin-top:9px")}>{c.v}</div>
-                <div style={cs("font-size:11.5px;color:var(--mute);margin-top:5px")}>{c.sub}</div>
+                <div style={cs(`font-size:11.5px;color:${c.subFg};margin-top:5px`)}>{c.sub}</div>
               </div>
             ))}
           </div>

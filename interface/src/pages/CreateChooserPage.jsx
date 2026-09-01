@@ -1,7 +1,7 @@
 import { cs } from "../cs.js";
 
 const FAMILIES = [
-  { key: "incubation", glyph: "∿", title: "Bonding curve", contract: "DUCKINCUBATION", accent: "var(--lime)", accentFg: "var(--ink)",
+  { key: "incubation", glyph: "∿", title: "Bonding curve", contract: "DUCKINCUBATION", accent: "var(--lime)", accentFg: "var(--on)",
     desc: "Tradeable from the first block on a curve, then migrates into a fresh V4 pool at your target.",
     bullets: ["Buyers receive tokens instantly", "You set start and migration targets", "LP locked forever at migration"] },
   { key: "launcher", glyph: "⇥", title: "Instant launch", contract: "DUCKLAUNCHER", accent: "var(--card)", accentFg: "var(--ink)",

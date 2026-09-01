@@ -208,7 +208,7 @@ export default function DiscoverPage({ v }) {
         <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);padding:56px 0;display:flex;flex-direction:column;align-items:center;gap:10px")}>
           <div style={cs("font-size:15px;font-weight:700")}>Nothing matches that.</div>
           <div style={cs("font-size:13px;color:var(--mute)")}>Loosen the filters, or launch it yourself.</div>
-          <button onClick={v.goCreate} style={cs("margin-top:6px;border:1px solid var(--line);border-radius:9px;cursor:pointer;font-size:13px;font-weight:700;background:var(--lime);color:var(--ink);padding:11px 22px")}>Launch a coin</button>
+          <button onClick={v.goCreate} style={cs("margin-top:6px;border:1px solid var(--line);border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;background:var(--lime);color:var(--on);padding:11px 22px")}>Launch a coin</button>
         </div>
       )}
     </div>

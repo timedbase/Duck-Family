@@ -8,7 +8,7 @@ export default function PortfolioPage({ v }) {
     return (
       <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);padding:56px;display:flex;flex-direction:column;align-items:center;gap:14px")}>
         <span style={cs("font-size:18px;font-weight:700")}>Connect a wallet to see your portfolio.</span>
-        <button onClick={v.toggleWallet} style={cs("border:1px solid var(--line);border-radius:9px;cursor:pointer;font-size:13.5px;font-weight:700;background:var(--lime);color:var(--ink);padding:12px 22px")}>Connect wallet</button>
+        <button onClick={v.toggleWallet} style={cs("border:1px solid var(--line);border-radius:6px;cursor:pointer;font-size:13.5px;font-weight:700;background:var(--lime);color:var(--on);padding:12px 22px")}>Connect wallet</button>
       </div>
     );
   }
@@ -19,10 +19,10 @@ export default function PortfolioPage({ v }) {
   const contributions = v.portfolio.contributions;
 
   const pfStats = [
-    { label: "WALLET", value: v.balance + " ETH", sub: v.accountShort, bg: "var(--card)" },
-    { label: "TOKENS HELD", value: String(held.length), sub: "positions", bg: "var(--card)" },
-    { label: "TOKENS CREATED", value: String(created.length), sub: "launches", bg: "var(--lime)" },
-    { label: "CONTRIBUTIONS", value: String(contributions.length), sub: "campaigns backed", bg: "var(--card)" },
+    { label: "WALLET", value: v.balance + " ETH", sub: v.accountShort, bg: "var(--card)", fg: "var(--ink)", labelFg: "var(--mute)" },
+    { label: "TOKENS HELD", value: String(held.length), sub: "positions", bg: "var(--card)", fg: "var(--ink)", labelFg: "var(--mute)" },
+    { label: "TOKENS CREATED", value: String(created.length), sub: "launches", bg: "var(--lime)", fg: "var(--on)", labelFg: "var(--acc)" },
+    { label: "CONTRIBUTIONS", value: String(contributions.length), sub: "campaigns backed", bg: "var(--card)", fg: "var(--ink)", labelFg: "var(--mute)" },
   ];
 
   const claims = contributions
@@ -31,7 +31,7 @@ export default function PortfolioPage({ v }) {
       if (!camp) return null;
       const resolved = camp.succeeded || camp.failed;
       if (!resolved) return null;
-      if (camp.succeeded && !ct.claimed) return { title: camp.name + " allocation", sub: "DuckRaise · succeeded", cta: "Claim", bg: "var(--lime)", fg: "var(--ink)", open: camp.token ? () => v.openToken(camp.token.id) : null };
+      if (camp.succeeded && !ct.claimed) return { title: camp.name + " allocation", sub: "DuckRaise · succeeded", cta: "Claim", bg: "var(--lime)", fg: "var(--on)", open: camp.token ? () => v.openToken(camp.token.id) : null };
       if (camp.failed && !ct.refunded) return { title: camp.name + " refund", sub: (Number(ct.amount) / 1e18).toFixed(4) + " ETH · goal missed", cta: "Refund", bg: "var(--orange)", fg: "#fff", open: camp.token ? () => v.openToken(camp.token.id) : null };
       return null;
     })
@@ -46,10 +46,10 @@ export default function PortfolioPage({ v }) {
 
       <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px")}>
         {pfStats.map((st, i) => (
-          <div key={i} style={cs(`border:1px solid var(--line);background:${st.bg};border-radius:14px;padding:16px 18px;display:flex;flex-direction:column`)}>
-            <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>{st.label}</div>
+          <div key={i} style={cs(`border:1px solid var(--line);background:${st.bg};color:${st.fg};border-radius:14px;padding:16px 18px;display:flex;flex-direction:column`)}>
+            <div style={cs(`font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:${st.labelFg}`)}>{st.label}</div>
             <div style={cs("font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:500;letter-spacing:-.03em;margin-top:8px")}>{st.value}</div>
-            <div style={cs("font-size:11.5px;color:var(--mute);margin-top:6px")}>{st.sub}</div>
+            <div style={cs(`font-size:11.5px;color:${st.labelFg};margin-top:6px`)}>{st.sub}</div>
           </div>
         ))}
       </div>
@@ -62,7 +62,7 @@ export default function PortfolioPage({ v }) {
         {held.length === 0 && (
           <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);padding:40px 0;display:flex;flex-direction:column;align-items:center;gap:10px")}>
             <span style={cs("font-size:14.5px;font-weight:700")}>No token holdings yet.</span>
-            <button onClick={v.goHome} style={cs("border:1px solid var(--line);border-radius:9px;cursor:pointer;font-size:13px;font-weight:700;background:var(--lime);color:var(--ink);padding:11px 22px")}>Browse coins</button>
+            <button onClick={v.goHome} style={cs("border:1px solid var(--line);border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;background:var(--lime);color:var(--on);padding:11px 22px")}>Browse coins</button>
           </div>
         )}
         {held.length > 0 && (
@@ -120,7 +120,7 @@ export default function PortfolioPage({ v }) {
             {created.length === 0 && (
               <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);padding:40px 0;display:flex;flex-direction:column;align-items:center;gap:10px")}>
                 <span style={cs("font-size:14.5px;font-weight:700")}>You haven't created anything yet.</span>
-                <button onClick={v.goCreate} style={cs("border:1px solid var(--line);border-radius:9px;cursor:pointer;font-size:13px;font-weight:700;background:var(--lime);color:var(--ink);padding:11px 22px")}>Launch a coin</button>
+                <button onClick={v.goCreate} style={cs("border:1px solid var(--line);border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;background:var(--lime);color:var(--on);padding:11px 22px")}>Launch a coin</button>
               </div>
             )}
             {created.map((t, i) => {

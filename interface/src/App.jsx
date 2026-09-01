@@ -937,7 +937,7 @@ export default function App() {
         <div style={cs("position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px")}>
           <div style={cs("width:100%;max-width:400px;border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
             <div style={cs(`padding:26px 22px;border-bottom:1px solid var(--line);text-align:center;background:${v.tx.headBg};color:${v.tx.headFg}`)}>
-              <div style={cs(`width:46px;height:46px;margin:0 auto 16px;border:3px solid var(--ink);border-radius:999px;border-top-color:${v.tx.ringTop};animation:${v.tx.anim};display:flex;align-items:center;justify-content:center;font-size:19px`)}>{v.tx.glyph}</div>
+              <div style={cs(`width:46px;height:46px;margin:0 auto 16px;border:3px solid ${v.tx.headFg};border-radius:999px;border-top-color:${v.tx.ringTop};animation:${v.tx.anim};display:flex;align-items:center;justify-content:center;font-size:19px`)}>{v.tx.glyph}</div>
               <div style={cs("font-size:19px;font-weight:700;letter-spacing:-.03em")}>{v.tx.title}</div>
               <div style={cs(`font-size:12.5px;margin-top:7px;line-height:1.5;opacity:${v.tx.headFg === "#fff" ? ".9" : "1"};color:${v.tx.headFg === "#fff" ? "#fff" : "var(--mute)"}`)}>{v.tx.sub}</div>
             </div>
@@ -1156,7 +1156,7 @@ function buildViewModel(ctx) {
     } : null,
     liq: c && s.creatorData ? {
       status: s.creatorData.hasPool ? "LP LOCKED · PERMANENT" : "NO POOL YET",
-      stBg: s.creatorData.hasPool ? LIME : "var(--paper)", stFg: INK,
+      stBg: s.creatorData.hasPool ? LIME : "var(--paper)", stFg: s.creatorData.hasPool ? "var(--on)" : INK,
       facts: [
         { k: "POOL", v: c.ticker.replace("$", "") + " / " + c.quote },
         { k: "POSITION", v: s.creatorData.hasPool ? "#" + s.creatorData.tokenId.toString() : "not minted" },
@@ -1178,7 +1178,7 @@ function buildViewModel(ctx) {
     buying, amt, myBalanceTokens, myContribution,
     buy: (amtEth) => ctx.buy(c, amtEth), sell: (tokenAmt) => ctx.sell(c, tokenAmt),
     setBuy: () => set({ side: "buy" }), setSell: () => set({ side: "sell", amount: myBalanceTokens ? String(myBalanceTokens / 2) : "0" }),
-    buyBg: buying ? LIME : CARD, buyFg: INK, sellBg: buying ? CARD : ORANGE, sellFg: buying ? "var(--mute)" : "#fff",
+    buyBg: buying ? LIME : CARD, buyFg: buying ? "var(--on)" : "var(--mute)", sellBg: buying ? CARD : ORANGE, sellFg: buying ? "var(--mute)" : "#fff",
     amount: s.amount, onAmount: (e) => set({ amount: e.target.value.replace(/[^0-9.]/g, "") }),
     presets: [25, 100, 250, "MAX"].map((label, i) => ({
       label: String(label), dv: i === 0 ? "0" : "1px solid var(--line)",
@@ -1195,7 +1195,7 @@ function buildViewModel(ctx) {
     payBalance: buying ? Number(formatEther(s.nativeBalance)).toFixed(4) : myBalanceTokens.toLocaleString(undefined, { maximumFractionDigits: 2 }),
     submitTx: () => (buying ? ctx.buy(c, amt) : ctx.sell(c, amt)),
     ctaLabel: !account ? "Connect wallet to trade" : s.txPending ? "Confirming…" : (buying ? "Buy " + (c ? c.ticker.replace("$", "") : "") : "Sell " + (c ? c.ticker.replace("$", "") : "")),
-    ctaBg: !account ? INK : (buying ? LIME : ORANGE), ctaFg: !account ? CARD : (buying ? INK : "#fff"),
+    ctaBg: !account ? INK : (buying ? LIME : ORANGE), ctaFg: !account ? CARD : (buying ? "var(--on)" : "#fff"),
     previewLoading: s.previewLoading,
     previewText: (() => {
       if (!c || s.previewOut == null) return null;
@@ -1302,11 +1302,11 @@ function buildCampaignModel(c, s, myContribution) {
   const resolved = c.campaignSucceeded || c.campaignFailed;
   const status = c.campaignSucceeded ? "COMPLETE" : c.campaignFailed ? "GOAL MISSED" : "RAISING";
   const stBg = c.campaignSucceeded ? LIME : c.campaignFailed ? ORANGE : "var(--paper)";
-  const stFg = c.campaignFailed ? "#fff" : INK;
+  const stFg = c.campaignFailed ? "#fff" : c.campaignSucceeded ? "var(--on)" : INK;
   const contributorSupply = s.raiseDefaults ? (1_000_000_000 * Number(s.raiseDefaults.contributorBps)) / 10_000 : null;
 
   let actionTitle = "Contribute", actionSub = "Native ETH. Refundable in full if the goal is missed at the deadline.";
-  let cta = "Contribute ETH", ctaBg = LIME, ctaFg = INK, ctaNote = "Your allocation is recorded now; tokens are claimable only after finalize.";
+  let cta = "Contribute ETH", ctaBg = LIME, ctaFg = "var(--on)", ctaNote = "Your allocation is recorded now; tokens are claimable only after finalize.";
   let canContribute = !resolved && !deadlinePassed;
   if (!resolved && deadlinePassed) {
     actionTitle = "Ready to finalize"; actionSub = "Deadline passed — anyone can trigger finalize.";
@@ -1334,7 +1334,7 @@ function buildCampaignModel(c, s, myContribution) {
       ? "The goal was not cleared, so no pool was seeded and the escrowed supply was never released. Contributions are refundable in full."
       : "Tokens are already deployed but held by the raise contract. Nothing is transferable or tradeable until the raise completes.",
     noteBg: c.campaignSucceeded ? LIME : c.campaignFailed ? ORANGE : "var(--paper)",
-    noteFg: c.campaignFailed ? "#fff" : INK,
+    noteFg: c.campaignFailed ? "#fff" : c.campaignSucceeded ? "var(--on)" : INK,
     facts: [
       { k: "GOAL", v: goal.toFixed(2) + " ETH" },
       { k: "QUOTE AT FINALIZE", v: c.quote },
@@ -1374,7 +1374,7 @@ function buildTxModel(s, account) {
   if (!s.tx) return null;
   if (s.tx.stage === "success") {
     return {
-      title: "Confirmed", sub: "Included on Ink.", glyph: "✓", headBg: LIME, headFg: INK, ringTop: INK, anim: "none", cta: "Done",
+      title: "Confirmed", sub: "Included on Ink.", glyph: "✓", headBg: LIME, headFg: "var(--on)", ringTop: "var(--on)", anim: "none", cta: "Done",
       hash: s.tx.hash, explorerUrl: `https://explorer.inkonchain.com/tx/${s.tx.hash}`,
     };
   }

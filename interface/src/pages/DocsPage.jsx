@@ -89,7 +89,7 @@ export default function DocsPage({ v }) {
           { k: "Oracle", v: "none — every target is a raw quote amount" },
         ]} blurb="Three launcher families share one hook and one locker. Every token is an EIP-1167 minimal-proxy clone of its family implementation, so deployment cost stays flat regardless of supply or parameters." />
 
-        <div id="supply" style={cs("border:1px solid var(--line);background:var(--lime);border-radius:10px;padding:22px 24px;margin-bottom:16px;scroll-margin-top:80px")}>
+        <div id="supply" style={cs("border:1px solid var(--line);background:var(--lime);color:var(--on);border-radius:10px;padding:22px 24px;margin-bottom:16px;scroll-margin-top:80px")}>
           <div style={cs("font-size:19px;font-weight:700;letter-spacing:-.03em;margin-bottom:9px")}>Every token is deflationary by default</div>
           <div style={cs("font-size:13.5px;line-height:1.6;max-width:78ch")}>All three families mint their full supply exactly once, at creation — none of the three token contracts exposes a mint function after deploy, so total supply can never increase. The only thing that ever moves it is the LP-position fee's token-side burn on migrated/instant/raise pools (see DuckLocker below), which only ever pushes supply down. There is no owner switch, no upgrade path, and no exception: this holds for every token this platform has ever created.</div>
         </div>

@@ -61,7 +61,7 @@ export default function CreateFormPage({ v }) {
   const nameLabel = family === "raise" ? "RAISE / TOKEN NAME" : "TOKEN NAME";
 
   const FORM = {
-    incubation: { title: "Bonding curve", accent: "var(--lime)", accentFg: "var(--ink)", cta: "Create curve token",
+    incubation: { title: "Bonding curve", accent: "var(--lime)", accentFg: "var(--on)", cta: "Create curve token",
       sub: "No price oracle: you pick the start and migration targets directly, as raw quote-asset amounts. Buyers receive tokens on every trade from block one." },
     launcher: { title: "Instant launch", accent: "var(--card)", accentFg: "var(--ink)", cta: "Launch on V4",
       sub: "One transaction creates the V4 pool, mints a full-range LP position, and locks it permanently in DuckLocker." },

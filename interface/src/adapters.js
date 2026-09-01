@@ -20,7 +20,7 @@ function quoteDecimalsFor(address) {
 // Family badge colors, matching the design's FAM map (lime = curve, plain
 // card = instant, orange = campaign).
 export const FAM_COLORS = {
-  CURVE: { bg: "var(--lime)", fg: "var(--ink)" },
+  CURVE: { bg: "var(--lime)", fg: "var(--on)" },
   INSTANT: { bg: "var(--card)", fg: "var(--ink)" },
   CAMPAIGN: { bg: "var(--orange)", fg: "#fff" },
 };
@@ -247,7 +247,7 @@ export function tradeToRow(tr, labels, quoteSymbolLabel = "ETH") {
   return {
     side: tr.side, sideLabel: buy ? "B" : "S",
     bg: buy ? "var(--lime)" : "var(--orange)",
-    fg: buy ? "var(--ink)" : "#fff",
+    fg: buy ? "var(--on)" : "#fff",
     who: labelFor(tr.trader, labels) || shortAddress(tr.trader),
     full: tr.trader,
     ago: ageAgo(tr.timestamp),

@@ -4,11 +4,56 @@ import PriceChart from "../PriceChart.jsx";
 import Thumb from "../Thumb.jsx";
 import { AddressChip, LinkChip } from "../MetaChips.jsx";
 
+// The Buy/Sell form -- identical content whether it sits inline in the
+// sticky desktop sidebar or inside the mobile bottom sheet; only its
+// container differs, so it's pulled out once rather than duplicated.
+function TradePanel({ v, sel, tok }) {
+  return (
+    <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);overflow:hidden")}>
+      <div style={cs("display:flex;border-bottom:1px solid var(--line)")}>
+        <button onClick={v.setBuy} style={cs(`flex:1;padding:14px;border:0;border-right:1px solid var(--line);background:${v.buyBg};color:${v.buyFg};font-size:15px;font-weight:700;letter-spacing:-.01em;cursor:pointer`)}>Buy</button>
+        <button onClick={v.setSell} style={cs(`flex:1;padding:14px;border:0;background:${v.sellBg};color:${v.sellFg};font-size:15px;font-weight:700;letter-spacing:-.01em;cursor:pointer`)}>Sell</button>
+      </div>
+      <div style={cs("padding:18px")}>
+        <div style={cs("display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute);margin-bottom:9px")}>
+          <span>PAY {v.payAsset}</span><span>BAL {v.payBalance}</span>
+        </div>
+        <div style={cs("display:flex;align-items:stretch;border:1px solid var(--line);border-radius:9px;background:var(--paper);overflow:hidden")}>
+          <input value={v.amount} onChange={v.onAmount} style={cs("flex:1;min-width:0;border:0;outline:0;background:transparent;font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:500;letter-spacing:-.03em;padding:13px 14px")} />
+          <span style={cs("padding:0 14px;border-left:1px solid var(--line);display:flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:13px")}>{v.payAsset}</span>
+        </div>
+        <div style={cs("display:flex;margin-top:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden")}>
+          {v.presets.map((p, i) => (
+            <button key={i} onClick={p.go} style={cs(`flex:1;padding:9px 0;border:0;border-left:${p.dv};background:var(--card);font-family:'JetBrains Mono',monospace;font-size:11.5px;cursor:pointer`)}>{p.label}</button>
+          ))}
+        </div>
+        <div style={cs("display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:12.5px")}>
+          <span style={cs("color:var(--mute)")}>YOU RECEIVE</span>
+          <span style={cs("font-weight:500")}>{v.previewLoading ? "estimating…" : (v.previewText || "—")}</span>
+        </div>
+        <div style={cs("display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mute)")}>
+          <span style={cs("letter-spacing:.1em")}>SLIPPAGE</span>
+          <div style={cs("display:flex;gap:5px;align-items:center")}>
+            {v.slippageOptions.map((o, i) => (
+              <button key={i} onClick={() => v.setSlippage(o.bps)} style={cs(`padding:4px 8px;border-radius:6px;border:1px solid var(--line);background:${o.bg};color:${o.fg};font-size:10px;cursor:pointer`)}>{o.label}</button>
+            ))}
+            <input defaultValue="" placeholder={(v.slippageBps / 100) + "%"} onChange={v.setSlippagePct} style={cs("width:42px;border:1px solid var(--line);background:var(--card);text-align:right;padding:4px 5px;font-family:'JetBrains Mono',monospace;font-size:10px;outline:0")} />
+          </div>
+        </div>
+        <div style={cs("display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:12px")}><span>YOUR BALANCE</span><span style={cs("color:var(--ink)")}>{v.myBalanceTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })} {sel.symbol.replace("$", "")}</span></div>
+        <button onClick={v.submitTx} disabled={v.txPending} style={cs(`width:100%;padding:16px;margin-top:14px;border:1px solid var(--line);border-radius:9px;background:${v.ctaBg};color:${v.ctaFg};font-size:16px;font-weight:700;letter-spacing:-.01em;cursor:pointer`)}>{v.ctaLabel}</button>
+        <div style={cs("font-size:12px;color:var(--mute);line-height:1.55;margin-top:14px")}>{tok.family === "CURVE" && !tok.migrated ? "Buys route native ETH in automatically for ERC20-quoted curves. Sell proceeds land in the quote asset directly. The curve's own 1% trading fee applies both ways." : "Routes through the real Uniswap V4 pool via the Universal Router. Both buy and sell settle in native ETH. Anti-MEV blocks a second swap, either direction, from the same address in the same block. A 2% creator fee is taken from every sell, paid straight to the token's creator."}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function TokenPage({ v }) {
   const sel = v.sel;
   const tok = v.coin;
   const [splitWallet, setSplitWallet] = useState("");
   const [splitPct, setSplitPct] = useState("");
+  const [tradeSheetOpen, setTradeSheetOpen] = useState(false);
   if (!sel || !tok) return null;
 
   const submitSplits = () => {
@@ -29,7 +74,7 @@ export default function TokenPage({ v }) {
     <div>
       <button onClick={v.goHome} style={cs("border:0;background:transparent;font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.1em;color:var(--mute);cursor:pointer;padding:0 0 14px")}>← DISCOVER</button>
 
-      <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);margin-bottom:16px;overflow:hidden")}>
+      <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);margin-bottom:16px;overflow:hidden")}>
         <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
           <div style={cs(`width:${v.isMobile ? "56px" : "84px"};height:${v.isMobile ? "56px" : "84px"};align-self:flex-start;flex:none;border-right:1px solid var(--line)`)}>
             <Thumb url={sel.imageUrl} bg={sel.famBg} fg={sel.famFg} initials={sel.initials} size="100%" fontSize={v.isMobile ? "18px" : "26px"} />
@@ -70,7 +115,7 @@ export default function TokenPage({ v }) {
       <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 366px"};gap:16px;align-items:start`)}>
         <div style={cs("display:flex;flex-direction:column;gap:16px;min-width:0")}>
 
-          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);overflow:hidden")}>
             {tok.poolId ? (
               // A real V4 pool exists (post-migration / instant-launch / a
               // finalized raise) -- DEXTools indexes Ink's V4 pools by their
@@ -121,7 +166,7 @@ export default function TokenPage({ v }) {
           </div>
 
           {v.curve && (
-            <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--lime);padding:20px")}>
+            <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--lime);color:var(--on);box-shadow:var(--sh);padding:20px")}>
               <div style={cs("display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:14px")}>
                 <span style={cs("font-size:19px;font-weight:700;letter-spacing:-.03em")}>{v.curve.title}</span>
                 <span style={cs("font-family:'JetBrains Mono',monospace;font-size:11.5px")}>{v.curve.headline}</span>
@@ -133,7 +178,7 @@ export default function TokenPage({ v }) {
             </div>
           )}
 
-          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);overflow:hidden")}>
             <div style={cs("display:flex;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
               {v.tabs.map((t, i) => (
                 <button key={i} onClick={t.go} style={cs(`padding:12px 17px;border:0;border-right:1px solid var(--line);background:${t.bg};color:${t.fg};font-size:13.5px;font-weight:600;letter-spacing:-.01em;cursor:pointer`)}>{t.label}</button>
@@ -220,10 +265,10 @@ export default function TokenPage({ v }) {
                     <div style={cs("padding:20px;border-bottom:1px solid var(--line)")}>
                       <div style={cs("font-size:17px;font-weight:700;letter-spacing:-.03em;margin-bottom:14px")}>Creator fees</div>
                       <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;align-items:start")}>
-                        <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--lime);padding:18px")}>
-                          <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>CREATOR FEE ACCRUED (YOURS)</div>
+                        <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--lime);color:var(--on);box-shadow:var(--sh);padding:18px")}>
+                          <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--acc)")}>CREATOR FEE ACCRUED (YOURS)</div>
                           <div style={cs("font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-.04em;margin:7px 0 3px")}>{v.hookAccruedFailed ? "—" : v.hookAccrued.toFixed(5) + " " + sel.quote}</div>
-                          <div style={cs("font-family:'JetBrains Mono',monospace;font-size:11.5px;margin-bottom:16px")}>{v.hookAccruedFailed ? "Couldn't read this from the chain — try reopening this tab." : "This same claim also sweeps the LP position's trading fee — that side is always burned (token) / sent to the platform (quote), never paid to you"}</div>
+                          {v.hookAccruedFailed && <div style={cs("font-family:'JetBrains Mono',monospace;font-size:11.5px;margin-bottom:16px")}>Couldn't read this from the chain — try reopening this tab.</div>}
                           <button onClick={v.claimCreatorAndHookFees} disabled={v.txPending} style={cs("width:100%;padding:13px;border:1px solid var(--line);border-radius:9px;background:var(--ink);color:var(--card);font-size:14px;font-weight:700;cursor:pointer")}>Claim your creator fee</button>
                         </div>
                         {tok.family === "CURVE" && (
@@ -293,45 +338,38 @@ export default function TokenPage({ v }) {
           </div>
         </div>
 
-        <div style={cs(`display:flex;flex-direction:column;gap:16px;${v.isMobile ? "" : "position:sticky;top:80px"}`)}>
-          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
-            <div style={cs("display:flex;border-bottom:1px solid var(--line)")}>
-              <button onClick={v.setBuy} style={cs(`flex:1;padding:14px;border:0;border-right:1px solid var(--line);background:${v.buyBg};color:${v.buyFg};font-size:15px;font-weight:700;letter-spacing:-.01em;cursor:pointer`)}>Buy</button>
-              <button onClick={v.setSell} style={cs(`flex:1;padding:14px;border:0;background:${v.sellBg};color:${v.sellFg};font-size:15px;font-weight:700;letter-spacing:-.01em;cursor:pointer`)}>Sell</button>
-            </div>
-            <div style={cs("padding:18px")}>
-              <div style={cs("display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute);margin-bottom:9px")}>
-                <span>PAY {v.payAsset}</span><span>BAL {v.payBalance}</span>
-              </div>
-              <div style={cs("display:flex;align-items:stretch;border:1px solid var(--line);border-radius:9px;background:var(--paper);overflow:hidden")}>
-                <input value={v.amount} onChange={v.onAmount} style={cs("flex:1;min-width:0;border:0;outline:0;background:transparent;font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:500;letter-spacing:-.03em;padding:13px 14px")} />
-                <span style={cs("padding:0 14px;border-left:1px solid var(--line);display:flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:13px")}>{v.payAsset}</span>
-              </div>
-              <div style={cs("display:flex;margin-top:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden")}>
-                {v.presets.map((p, i) => (
-                  <button key={i} onClick={p.go} style={cs(`flex:1;padding:9px 0;border:0;border-left:${p.dv};background:var(--card);font-family:'JetBrains Mono',monospace;font-size:11.5px;cursor:pointer`)}>{p.label}</button>
-                ))}
-              </div>
-              <div style={cs("display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:12.5px")}>
-                <span style={cs("color:var(--mute)")}>YOU RECEIVE</span>
-                <span style={cs("font-weight:500")}>{v.previewLoading ? "estimating…" : (v.previewText || "—")}</span>
-              </div>
-              <div style={cs("display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mute)")}>
-                <span style={cs("letter-spacing:.1em")}>SLIPPAGE</span>
-                <div style={cs("display:flex;gap:5px;align-items:center")}>
-                  {v.slippageOptions.map((o, i) => (
-                    <button key={i} onClick={() => v.setSlippage(o.bps)} style={cs(`padding:4px 8px;border-radius:6px;border:1px solid var(--line);background:${o.bg};color:${o.fg};font-size:10px;cursor:pointer`)}>{o.label}</button>
-                  ))}
-                  <input defaultValue="" placeholder={(v.slippageBps / 100) + "%"} onChange={v.setSlippagePct} style={cs("width:42px;border:1px solid var(--line);background:var(--card);text-align:right;padding:4px 5px;font-family:'JetBrains Mono',monospace;font-size:10px;outline:0")} />
+        {!v.isMobile && (
+          <div style={cs("display:flex;flex-direction:column;gap:16px;position:sticky;top:80px")}>
+            <TradePanel v={v} sel={sel} tok={tok} />
+          </div>
+        )}
+      </div>
+
+      {v.isMobile && (
+        <>
+          {/* Fixed trade bar -- always reachable while scrolled, opens the
+              same Buy/Sell form as a bottom sheet instead of it stacking
+              inline below everything else on the page. */}
+          <div onClick={() => setTradeSheetOpen(true)} style={cs("position:fixed;left:0;right:0;bottom:0;z-index:70;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px;border-top:1px solid var(--line);background:var(--pop);cursor:pointer")}>
+            <span style={cs("font-size:14px;font-weight:700")}>Trade {sel.symbol}</span>
+            <span style={cs("font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--mute)")}>{sel.price}</span>
+          </div>
+          <div style={cs("height:60px")}></div>
+
+          {tradeSheetOpen && (
+            <div onClick={() => setTradeSheetOpen(false)} style={cs("position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.6);display:flex;align-items:flex-end")}>
+              <div onClick={(e) => e.stopPropagation()} style={cs("width:100%;max-height:88vh;overflow-y:auto;background:var(--card);border-top:1px solid var(--line);border-radius:14px 14px 0 0;animation:popin .18s ease both")}>
+                <div style={cs("display:flex;justify-content:center;padding:10px 0 4px")}>
+                  <div style={cs("width:36px;height:4px;border-radius:99px;background:var(--input)")}></div>
+                </div>
+                <div style={cs("padding:0 4px 4px")}>
+                  <TradePanel v={v} sel={sel} tok={tok} />
                 </div>
               </div>
-              <div style={cs("display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:12px")}><span>YOUR BALANCE</span><span style={cs("color:var(--ink)")}>{v.myBalanceTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })} {sel.symbol.replace("$", "")}</span></div>
-              <button onClick={v.submitTx} disabled={v.txPending} style={cs(`width:100%;padding:16px;margin-top:14px;border:1px solid var(--line);border-radius:9px;background:${v.ctaBg};color:${v.ctaFg};font-size:16px;font-weight:700;letter-spacing:-.01em;cursor:pointer`)}>{v.ctaLabel}</button>
-              <div style={cs("font-size:12px;color:var(--mute);line-height:1.55;margin-top:14px")}>{tok.family === "CURVE" && !tok.migrated ? "Buys route native ETH in automatically for ERC20-quoted curves. Sell proceeds land in the quote asset directly. The curve's own 1% trading fee applies both ways." : "Routes through the real Uniswap V4 pool via the Universal Router. Both buy and sell settle in native ETH. Anti-MEV blocks a second swap, either direction, from the same address in the same block. A 2% creator fee is taken from every sell, paid straight to the token's creator."}</div>
             </div>
-          </div>
-        </div>
-      </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
