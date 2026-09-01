@@ -402,7 +402,7 @@ export default function TokenPage({ v }) {
                           <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
                             <div style={cs("display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12px")}><span style={cs("color:var(--mute)")}>CURRENT CREATOR</span><span style={cs("font-weight:500")}>{v.cto.creator}</span></div>
                             <div style={cs("display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12px")}><span style={cs("color:var(--mute)")}>PENDING APPLICANT</span><span style={cs("font-weight:500")}>{v.cto.applicant || "none"}</span></div>
-                            <div style={cs("display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12px")}><span style={cs("color:var(--mute)")}>CANNOT CHANGE</span><span style={cs("font-weight:500")}>supply, pool, LP, socials</span></div>
+                            <div style={cs("display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12px")}><span style={cs("color:var(--mute)")}>CANNOT CHANGE</span><span style={cs("font-weight:500")}>supply, pool, LP</span></div>
                           </div>
                         </div>
                       </div>
