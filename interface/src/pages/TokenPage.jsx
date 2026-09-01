@@ -225,40 +225,75 @@ export default function TokenPage({ v }) {
             </div>
 
             {v.tabTrades && (
-              <div style={cs("overflow-x:auto")}>
-                <div style={cs("display:grid;min-width:460px;grid-template-columns:86px 1fr 1fr 1.3fr 70px;gap:14px;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>
-                  <span>SIDE</span><span style={cs("text-align:right")}>{sel.quote}</span><span style={cs("text-align:right")}>{sel.symbol.replace("$", "")}</span><span>WALLET</span><span style={cs("text-align:right")}>AGE</span>
-                </div>
+              <div>
                 {tok.trades.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No trades yet.</div>}
-                {tradePageRows.map((r, i) => (
-                  <div key={i} style={cs("display:grid;min-width:460px;grid-template-columns:86px 1fr 1fr 1.3fr 70px;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px;align-items:center")}>
-                    <span><span title={r.side} style={cs(`width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;background:${r.bg};color:${r.fg};font-size:10.5px;font-weight:500;border-radius:999px`)}>{r.sideLabel}</span></span>
-                    <span style={cs("text-align:right")}>{r.quote}</span>
-                    <span style={cs("text-align:right")}>{r.amount}</span>
-                    <a href={`https://explorer.inkonchain.com/address/${r.full}`} target="_blank" rel="noreferrer" title={r.full}>{r.who}</a>
-                    <span style={cs("text-align:right;color:var(--mute)")}>{r.ago}</span>
+                {v.isMobile ? (
+                  tradePageRows.map((r, i) => (
+                    <div key={i} style={cs("display:flex;flex-direction:column;gap:6px;padding:12px 16px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px")}>
+                      <div style={cs("display:flex;align-items:center;gap:9px")}>
+                        <span title={r.side} style={cs(`width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center;background:${r.bg};color:${r.fg};font-size:10.5px;font-weight:500;border-radius:999px`)}>{r.sideLabel}</span>
+                        <span style={cs("font-weight:500")}>{r.amount} {sel.symbol.replace("$", "")}</span>
+                        <span style={cs("margin-left:auto;color:var(--mute);font-size:11px")}>{r.ago}</span>
+                      </div>
+                      <div style={cs("display:flex;align-items:center;gap:8px;color:var(--mute);font-size:11.5px;padding-left:29px")}>
+                        <span>{r.quote} {sel.quote}</span><span>·</span>
+                        <a href={`https://explorer.inkonchain.com/address/${r.full}`} target="_blank" rel="noreferrer" title={r.full}>{r.who}</a>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={cs("overflow-x:auto")}>
+                    <div style={cs("display:grid;min-width:460px;grid-template-columns:86px 1fr 1fr 1.3fr 70px;gap:14px;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>
+                      <span>SIDE</span><span style={cs("text-align:right")}>{sel.quote}</span><span style={cs("text-align:right")}>{sel.symbol.replace("$", "")}</span><span>WALLET</span><span style={cs("text-align:right")}>AGE</span>
+                    </div>
+                    {tradePageRows.map((r, i) => (
+                      <div key={i} style={cs("display:grid;min-width:460px;grid-template-columns:86px 1fr 1fr 1.3fr 70px;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px;align-items:center")}>
+                        <span><span title={r.side} style={cs(`width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;background:${r.bg};color:${r.fg};font-size:10.5px;font-weight:500;border-radius:999px`)}>{r.sideLabel}</span></span>
+                        <span style={cs("text-align:right")}>{r.quote}</span>
+                        <span style={cs("text-align:right")}>{r.amount}</span>
+                        <a href={`https://explorer.inkonchain.com/address/${r.full}`} target="_blank" rel="noreferrer" title={r.full}>{r.who}</a>
+                        <span style={cs("text-align:right;color:var(--mute)")}>{r.ago}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
                 <Pager page={tradePage} setPage={setTradePage} totalPages={tradeTotalPages} hasMore={tok.tradesHasMore}
                   loading={loadingMoreTrades} onLoadMore={async () => { setLoadingMoreTrades(true); await v.loadMoreTrades(); setLoadingMoreTrades(false); }} />
               </div>
             )}
 
             {v.tabHolders && (
-              <div style={cs("overflow-x:auto")}>
-                <div style={cs("display:grid;min-width:460px;grid-template-columns:44px 1.4fr 1fr .8fr 90px;gap:14px;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>
-                  <span>#</span><span>WALLET</span><span style={cs("text-align:right")}>BALANCE</span><span style={cs("text-align:right")}>SHARE</span><span style={cs("text-align:right")}>TAG</span>
-                </div>
+              <div>
                 {tok.holderRows.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No holders indexed yet.</div>}
-                {holderPageRows.map((h, i) => (
-                  <div key={i} style={cs("display:grid;min-width:460px;grid-template-columns:44px 1.4fr 1fr .8fr 90px;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px;align-items:center")}>
-                    <span style={cs("color:var(--mute)")}>{h.rank}</span>
-                    <a href={`https://explorer.inkonchain.com/address/${h.full}`} target="_blank" rel="noreferrer" title={h.full}>{h.who}</a>
-                    <span style={cs("text-align:right")}>{h.balance}</span>
-                    <span style={cs("text-align:right;font-weight:500")}>{h.share}</span>
-                    <div style={cs("text-align:right")}><span style={cs(`font-size:10px;letter-spacing:.08em;padding:2px 8px;border-radius:999px;border:${h.tagBd};background:${h.tagBg};color:${h.tagFg}`)}>{h.tag}</span></div>
+                {v.isMobile ? (
+                  holderPageRows.map((h, i) => (
+                    <div key={i} style={cs("display:flex;flex-direction:column;gap:6px;padding:12px 16px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px")}>
+                      <div style={cs("display:flex;align-items:center;gap:9px")}>
+                        <span style={cs("color:var(--mute);width:20px;flex:none")}>{h.rank}</span>
+                        <a href={`https://explorer.inkonchain.com/address/${h.full}`} target="_blank" rel="noreferrer" title={h.full} style={cs("flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap")}>{h.who}</a>
+                        <span style={cs(`flex:none;font-size:10px;letter-spacing:.08em;padding:2px 8px;border-radius:999px;border:${h.tagBd};background:${h.tagBg};color:${h.tagFg}`)}>{h.tag}</span>
+                      </div>
+                      <div style={cs("display:flex;align-items:center;gap:8px;color:var(--mute);font-size:11.5px;padding-left:29px")}>
+                        <span style={cs("color:var(--ink);font-weight:500")}>{h.balance}</span><span>· {h.share} of supply</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={cs("overflow-x:auto")}>
+                    <div style={cs("display:grid;min-width:460px;grid-template-columns:44px 1.4fr 1fr .8fr 90px;gap:14px;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>
+                      <span>#</span><span>WALLET</span><span style={cs("text-align:right")}>BALANCE</span><span style={cs("text-align:right")}>SHARE</span><span style={cs("text-align:right")}>TAG</span>
+                    </div>
+                    {holderPageRows.map((h, i) => (
+                      <div key={i} style={cs("display:grid;min-width:460px;grid-template-columns:44px 1.4fr 1fr .8fr 90px;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px;align-items:center")}>
+                        <span style={cs("color:var(--mute)")}>{h.rank}</span>
+                        <a href={`https://explorer.inkonchain.com/address/${h.full}`} target="_blank" rel="noreferrer" title={h.full}>{h.who}</a>
+                        <span style={cs("text-align:right")}>{h.balance}</span>
+                        <span style={cs("text-align:right;font-weight:500")}>{h.share}</span>
+                        <div style={cs("text-align:right")}><span style={cs(`font-size:10px;letter-spacing:.08em;padding:2px 8px;border-radius:999px;border:${h.tagBd};background:${h.tagBg};color:${h.tagFg}`)}>{h.tag}</span></div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
                 <Pager page={holderPage} setPage={setHolderPage} totalPages={holderTotalPages} hasMore={tok.holdersHasMore}
                   loading={loadingMoreHolders} onLoadMore={async () => { setLoadingMoreHolders(true); await v.loadMoreHolders(); setLoadingMoreHolders(false); }} />
               </div>
