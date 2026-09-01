@@ -96,25 +96,28 @@ export default function DocsPage({ v }) {
 
         <Section id="hook" title="DuckHookV4" rows={[
           { k: "Anti-MEV", v: "same-block buy/sell pair from one address reverts" },
-          { k: "Sell fee", v: cfg ? pct(cfg.hook.hookFeeDefaultBps) : "…" },
-          { k: "Sell fee recipient", v: "creator (100%, unless a split is configured)" },
+          { k: "Creator fee", v: cfg ? pct(cfg.hook.hookFeeDefaultBps) : "…" },
+          { k: "Creator fee applies on", v: "sells only" },
+          { k: "Creator fee recipient", v: "creator (100%, unless a split is configured)" },
           { k: "CTO fee", v: cfg ? eth(cfg.hook.ctoFee) : "…" },
           { k: "Attached at", v: "pool init, every family" },
-        ]} blurb="A single Uniswap V4 hook attached to every pool from block one. It enforces the anti-MEV window and skims the sell fee before the swap settles. That sell fee is the only one that actually reaches the creator." />
+        ]} blurb="A single Uniswap V4 hook attached to every pool from block one. It enforces the anti-MEV window and skims the creator's fee before a sell settles. That's the only fee that reaches the creator; the pool's own trading fee (below) is split between a burn and the platform instead." />
 
         <Section id="locker" title="DuckLocker" rows={[
           { k: "Withdraw path", v: "none" },
           { k: "Range", v: "full" },
           { k: "Fee / tick spacing (this platform's pools)", v: "10000 / 200 (1%)" },
-          { k: "LP-position fee routing", v: "token side burned, quote side to platform wallet" },
-        ]} blurb="One vault holding every LP position the platform mints. Positions are full-range and permanent; the contract exposes fee collection and nothing else. The LP-position's own trading fee is never paid to the creator. Only the hook's sell-fee skim is." />
+          { k: "Pool fee on buys", v: "0.5%, burned" },
+          { k: "Pool fee on sells", v: "0.5%, to the platform wallet" },
+        ]} blurb="One vault holding every LP position the platform mints. Positions are full-range and permanent; the contract exposes fee collection and nothing else. None of the pool's own trading fee is ever paid to the creator: half is burned, half goes to the platform. Only the hook's separate creator fee (above) reaches them." />
 
         <Section id="fees" title="Fees" rows={[
           { k: "Curve creation", v: cfg ? eth(cfg.curve.creationFee) : "…" },
           { k: "Instant launch", v: cfg ? eth(cfg.launcher.launchFee) : "…" },
           { k: "Crowdlaunch", v: cfg ? eth(cfg.raise.campaignFee) : "…" },
           { k: "Curve trading fee (pre-migration)", v: "1.00%, both buy and sell" },
-          { k: "Creator sell fee (post-migration / instant / raise pools)", v: cfg ? pct(cfg.hook.hookFeeDefaultBps) : "…" },
+          { k: "Pool fee (post-migration / instant / raise pools)", v: "0.5% on buys (burned), 0.5% on sells (to platform)" },
+          { k: "Creator fee (post-migration / instant / raise pools)", v: cfg ? pct(cfg.hook.hookFeeDefaultBps) + ", sells only" : "…" },
         ]} blurb="Creation fees are a flat native-ETH amount charged at deploy, read live above, not a percentage of anything raised. Crowdlaunch's fee is the same flat structure; there is no separate percentage cut taken on a successful finalize." />
 
         <div id="deploy" className="d-lift" style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);overflow:hidden;margin-bottom:16px;scroll-margin-top:80px")}>

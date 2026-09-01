@@ -12,7 +12,7 @@ const TRADE_STEPS = [
   { n: "1", k: "Connect on Ink", v: "Any injected wallet or WalletConnect works. duckfun only asks for a signature when you're actually trading, never just to browse.", bg: "var(--lime)", fg: "var(--on)" },
   { n: "2", k: "Pick a venue", v: "Bonding-curve tokens trade against the curve. Migrated and instant-launch tokens trade on a real Uniswap V4 pool. Crowdlaunch tokens aren't tradeable until the raise finalizes.", bg: "var(--paper)" },
   { n: "3", k: "Size the trade", v: "Enter an amount and check the live quote before you sign. You'll see the tokens you'd receive, and you set your own slippage tolerance.", bg: "var(--paper)" },
-  { n: "4", k: "Sign and settle", v: "The hook blocks a buy and sell from the same address in the same block, so a sandwich attempt just reverts at the pool. Sells on a V4 pool carry a 2% fee that goes straight to the creator.", bg: "var(--paper)" },
+  { n: "4", k: "Sign and settle", v: "The hook blocks a buy and sell from the same address in the same block, so a sandwich attempt just reverts at the pool. Buys carry a 0.5% fee that gets burned; sells carry that same 0.5% to the platform plus a 2% fee that goes straight to the creator.", bg: "var(--paper)" },
 ];
 
 const FAQS = [

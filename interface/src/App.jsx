@@ -852,11 +852,12 @@ export default function App() {
   }, [s.screen, s.tokenId, s.side, s.amount]);
 
   // Triggers DuckLocker.claimFees, which collects the LP-position's trading
-  // fee and (same call, best-effort) the hook's separate sell-fee skim --
-  // but only the hook's sell-fee skim actually pays the creator. The
-  // LP-position fee itself always goes token-side-burned / quote-side-to-
-  // platform-wallet (DuckLocker._collectAndDistribute) -- the creator is
-  // just the address permitted to trigger the collection, not a recipient.
+  // fee and (same call, best-effort) the hook's separate creator fee --
+  // but only the hook's fee actually pays the creator. The LP-position fee
+  // itself always goes token-side-burned (0.5%, realized on buys) / quote-
+  // side-to-platform-wallet (0.5%, realized on sells) via DuckLocker.
+  // _collectAndDistribute -- the creator is just the address permitted to
+  // trigger the collection, not a recipient of that side.
   async function claimCreatorAndHookFees(coin) {
     const hash = await runTx("Claim fees", () => claimFees({ account, token: coin.id }));
     if (hash) { await Promise.all([loadPortfolio(), loadCreatorData(coin)]); flash("Fees claimed."); }
@@ -1217,7 +1218,7 @@ function buildViewModel(ctx) {
       { k: "HOLDERS", v: c.holders.toLocaleString() },
       { k: c.family === "CURVE" && !c.migrated ? "CURVE" : "POOL", v: c.family === "CURVE" && !c.migrated ? Math.round(c.pct) + "%" : (c.migrated || c.family === "INSTANT") ? "V4 LIVE" : "—" },
       { k: "LP LOCK", v: (c.migrated || c.family === "INSTANT") ? "FOREVER" : "—" },
-      { k: "BURNED", v: (Number(c.burnedSupply || 0) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 0 }) },
+      { k: "BURNED", v: compactNumber(Number(c.burnedSupply || 0) / 1e18) },
     ] : [],
     candles: chartCandles, ohlc, chartOhlc,
     chartMode: s.chartMode, setChartMode: (mode) => set({ chartMode: mode }),
@@ -1430,7 +1431,7 @@ function buildCampaignModel(c, s, myContribution) {
     }),
     custody: [
       { k: "ESCROWED ETH", v: raised.toFixed(4) + " ETH", c: INK },
-      { k: "ESCROWED SUPPLY", v: contributorSupply != null ? Math.round(contributorSupply).toLocaleString() : "—", c: INK },
+      { k: "ESCROWED SUPPLY", v: contributorSupply != null ? compactNumber(contributorSupply) : "—", c: INK },
       { k: "HELD BY", v: "DuckRaise", c: INK },
       { k: "TRANSFERS", v: c.campaignSucceeded ? "enabled" : "disabled", c: c.campaignSucceeded ? "var(--pos)" : "var(--neg)" },
     ],

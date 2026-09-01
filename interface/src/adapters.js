@@ -54,15 +54,31 @@ const SUBSCRIPT_DIGITS = "₀₁₂₃₄₅₆₇₈₉";
 function toSubscript(num) {
   return String(num).split("").map((d) => SUBSCRIPT_DIGITS[+d]).join("");
 }
+// Trims a fixed(2) string down to however many decimals actually matter --
+// "1.00" -> "1", "1.50" -> "1.5", "16.07" stays "16.07" -- so a round number
+// like a 1B supply reads as "1B", not "1.00B".
+function trimTrailingZeros(x) {
+  return x.toFixed(2).replace(/\.?0+$/, "");
+}
 export function compactNumber(n) {
   if (n === 0) return "0";
-  if (n >= 0.0001) return n.toLocaleString(undefined, { maximumFractionDigits: n < 1 ? 6 : n < 1000 ? 3 : 2 });
-  const str = n.toFixed(24);
-  const match = str.match(/^0\.(0+)(\d+)/);
-  if (!match) return n.toString();
-  const zeroCount = match[1].length;
-  const significant = match[2].slice(0, 4);
-  return "0.0" + toSubscript(zeroCount - 1) + significant;
+  const neg = n < 0;
+  const abs = Math.abs(n);
+  if (abs < 0.0001) {
+    const str = abs.toFixed(24);
+    const match = str.match(/^0\.(0+)(\d+)/);
+    if (!match) return (neg ? "-" : "") + abs.toString();
+    const zeroCount = match[1].length;
+    const significant = match[2].slice(0, 4);
+    return (neg ? "-" : "") + "0.0" + toSubscript(zeroCount - 1) + significant;
+  }
+  // Large amounts (market caps, supply, volume) read far faster with a
+  // suffix than as a wall of comma-grouped digits -- 1,000,000,000 -> 1B.
+  if (abs >= 1e12) return (neg ? "-" : "") + trimTrailingZeros(abs / 1e12) + "T";
+  if (abs >= 1e9) return (neg ? "-" : "") + trimTrailingZeros(abs / 1e9) + "B";
+  if (abs >= 1e6) return (neg ? "-" : "") + trimTrailingZeros(abs / 1e6) + "M";
+  if (abs >= 1e3) return (neg ? "-" : "") + trimTrailingZeros(abs / 1e3) + "K";
+  return n.toLocaleString(undefined, { maximumFractionDigits: abs < 1 ? 6 : 3 });
 }
 
 // mc/raised/vol are denominated in whatever quote asset a token trades
@@ -252,7 +268,7 @@ export function tradeToRow(tr, labels, quoteSymbolLabel = "ETH") {
     full: tr.trader,
     ago: ageAgo(tr.timestamp),
     quote: quoteAmt.toFixed(4),
-    amount: tokenAmt >= 1000 ? Math.round(tokenAmt / 1000).toLocaleString() + "K" : tokenAmt.toFixed(2),
+    amount: tokenAmt >= 1000 ? compactNumber(tokenAmt) : tokenAmt.toFixed(2),
     quoteSymbol: quoteSymbolLabel,
   };
 }
@@ -332,7 +348,7 @@ export function holderToRow(h, i, totalSupply, labels) {
     rank: String(i + 1),
     who: label || shortAddress(h.account),
     full: h.account,
-    balance: balance.toLocaleString(undefined, { maximumFractionDigits: 0 }),
+    balance: compactNumber(balance),
     share: share + "%",
     tag,
     tagBg: tagged ? "var(--paper)" : "transparent",
