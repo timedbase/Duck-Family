@@ -57,9 +57,17 @@ function SocialRow({ socials, size = "22px" }) {
 // static intro card with the platform's real CTAs.
 function KingOfDucksCard({ v }) {
   const t = v.kingCoin;
+  const hasSocials = t.socials?.twitter || t.socials?.telegram || t.socials?.website;
   return (
     <div onClick={t.open} className="d-lift" style={cs("flex:1;min-width:280px;cursor:pointer;display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card);box-shadow:var(--sh)")}>
-      <div style={cs("width:120px;flex:none")}><ImageBlock t={t} badgeSize="10px" /></div>
+      <div style={cs("width:120px;flex:none;display:flex;flex-direction:column")}>
+        <ImageBlock t={t} badgeSize="10px" />
+        {hasSocials && (
+          <div style={cs("padding:8px;display:flex;justify-content:center")}>
+            <SocialRow socials={t.socials} />
+          </div>
+        )}
+      </div>
       <div style={cs("flex:1;min-width:0;padding:14px 16px;display:flex;flex-direction:column;gap:9px")}>
         <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;color:var(--lime)")}>KING OF DUCKS · TOP MARKET CAP</div>
         <div style={cs("display:flex;align-items:baseline;gap:8px;min-width:0")}>
@@ -71,7 +79,6 @@ function KingOfDucksCard({ v }) {
           <span style={cs(`font-size:12px;color:${t.chgColor}`)}>{t.chg}</span>
         </div>
         <div style={cs("height:34px")}><Sparkline bars={t.bars} height="34px" /></div>
-        <SocialRow socials={t.socials} />
       </div>
     </div>
   );
