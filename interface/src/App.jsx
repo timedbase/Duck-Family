@@ -337,13 +337,16 @@ export default function App() {
   // *displayed* name/symbol (the real ones are immutable ERC20 fields this
   // can't touch) -- resolveTokenNameSymbol is only even attempted in that
   // case, so the non-override path's name/symbol behavior is unchanged.
-  const loadTokenMeta = useCallback(async (address, knownUri, overrideUri) => {
+  const loadTokenMeta = useCallback(async (address, knownUri, overrideUri, knownImageUrl) => {
     try {
       const originalUri = knownUri || (overrideUri ? null : await fetchTokenMetaUri(address));
       const uri = overrideUri || originalUri;
       if (!uri) return;
+      // The backend already resolved this image server-side (see
+      // adapters.js) -- re-fetching it here too would just be the exact
+      // same slow client-side IPFS round trip this was built to avoid.
       const [desc, imageUrl, socials, nameSymbol] = await Promise.all([
-        resolveTokenDescription(uri), resolveTokenImage(uri), resolveTokenSocials(uri),
+        resolveTokenDescription(uri), knownImageUrl ? Promise.resolve(knownImageUrl) : resolveTokenImage(uri), resolveTokenSocials(uri),
         overrideUri ? resolveTokenNameSymbol(uri) : Promise.resolve(null),
       ]);
       setS((st) => ({
@@ -360,8 +363,8 @@ export default function App() {
     } catch (e) { console.error("failed to load token metadata", e); }
   }, []);
 
-  const loadTokenDetail = useCallback(async (address, knownMetaUri, overrideUri) => {
-    loadTokenMeta(address, knownMetaUri, overrideUri);
+  const loadTokenDetail = useCallback(async (address, knownMetaUri, overrideUri, knownImageUrl) => {
+    loadTokenMeta(address, knownMetaUri, overrideUri, knownImageUrl);
     try {
       const [trades, holders] = await Promise.all([api.trades(address), api.holders(address)]);
       setS((st) => {
@@ -415,11 +418,11 @@ export default function App() {
     if (coin && coin.family === "CAMPAIGN") {
       set({ screen: "campaign", tokenId: id, campaignDetail: null });
       if (coin.campaignId) loadCampaignDetail(coin.campaignId);
-      loadTokenMeta(id, coin.metaUri, coin.metaOverrideUri);
+      loadTokenMeta(id, coin.metaUri, coin.metaOverrideUri, coin.imageUrl);
       getRaiseDefaults().then((d) => set({ raiseDefaults: d })).catch(() => {});
     } else {
       set({ screen: "token", tokenId: id, tab: "Trades", side: "buy", amount: "250" });
-      loadTokenDetail(id, coin?.metaUri, coin?.metaOverrideUri);
+      loadTokenDetail(id, coin?.metaUri, coin?.metaOverrideUri, coin?.imageUrl);
     }
     window.scrollTo(0, 0);
   }
@@ -482,7 +485,7 @@ export default function App() {
     } catch (e) {
       return flash("Couldn't get a price quote — try again. (" + errorText(e, "unknown") + ")");
     }
-    if (hash) { await Promise.all([loadPortfolio(), loadTokenDetail(coin.id, coin.metaUri, coin.metaOverrideUri)]); flash("Bought " + coin.ticker + " for " + amtEth + " ETH"); }
+    if (hash) { await Promise.all([loadPortfolio(), loadTokenDetail(coin.id, coin.metaUri, coin.metaOverrideUri, coin.imageUrl)]); flash("Bought " + coin.ticker + " for " + amtEth + " ETH"); }
   }
 
   async function sell(coin, tokenAmount) {
@@ -506,7 +509,7 @@ export default function App() {
       return flash("Couldn't get a price quote — try again. (" + errorText(e, "unknown") + ")");
     }
     if (hash) {
-      await Promise.all([loadPortfolio(), loadTokenDetail(coin.id, coin.metaUri, coin.metaOverrideUri)]);
+      await Promise.all([loadPortfolio(), loadTokenDetail(coin.id, coin.metaUri, coin.metaOverrideUri, coin.imageUrl)]);
       flash(isPool ? "Sold " + coin.ticker : "Sold " + coin.ticker + (coin.quote !== "ETH" ? " (proceeds landed as " + coin.quote + ")" : ""));
     }
   }

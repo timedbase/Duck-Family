@@ -114,13 +114,67 @@ async function attachPoolIds<T extends { id: string }>(tokens: T[]): Promise<(T 
   return tokens.map((t) => ({ ...t, poolId: poolIdByToken.get(t.id) ?? null }));
 }
 
+const PINATA_GATEWAY = "https://gateway.pinata.cloud/ipfs/";
+function ipfsToHttp(uri: string | null | undefined): string | null {
+  if (!uri) return null;
+  if (uri.startsWith("ipfs://")) return PINATA_GATEWAY + uri.slice("ipfs://".length);
+  if (uri.startsWith("http://") || uri.startsWith("https://")) return uri;
+  return null;
+}
+
+// Every browser was independently doing this exact fetch (metaURI JSON off
+// IPFS, just to read its `image` field) and hitting Pinata's slow shared
+// public gateway cold every time -- the reported "images load really slow"
+// complaint. Resolving it here once, cached process-wide, means every user
+// after the first gets it instantly instead of each of them paying that
+// gateway round trip themselves. Keyed by the URI string itself, so a
+// *changed* URI (a new DuckMetaOverride registration) is simply a different
+// cache key -- there's no staleness to reason about, only ever the current
+// metaUri/metaOverrideUri a token has right now (see duck-meta-override.ts:
+// the subgraph already only ever tracks the latest override, nothing here
+// needs to re-derive that). A failed resolution is deliberately NOT cached
+// (evicted before returning), so a transient gateway hiccup self-heals on
+// the next request instead of permanently pinning a token to "no image".
+const imageUrlCache = new Map<string, Promise<string | null>>();
+function resolveImageUrl(metaUri: string | null | undefined): Promise<string | null> {
+  if (!metaUri) return Promise.resolve(null);
+  const cached = imageUrlCache.get(metaUri);
+  if (cached) return cached;
+  const promise = (async () => {
+    try {
+      const url = ipfsToHttp(metaUri);
+      if (!url) return null;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`gateway ${res.status}`);
+      const data = (await res.json()) as { image?: string };
+      const resolved = ipfsToHttp(data.image);
+      if (!resolved) imageUrlCache.delete(metaUri);
+      return resolved;
+    } catch {
+      imageUrlCache.delete(metaUri);
+      return null;
+    }
+  })();
+  imageUrlCache.set(metaUri, promise);
+  return promise;
+}
+
+async function attachImageUrls<T extends { metaUri: string | null; metaOverrideUri: string | null }>(
+  tokens: T[]
+): Promise<(T & { imageUrl: string | null })[]> {
+  const imageUrls = await Promise.all(tokens.map((t) => resolveImageUrl(t.metaOverrideUri || t.metaUri)));
+  return tokens.map((t, i) => ({ ...t, imageUrl: imageUrls[i] }));
+}
+
 router.get("/", async (req, res) => {
   const family = typeof req.query.family === "string" ? req.query.family.toUpperCase() : undefined;
   const limit = Math.min(Number(req.query.limit ?? 50), 200);
   const offset = Number(req.query.offset ?? 0);
 
   try {
-    const data = await querySubgraph<{ tokens: { id: string; lastPrice: string | null; lastPriceUsd: string | null }[] }>(
+    const data = await querySubgraph<{
+      tokens: { id: string; lastPrice: string | null; lastPriceUsd: string | null; metaUri: string | null; metaOverrideUri: string | null }[];
+    }>(
       `query Tokens($first: Int!, $skip: Int!, $where: Token_filter) {
         tokens(first: $first, skip: $skip, orderBy: createdAtBlock, orderDirection: desc, where: $where) {
           ${TOKEN_FIELDS}
@@ -128,7 +182,7 @@ router.get("/", async (req, res) => {
       }`,
       { first: limit, skip: offset, where: family ? { family } : {} }
     );
-    res.json(await attachPoolIds(await attachDerivedStats(data.tokens)));
+    res.json(await attachImageUrls(await attachPoolIds(await attachDerivedStats(data.tokens))));
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }
@@ -161,8 +215,13 @@ router.get("/:address", async (req, res) => {
     );
 
     if (data.token == null) return res.status(404).json({ error: "not found" });
-    const [withStats] = await attachDerivedStats([data.token as { id: string; lastPrice: string | null; lastPriceUsd: string | null }]);
-    res.json({ ...withStats, position: data.position, pool: data.pools[0] ?? null });
+    const [withStats] = await attachDerivedStats([
+      data.token as { id: string; lastPrice: string | null; lastPriceUsd: string | null },
+    ]);
+    const [withImage] = await attachImageUrls([
+      withStats as typeof withStats & { metaUri: string | null; metaOverrideUri: string | null },
+    ]);
+    res.json({ ...withImage, position: data.position, pool: data.pools[0] ?? null });
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }

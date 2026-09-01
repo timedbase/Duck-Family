@@ -185,7 +185,13 @@ export function tokenToCoin(t, i, meta) {
     // original metadata has been replaced -- App.jsx's loadTokenMeta prefers
     // this over metaUri whenever it's present.
     metaOverrideUri: t.metaOverrideUri || null,
-    imageUrl: null,
+    // The backend now resolves this server-side (cached across every user)
+    // -- see backend/src/api/routes/tokens.ts's attachImageUrls. Only falls
+    // back to a client-side IPFS fetch (App.jsx's resolveCoinImages) when
+    // the backend genuinely has nothing yet (e.g. resolution failed, or the
+    // token is brand new and this is a stale merged-in coin from before the
+    // backend restart picked up the fix).
+    imageUrl: t.imageUrl || null,
     rawTrades: [],
     holderRows: [],
     trades: [],
