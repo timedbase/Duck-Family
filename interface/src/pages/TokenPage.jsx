@@ -107,20 +107,39 @@ export default function TokenPage({ v }) {
       <button onClick={v.goHome} style={cs("border:0;background:transparent;font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.1em;color:var(--mute);cursor:pointer;padding:0 0 14px")}>← DISCOVER</button>
 
       <div style={cs(`display:flex;flex-direction:column;gap:14px;padding:${v.isMobile ? "14px" : "18px"};border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);margin-bottom:16px`)}>
-        <div style={cs("display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap")}>
-          <Thumb url={sel.imageUrl} bg={sel.famBg} fg={sel.famFg} initials={sel.initials} size={v.isMobile ? "56px" : "68px"} radius="10px" fontSize={v.isMobile ? "19px" : "24px"} flex="none" />
-          <div style={cs("min-width:220px;flex:1")}>
-            <div style={cs("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
-              <span style={cs(`font-size:${v.isMobile ? "20px" : "24px"};font-weight:700;letter-spacing:-.03em`)}>{sel.symbol}</span>
-              <span style={cs(`font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;padding:2px 9px;border-radius:999px;border:1px solid var(--line);background:${sel.famBg};color:${sel.famFg}`)}>{sel.family}</span>
+        {v.isMobile ? (
+          <>
+            <div style={cs("display:flex;align-items:flex-start;justify-content:space-between;gap:12px")}>
+              <Thumb url={sel.imageUrl} bg={sel.famBg} fg={sel.famFg} initials={sel.initials} size="56px" radius="10px" fontSize="19px" flex="none" />
+              <div style={cs("text-align:right;font-family:'JetBrains Mono',monospace;flex:none")}>
+                <div style={cs("font-size:22px;font-weight:500;letter-spacing:-.04em")}>{sel.price}</div>
+                <div style={cs(`font-size:13px;margin-top:5px;color:${sel.chgColor}`)}>{sel.chg} · {v.range}</div>
+              </div>
             </div>
-            <div style={cs("font-size:14px;color:var(--mute);margin-top:6px")}>{sel.name}</div>
+            <div>
+              <div style={cs("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+                <span style={cs("font-size:20px;font-weight:700;letter-spacing:-.03em")}>{sel.symbol}</span>
+                <span style={cs(`font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;padding:2px 9px;border-radius:999px;border:1px solid var(--line);background:${sel.famBg};color:${sel.famFg}`)}>{sel.family}</span>
+              </div>
+              <div style={cs("font-size:14px;color:var(--mute);margin-top:6px")}>{sel.name}</div>
+            </div>
+          </>
+        ) : (
+          <div style={cs("display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap")}>
+            <Thumb url={sel.imageUrl} bg={sel.famBg} fg={sel.famFg} initials={sel.initials} size="68px" radius="10px" fontSize="24px" flex="none" />
+            <div style={cs("min-width:220px;flex:1")}>
+              <div style={cs("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+                <span style={cs("font-size:24px;font-weight:700;letter-spacing:-.03em")}>{sel.symbol}</span>
+                <span style={cs(`font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;padding:2px 9px;border-radius:999px;border:1px solid var(--line);background:${sel.famBg};color:${sel.famFg}`)}>{sel.family}</span>
+              </div>
+              <div style={cs("font-size:14px;color:var(--mute);margin-top:6px")}>{sel.name}</div>
+            </div>
+            <div style={cs("text-align:right;font-family:'JetBrains Mono',monospace;flex:none")}>
+              <div style={cs("font-size:28px;font-weight:500;letter-spacing:-.04em")}>{sel.price}</div>
+              <div style={cs(`font-size:13px;margin-top:5px;color:${sel.chgColor}`)}>{sel.chg} · {v.range}</div>
+            </div>
           </div>
-          <div style={cs("text-align:right;font-family:'JetBrains Mono',monospace;flex:none")}>
-            <div style={cs(`font-size:${v.isMobile ? "22px" : "28px"};font-weight:500;letter-spacing:-.04em`)}>{sel.price}</div>
-            <div style={cs(`font-size:13px;margin-top:5px;color:${sel.chgColor}`)}>{sel.chg} · {v.range}</div>
-          </div>
-        </div>
+        )}
         <div style={cs("display:flex;gap:6px;flex-wrap:wrap")}>
           <AddressChip address={sel.address} full={tok.id} />
           <LinkChip href={`https://explorer.inkonchain.com/address/${tok.id}`}>Explorer</LinkChip>
