@@ -25,3 +25,13 @@ export function LinkChip({ href, children }) {
     <a href={href} target="_blank" rel="noreferrer noopener" className="d-hover-paper" style={cs(`${chipStyle};color:var(--ink)`)}>{children}</a>
   );
 }
+
+// Icon-only variant of LinkChip -- same square footprint as the social
+// icons in App.jsx's bottom bar, for quick-link chips (Explorer, BasedBot,
+// DEXTools) where the destination is recognizable from a glyph and a
+// tooltip alone, without needing the full name spelled out inline.
+export function IconLinkChip({ href, title, children }) {
+  return (
+    <a href={href} target="_blank" rel="noreferrer noopener" title={title} className="d-hover-paper" style={cs("width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink);border-bottom:1px solid var(--line)")}>{children}</a>
+  );
+}

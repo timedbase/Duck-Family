@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { cs } from "../cs.js";
 import PriceChart from "../PriceChart.jsx";
 import Thumb from "../Thumb.jsx";
-import { AddressChip, LinkChip } from "../MetaChips.jsx";
+import { AddressChip, LinkChip, IconLinkChip } from "../MetaChips.jsx";
 
 // Numbered pager over an already-fetched, ever-growing row list (App.jsx
 // appends full pages as "load more" fires) -- shown pages are just a slice
@@ -124,9 +124,17 @@ export default function TokenPage({ v }) {
         {tok.desc && <div style={cs("font-size:12.5px;color:var(--mute);max-width:70ch;line-height:1.5")}>{tok.desc}</div>}
         <div style={cs("display:flex;gap:6px;flex-wrap:wrap")}>
           <AddressChip address={sel.address} full={tok.id} />
-          <LinkChip href={`https://explorer.inkonchain.com/address/${tok.id}`}>Explorer</LinkChip>
-          <LinkChip href={`https://basedbot.app/token/ink/${tok.id}`}>BasedBot</LinkChip>
-          {tok.poolId && <LinkChip href={`https://www.dextools.io/app/ink/pair-explorer/${tok.poolId}`}>DEXTools</LinkChip>}
+          <IconLinkChip href={`https://explorer.inkonchain.com/address/${tok.id}`} title="Explorer">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2.2 5.8-5.8 2.2 2.2-5.8z" /></svg>
+          </IconLinkChip>
+          <IconLinkChip href={`https://basedbot.app/token/ink/${tok.id}`} title="BasedBot">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="5" y="9" width="14" height="10" rx="2.5" /><path d="M12 9V5.5" /><circle cx="12" cy="3.5" r="1.2" fill="currentColor" stroke="none" /><circle cx="9" cy="14" r="1.1" fill="currentColor" stroke="none" /><circle cx="15" cy="14" r="1.1" fill="currentColor" stroke="none" /></svg>
+          </IconLinkChip>
+          {tok.poolId && (
+            <IconLinkChip href={`https://www.dextools.io/app/ink/pair-explorer/${tok.poolId}`} title="DEXTools">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><line x1="5.5" y1="3" x2="5.5" y2="21" stroke="currentColor" strokeWidth="1.4" /><rect x="3.5" y="7" width="4" height="7" /><line x1="12" y1="1.5" x2="12" y2="22.5" stroke="currentColor" strokeWidth="1.4" /><rect x="10" y="10" width="4" height="5" /><line x1="18.5" y1="5" x2="18.5" y2="19" stroke="currentColor" strokeWidth="1.4" /><rect x="16.5" y="8" width="4" height="8" /></svg>
+            </IconLinkChip>
+          )}
           {tok.socials?.website && <LinkChip href={tok.socials.website}>Website</LinkChip>}
           {tok.socials?.twitter && <LinkChip href={tok.socials.twitter}>X</LinkChip>}
           {tok.socials?.telegram && <LinkChip href={tok.socials.telegram}>Telegram</LinkChip>}
