@@ -126,7 +126,7 @@ export default function TokenPage({ v }) {
           <AddressChip address={sel.address} full={tok.id} />
           <LinkChip href={`https://explorer.inkonchain.com/address/${tok.id}`}>Explorer</LinkChip>
           <LinkChip href={`https://basedbot.app/token/ink/${tok.id}`}>BasedBot</LinkChip>
-          <LinkChip href={`https://gmgn.ai/ink/token/${tok.id}`}>GMGN</LinkChip>
+          {tok.poolId && <LinkChip href={`https://www.dextools.io/app/ink/pair-explorer/${tok.poolId}`}>DEXTools</LinkChip>}
           {tok.socials?.website && <LinkChip href={tok.socials.website}>Website</LinkChip>}
           {tok.socials?.twitter && <LinkChip href={tok.socials.twitter}>X</LinkChip>}
           {tok.socials?.telegram && <LinkChip href={tok.socials.telegram}>Telegram</LinkChip>}
@@ -385,11 +385,13 @@ export default function TokenPage({ v }) {
           {/* Floating trade button -- always reachable while scrolled, opens
               the same Buy/Sell form as a bottom sheet instead of it stacking
               inline below everything else on the page. */}
-          <button onClick={() => setTradeSheetOpen(true)} style={cs("position:fixed;left:16px;right:16px;bottom:16px;z-index:70;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;border:1px solid var(--line);border-radius:14px;background:var(--lime);color:var(--on);box-shadow:0 10px 24px -8px rgba(0,0,0,.55);cursor:pointer")}>
+          {/* bottom:60px clears the persistent status/social bar (44px tall,
+              pinned at bottom:0 across every page) that sits underneath it. */}
+          <button onClick={() => setTradeSheetOpen(true)} style={cs("position:fixed;left:16px;right:16px;bottom:60px;z-index:70;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;border:1px solid var(--line);border-radius:14px;background:var(--lime);color:var(--on);box-shadow:0 10px 24px -8px rgba(0,0,0,.55);cursor:pointer")}>
             <span style={cs("font-size:14.5px;font-weight:700")}>Trade {sel.symbol}</span>
             <span style={cs("font-family:'JetBrains Mono',monospace;font-size:13px")}>{sel.price}</span>
           </button>
-          <div style={cs("height:76px")}></div>
+          <div style={cs("height:120px")}></div>
 
           {tradeSheetOpen && (
             <div onClick={() => setTradeSheetOpen(false)} style={cs("position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.6);display:flex;align-items:flex-end")}>

@@ -915,16 +915,6 @@ export default function App() {
           </div>
 
           <div style={cs("flex:1")}></div>
-
-          <div style={cs("display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute)")}>
-            <span style={cs("width:6px;height:6px;border-radius:99px;background:var(--lime);flex:none")}></span>Ink 57073 · synced
-            <div style={cs("margin-left:auto;display:flex;gap:6px")}>
-              <a href="https://x.com/duckfunfamily" target="_blank" rel="noreferrer" title="duckfun on X" style={cs("width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--mute);flex:none;border-bottom:1px solid var(--line)")}>𝕏</a>
-              <a href="https://t.me/DuckFunFamily" target="_blank" rel="noreferrer" title="duckfun on Telegram" style={cs("width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--mute);flex:none;border-bottom:1px solid var(--line)")}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21.94 4.36a1.5 1.5 0 0 0-1.62-.2L2.7 11.4a1.4 1.4 0 0 0 .1 2.6l4.55 1.5 1.76 5.5a1.3 1.3 0 0 0 2.16.5l2.5-2.4 4.5 3.3a1.4 1.4 0 0 0 2.23-.85l3.1-14.9a1.5 1.5 0 0 0-.66-1.79zM9.4 14.9l-1.2 3.7-1.1-3.5 11.6-7.2z"/></svg>
-              </a>
-            </div>
-          </div>
         </aside>
       )}
 
@@ -961,7 +951,7 @@ export default function App() {
           </div>
         </header>
 
-        <main style={cs(`flex:1;padding:${m ? "14px 12px 32px" : "22px 24px 72px"};width:100%;max-width:1320px;margin:0 auto;min-width:0`)}>
+        <main style={cs(`flex:1;padding:${m ? "14px 12px 76px" : "22px 24px 96px"};width:100%;max-width:1320px;margin:0 auto;min-width:0`)}>
           {v.isHome && <DiscoverPage v={v} />}
           {v.isToken && (v.coin ? <TokenPage v={v} /> : <PendingLaunchPanel v={v} />)}
           {v.isCreate && <CreateChooserPage v={v} />}
@@ -974,6 +964,25 @@ export default function App() {
         </main>
       </div>
 
+      {/* Persistent status/docs/social bar -- pinned to the bottom on every
+          screen, offset past the sidebar on desktop the same way the header
+          is, full-width on mobile. Docs lives here as an icon instead of a
+          nav link now, alongside the chain-sync status and the social
+          links, none of which need to sit in the nav/header anymore. */}
+      <div style={cs(`position:fixed;left:${m ? "0" : "236px"};right:0;bottom:0;z-index:55;display:flex;align-items:center;gap:10px;height:44px;padding:0 ${m ? "12px" : "20px"};border-top:1px solid var(--line);background:rgba(23,23,23,.92);backdrop-filter:blur(8px);font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute)`)}>
+        <span style={cs("width:6px;height:6px;border-radius:99px;background:var(--lime);flex:none")}></span>
+        <span>{m ? "INK 57073" : "Ink 57073 · synced"}</span>
+        <div style={cs("margin-left:auto;display:flex;gap:6px")}>
+          <button onClick={v.goDocs} title="Docs" style={cs("width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--mute);cursor:pointer;padding:0")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v4h4" /><path d="M9 12h6M9 16h6" /></svg>
+          </button>
+          <a href="https://x.com/duckfunfamily" target="_blank" rel="noreferrer" title="duckfun on X" style={cs("width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--mute)")}>𝕏</a>
+          <a href="https://t.me/DuckFunFamily" target="_blank" rel="noreferrer" title="duckfun on Telegram" style={cs("width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--mute)")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21.94 4.36a1.5 1.5 0 0 0-1.62-.2L2.7 11.4a1.4 1.4 0 0 0 .1 2.6l4.55 1.5 1.76 5.5a1.3 1.3 0 0 0 2.16.5l2.5-2.4 4.5 3.3a1.4 1.4 0 0 0 2.23-.85l3.1-14.9a1.5 1.5 0 0 0-.66-1.79zM9.4 14.9l-1.2 3.7-1.1-3.5 11.6-7.2z"/></svg>
+          </a>
+        </div>
+      </div>
+
       {m && v.menuOpen && (
         <div onClick={v.closeMenu} style={cs("position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.6);display:flex;justify-content:flex-end")}>
           <div onClick={(e) => e.stopPropagation()} style={cs("width:78%;max-width:290px;height:100%;background:var(--card);border-left:1px solid var(--line);display:flex;flex-direction:column")}>
@@ -982,20 +991,11 @@ export default function App() {
               <button onClick={v.closeMenu} aria-label="Close menu" style={cs("width:30px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--paper);cursor:pointer;font-size:15px;line-height:1")}>✕</button>
             </div>
             <div style={cs("display:flex;flex-direction:column;gap:3px;padding:10px")}>
-              {v.nav.map((n, i) => (
+              {v.navDrawer.map((n, i) => (
                 <button key={i} onClick={() => { n.go(); v.closeMenu(); }} style={cs(`text-align:left;padding:11px 12px;border:0;border-radius:6px;background:transparent;color:${n.c};font-size:14.5px;font-weight:${n.w};cursor:pointer`)}>{n.label}</button>
               ))}
             </div>
             <div style={cs("flex:1")}></div>
-            <div style={cs("display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute)")}>
-              INK 57073 · SYNCED
-              <div style={cs("margin-left:auto;display:flex;gap:6px")}>
-                <a href="https://x.com/duckfunfamily" target="_blank" rel="noreferrer" title="duckfun on X" style={cs("width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--mute);flex:none;border-bottom:1px solid var(--line)")}>𝕏</a>
-                <a href="https://t.me/DuckFunFamily" target="_blank" rel="noreferrer" title="duckfun on Telegram" style={cs("width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--mute);flex:none;border-bottom:1px solid var(--line)")}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21.94 4.36a1.5 1.5 0 0 0-1.62-.2L2.7 11.4a1.4 1.4 0 0 0 .1 2.6l4.55 1.5 1.76 5.5a1.3 1.3 0 0 0 2.16.5l2.5-2.4 4.5 3.3a1.4 1.4 0 0 0 2.23-.85l3.1-14.9a1.5 1.5 0 0 0-.66-1.79zM9.4 14.9l-1.2 3.7-1.1-3.5 11.6-7.2z"/></svg>
-              </a>
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -1166,7 +1166,11 @@ function buildViewModel(ctx) {
   return {
     isMobile: s.mobile,
     pageTitle: pageMeta.title, pageSub: pageMeta.sub,
-    navMain: nav.slice(0, 4), navLearn: nav.slice(4),
+    // Docs moves out of the nav entirely and into the persistent bottom bar
+    // (as an icon, alongside platform status and the social links) -- kept
+    // out of navMain/navLearn/navDrawer, all three of which the sidebar,
+    // desktop LEARN group and mobile drawer render from.
+    navMain: nav.slice(0, 4), navLearn: nav.slice(4, 5), navDrawer: nav.filter((n) => n.label !== "Docs"),
     connected: !!account, account, accountShort: account ? shortAddress(account) : "",
     balance: Number(formatEther(s.nativeBalance)).toFixed(4),
     walletLabel: account ? shortAddress(account) : "Connect wallet",
@@ -1180,7 +1184,7 @@ function buildViewModel(ctx) {
     isCreateForm: scr === "createForm", isCampaign: scr === "campaign", isPortfolio: scr === "portfolio",
     isStats: scr === "stats", isHow: scr === "how", isDocs: scr === "docs",
     goHome: () => set({ screen: "home" }), goCreate: () => set({ screen: "create" }),
-    goPortfolio: () => set({ screen: "portfolio" }), goHow: () => set({ screen: "how" }),
+    goPortfolio: () => set({ screen: "portfolio" }), goHow: () => set({ screen: "how" }), goDocs: () => set({ screen: "docs" }),
     menuOpen: s.menuOpen, openMenu: () => set({ menuOpen: true }), closeMenu: () => set({ menuOpen: false }),
 
     filters, feed, isEmpty: feed.length === 0,
