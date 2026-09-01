@@ -145,7 +145,11 @@ export function tokenToCoin(t, i, meta) {
     campaignGoal: t.campaign?.goal,
     campaignRaised: t.campaign?.totalRaised,
     quoteTokenAddress: t.quoteToken,
-    poolId: t.pool?.id,
+    // The list endpoint (GET /tokens) returns a flat poolId; the single-
+    // token detail endpoint (GET /tokens/:address) returns a nested pool
+    // object instead (it also carries creator/hookFeeBps for the creator
+    // tab) -- accept either shape.
+    poolId: t.pool?.id ?? t.poolId ?? null,
     hook: t.hook,
     totalSupply: t.totalSupply,
     burnedSupply: t.burnedSupply || "0",

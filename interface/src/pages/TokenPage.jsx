@@ -43,6 +43,8 @@ export default function TokenPage({ v }) {
             <div style={cs("display:flex;gap:7px;flex-wrap:wrap")}>
               <AddressChip address={sel.address} full={tok.id} />
               <LinkChip href={`https://explorer.inkonchain.com/address/${tok.id}`}>Explorer</LinkChip>
+              <LinkChip href={`https://basedbot.app/token/ink/${tok.id}`}>BasedBot</LinkChip>
+              <LinkChip href={`https://gmgn.ai/ink/token/${tok.id}`}>GMGN</LinkChip>
               {tok.socials?.website && <LinkChip href={tok.socials.website}>Website</LinkChip>}
               {tok.socials?.twitter && <LinkChip href={tok.socials.twitter}>X</LinkChip>}
               {tok.socials?.telegram && <LinkChip href={tok.socials.telegram}>Telegram</LinkChip>}
@@ -69,33 +71,52 @@ export default function TokenPage({ v }) {
         <div style={cs("display:flex;flex-direction:column;gap:16px;min-width:0")}>
 
           <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
-            <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
-              <div style={cs("display:flex")}>
-                {v.ranges.map((r, i) => (
-                  <button key={i} onClick={r.go} style={cs(`padding:9px 14px;border:0;border-right:1px solid var(--line);background:${r.bg};color:${r.fg};font-family:'DM Mono',monospace;font-size:11.5px;cursor:pointer`)}>{r.label}</button>
-                ))}
-              </div>
-              <div style={cs("display:flex;border-right:1px solid var(--line)")}>
-                {["price", "mcap"].map((mode) => (
-                  <button key={mode} onClick={() => v.setChartMode(mode)} style={cs(`padding:9px 14px;border:0;border-right:1px solid var(--soft);background:${v.chartMode === mode ? "var(--ink)" : "transparent"};color:${v.chartMode === mode ? "var(--card)" : "var(--mute)"};font-family:'DM Mono',monospace;font-size:11.5px;font-weight:600;cursor:pointer`)}>{mode === "price" ? "PRICE" : "MCAP"}</button>
-                ))}
-              </div>
-              <div style={cs("flex:1")}></div>
-              {v.chartOhlc && (
-                <div style={cs("display:flex;align-items:center;gap:16px;padding:0 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--mute)")}>
-                  <span>O <span style={cs("color:var(--ink)")}>{v.chartOhlc.o}</span></span>
-                  <span>H <span style={cs("color:var(--ink)")}>{v.chartOhlc.h}</span></span>
-                  <span>L <span style={cs("color:var(--ink)")}>{v.chartOhlc.l}</span></span>
-                  <span>C <span style={cs(`color:${v.chartOhlc.up ? "var(--pos)" : "var(--neg)"}`)}>{v.chartOhlc.c}</span></span>
-                </div>
-              )}
-            </div>
-            {v.candles.length > 0 ? (
-              <div style={cs("padding:14px")}>
-                <PriceChart candles={v.candles} height={v.isMobile ? 260 : 320} />
-              </div>
+            {tok.poolId ? (
+              // A real V4 pool exists (post-migration / instant-launch / a
+              // finalized raise) -- DEXTools indexes Ink's V4 pools by their
+              // raw poolId (there's no separate pool *contract* in V4, just
+              // this hash), so its chart is strictly more capable here than
+              // ours (order flow, liquidity, multi-venue context). Curve-
+              // phase tokens have no pool yet -- nothing for DEXTools to
+              // show -- so they keep our own chart below instead.
+              <iframe
+                key={tok.poolId}
+                title={`${sel.symbol} chart on DEXTools`}
+                src={`https://www.dextools.io/widget-chart/en/ink/pe-light/${tok.poolId}?theme=light&chartType=1&chartResolution=30&drawingToolbars=false&showTradeHistory=true&chartInUsd=true`}
+                style={cs(`width:100%;height:${v.isMobile ? "420px" : "560px"};border:0;display:block`)}
+                loading="lazy"
+              />
             ) : (
-              <div style={cs("padding:60px 18px;text-align:center;color:var(--mute);font-size:13px")}>No trades in this window yet.</div>
+              <>
+                <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
+                  <div style={cs("display:flex")}>
+                    {v.ranges.map((r, i) => (
+                      <button key={i} onClick={r.go} style={cs(`padding:9px 14px;border:0;border-right:1px solid var(--line);background:${r.bg};color:${r.fg};font-family:'DM Mono',monospace;font-size:11.5px;cursor:pointer`)}>{r.label}</button>
+                    ))}
+                  </div>
+                  <div style={cs("display:flex;border-right:1px solid var(--line)")}>
+                    {["price", "mcap"].map((mode) => (
+                      <button key={mode} onClick={() => v.setChartMode(mode)} style={cs(`padding:9px 14px;border:0;border-right:1px solid var(--soft);background:${v.chartMode === mode ? "var(--ink)" : "transparent"};color:${v.chartMode === mode ? "var(--card)" : "var(--mute)"};font-family:'DM Mono',monospace;font-size:11.5px;font-weight:600;cursor:pointer`)}>{mode === "price" ? "PRICE" : "MCAP"}</button>
+                    ))}
+                  </div>
+                  <div style={cs("flex:1")}></div>
+                  {v.chartOhlc && (
+                    <div style={cs("display:flex;align-items:center;gap:16px;padding:0 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--mute)")}>
+                      <span>O <span style={cs("color:var(--ink)")}>{v.chartOhlc.o}</span></span>
+                      <span>H <span style={cs("color:var(--ink)")}>{v.chartOhlc.h}</span></span>
+                      <span>L <span style={cs("color:var(--ink)")}>{v.chartOhlc.l}</span></span>
+                      <span>C <span style={cs(`color:${v.chartOhlc.up ? "var(--pos)" : "var(--neg)"}`)}>{v.chartOhlc.c}</span></span>
+                    </div>
+                  )}
+                </div>
+                {v.candles.length > 0 ? (
+                  <div style={cs("padding:14px")}>
+                    <PriceChart candles={v.candles} height={v.isMobile ? 260 : 320} />
+                  </div>
+                ) : (
+                  <div style={cs("padding:60px 18px;text-align:center;color:var(--mute);font-size:13px")}>No trades in this window yet.</div>
+                )}
+              </>
             )}
           </div>
 

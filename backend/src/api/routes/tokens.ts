@@ -98,6 +98,22 @@ async function attachDerivedStats<T extends { id: string; lastPrice: string | nu
   });
 }
 
+// Token has no reverse relation to Pool in the subgraph schema (only
+// Pool.token -> Token forward), so a poolId can't just be nested onto
+// TOKEN_FIELDS -- batch-fetch pools for the whole page in one extra query
+// and merge poolId onto each token, same shape as attachDerivedStats above.
+async function attachPoolIds<T extends { id: string }>(tokens: T[]): Promise<(T & { poolId: string | null })[]> {
+  if (tokens.length === 0) return [];
+  const data = await querySubgraph<{ pools: { id: string; token: { id: string } }[] }>(
+    `query TokenPools($tokens: [String!]!) {
+      pools(where: { token_in: $tokens }, first: 1000) { id token { id } }
+    }`,
+    { tokens: tokens.map((t) => t.id) }
+  );
+  const poolIdByToken = new Map(data.pools.map((p) => [p.token.id, p.id]));
+  return tokens.map((t) => ({ ...t, poolId: poolIdByToken.get(t.id) ?? null }));
+}
+
 router.get("/", async (req, res) => {
   const family = typeof req.query.family === "string" ? req.query.family.toUpperCase() : undefined;
   const limit = Math.min(Number(req.query.limit ?? 50), 200);
@@ -112,7 +128,7 @@ router.get("/", async (req, res) => {
       }`,
       { first: limit, skip: offset, where: family ? { family } : {} }
     );
-    res.json(await attachDerivedStats(data.tokens));
+    res.json(await attachPoolIds(await attachDerivedStats(data.tokens)));
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }
