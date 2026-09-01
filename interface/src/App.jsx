@@ -833,75 +833,108 @@ export default function App() {
 
   const m = v.isMobile;
   return (
-    <div style={cs("min-height:100vh;display:flex;flex-direction:column;background:var(--paper)")}>
-      <header style={cs(`position:sticky;top:0;z-index:40;background:var(--paper);border-bottom:1px solid var(--line)`)}>
-        <div style={cs(`max-width:1420px;margin:0 auto;padding:0 ${m ? "12px" : "20px"};display:flex;align-items:stretch;height:${m ? "52px" : "58px"}`)}>
-          <div onClick={v.goHome} style={cs(`display:flex;align-items:center;gap:${m ? "8px" : "11px"};cursor:pointer;padding-right:${m ? "10px" : "26px"};min-width:0`)}>
-            <img src="/duckfun-logo.png" alt="duckfun" style={cs(`width:${m ? "26px" : "32px"};height:${m ? "26px" : "32px"};object-fit:contain;flex:none;display:block`)} />
-            <span style={cs(`font-size:${m ? "15px" : "17px"};font-weight:700;letter-spacing:-.03em;white-space:nowrap`)}>duckfun<span style={cs("color:var(--mute);font-weight:500")}>.family</span></span>
+    <div style={cs("min-height:100vh;display:flex;background:var(--paper)")}>
+
+      {!m && (
+        <aside style={cs("width:236px;flex:none;display:flex;flex-direction:column;border-right:1px solid var(--line);background:var(--card);position:sticky;top:0;height:100vh")}>
+          <div onClick={v.goHome} style={cs("display:flex;align-items:center;gap:10px;padding:18px 16px 16px;cursor:pointer")}>
+            <img src="/duckfun-logo.png" alt="duckfun" style={cs("width:26px;height:26px;object-fit:contain;display:block;flex:none")} />
+            <span style={cs("font-size:15.5px;font-weight:600;letter-spacing:-.02em")}>duckfun</span>
           </div>
-          {!m && (
-            <nav style={cs("display:flex;align-items:center;gap:0")}>
-              {v.nav.map((n, i) => (
-                <button key={i} onClick={n.go} style={cs(`height:58px;padding:0 18px;border:0;border-bottom:3px solid ${n.u};background:transparent;color:${n.c};font-size:14px;font-weight:${n.w};letter-spacing:-.01em;cursor:pointer`)}>{n.label}</button>
-              ))}
-            </nav>
-          )}
-          <div style={cs("flex:1;min-width:0")}></div>
-          <div style={cs("display:flex;align-items:center;gap:8px;flex:none")}>
-            {!m && (
-              <div style={cs("display:flex;align-items:center;gap:7px;padding:6px 11px;border:1px solid var(--line);border-radius:8px;background:var(--lime);font-family:'JetBrains Mono',monospace;font-size:11.5px;white-space:nowrap")}>
-                <span style={cs("width:6px;height:6px;background:var(--ink);flex:none")}></span>INK 57073
+
+          <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;color:var(--mute);padding:4px 16px 8px")}>PLATFORM</div>
+          <div style={cs("display:flex;flex-direction:column;gap:2px;padding:0 10px")}>
+            {v.navMain.map((n, i) => (
+              <button key={i} onClick={n.go} className="d-hover-paper" style={cs(`display:flex;align-items:center;gap:11px;width:100%;padding:8px 11px 8px 9px;border:0;border-left:2px solid ${n.u};border-radius:6px;background:transparent;color:${n.c};font-size:13.5px;font-weight:${n.w};text-align:left;cursor:pointer`)}>{n.label}</button>
+            ))}
+          </div>
+
+          <div style={cs("height:1px;background:var(--line);margin:14px 16px 12px")}></div>
+          <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;color:var(--mute);padding:0 16px 8px")}>LEARN</div>
+          <div style={cs("display:flex;flex-direction:column;gap:2px;padding:0 10px")}>
+            {v.navLearn.map((n, i) => (
+              <button key={i} onClick={n.go} className="d-hover-paper" style={cs(`display:flex;align-items:center;gap:11px;width:100%;padding:8px 11px 8px 9px;border:0;border-left:2px solid ${n.u};border-radius:6px;background:transparent;color:${n.c};font-size:13.5px;font-weight:${n.w};text-align:left;cursor:pointer`)}>{n.label}</button>
+            ))}
+          </div>
+
+          <div style={cs("flex:1")}></div>
+
+          <div style={cs("display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute)")}>
+            <span style={cs("width:6px;height:6px;border-radius:99px;background:var(--lime);flex:none")}></span>Ink 57073 · synced
+            <a href="https://x.com/duckfunfamily" target="_blank" rel="noreferrer" title="duckfun on X" style={cs("margin-left:auto;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--mute);flex:none;border-bottom:1px solid var(--line)")}>𝕏</a>
+          </div>
+        </aside>
+      )}
+
+      <div style={cs("flex:1;min-width:0;max-width:100%;display:flex;flex-direction:column")}>
+        <header style={cs("position:sticky;top:0;z-index:40;background:rgba(23,23,23,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)")}>
+          <div style={cs(`display:flex;align-items:center;gap:12px;padding:0 ${m ? "12px" : "20px"};min-height:${m ? "52px" : "58px"}`)}>
+            {m && (
+              <div onClick={v.goHome} style={cs("display:flex;align-items:center;gap:9px;cursor:pointer;flex:none")}>
+                <img src="/duckfun-logo.png" alt="duckfun" style={cs("width:24px;height:24px;object-fit:contain;display:block")} />
+                <span style={cs("font-size:15px;font-weight:600;letter-spacing:-.02em")}>duckfun</span>
               </div>
             )}
-            <button onClick={v.toggleWallet} style={cs(`padding:${m ? "7px 11px" : "8px 15px"};border:1px solid var(--line);border-radius:8px;background:${v.walletBg};color:${v.walletFg};font-size:${m ? "11.5px" : "12.5px"};font-weight:700;cursor:pointer;font-family:${v.walletFont};white-space:nowrap`)}>{v.walletLabel}</button>
+            {!m && v.pageTitle && (
+              <div style={cs("display:flex;flex-direction:column;min-width:0;flex:none")}>
+                <span style={cs("font-size:15px;font-weight:600;letter-spacing:-.02em")}>{v.pageTitle}</span>
+                {v.pageSub && <span style={cs("font-size:11.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{v.pageSub}</span>}
+              </div>
+            )}
+            <div style={cs("flex:1;min-width:0")}></div>
+            {v.isHome && !m && (
+              <div style={cs("display:flex;align-items:center;gap:8px;height:36px;padding:0 11px;border:1px solid var(--line);border-radius:6px;background:var(--paper);flex:1 1 200px;max-width:320px;min-width:0")}>
+                <span style={cs("color:var(--mute);font-size:13px")}>⌕</span>
+                <input value={v.query} onChange={v.setQuery} placeholder="Search name, symbol or address" style={cs("border:0;outline:0;background:transparent;font-size:13px;width:100%")} />
+              </div>
+            )}
+            <button onClick={v.toggleWallet} style={cs(`height:36px;padding:0 14px;border:1px solid var(--line);border-radius:6px;background:${v.walletBg};color:${v.walletFg};font-family:${v.walletFont};font-size:13px;font-weight:500;white-space:nowrap;flex:none;cursor:pointer`)}>{v.walletLabel}</button>
             {m && (
-              <button onClick={v.openMenu} aria-label="Menu" style={cs("display:flex;width:38px;height:38px;align-items:center;justify-content:center;flex-direction:column;gap:4px;border:1px solid var(--line);border-radius:8px;background:var(--card);cursor:pointer;padding:0")}>
-                <span style={cs("width:16px;height:1.5px;background:var(--ink);display:block")}></span>
-                <span style={cs("width:16px;height:1.5px;background:var(--ink);display:block")}></span>
-                <span style={cs("width:16px;height:1.5px;background:var(--ink);display:block")}></span>
+              <button onClick={v.openMenu} aria-label="Menu" style={cs("display:flex;width:36px;height:36px;align-items:center;justify-content:center;flex-direction:column;gap:4px;border:1px solid var(--line);border-radius:6px;background:var(--card);cursor:pointer;padding:0;flex:none")}>
+                <span style={cs("width:15px;height:1.5px;background:var(--ink);display:block")}></span>
+                <span style={cs("width:15px;height:1.5px;background:var(--ink);display:block")}></span>
+                <span style={cs("width:15px;height:1.5px;background:var(--ink);display:block")}></span>
               </button>
             )}
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main style={cs(`flex:1;max-width:1420px;width:100%;margin:0 auto;padding:${m ? "14px 12px 32px" : "22px 20px 72px"};min-width:0`)}>
-        {v.isHome && <DiscoverPage v={v} />}
-        {v.isToken && (v.coin ? <TokenPage v={v} /> : <PendingLaunchPanel v={v} />)}
-        {v.isCreate && <CreateChooserPage v={v} />}
-        {v.isCreateForm && <CreateFormPage v={v} />}
-        {v.isCampaign && (v.camp ? <CampaignPage v={v} /> : <PendingLaunchPanel v={v} />)}
-        {v.isPortfolio && <PortfolioPage v={v} />}
-        {v.isStats && <StatsPage v={v} />}
-        {v.isHow && <HowItWorksPage v={v} />}
-        {v.isDocs && <DocsPage v={v} />}
-      </main>
-
-      <footer style={cs("border-top:1px solid var(--line);background:var(--card)")}>
-        <div style={cs("max-width:1420px;margin:0 auto;padding:16px 20px;display:flex;gap:20px;flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--mute)")}>
-          <span>DUCKFUN.FAMILY</span>
-          <span>INK 57073</span>
-          <a href="https://explorer.inkonchain.com" target="_blank" rel="noreferrer">BLOCKSCOUT</a>
-          <span style={cs("margin-left:auto")}>SUBGRAPH DUCKFUN-INK · CURRENT · SYNCED</span>
-        </div>
-      </footer>
+        <main style={cs(`flex:1;padding:${m ? "14px 12px 32px" : "22px 24px 72px"};width:100%;max-width:1320px;margin:0 auto;min-width:0`)}>
+          {v.isHome && <DiscoverPage v={v} />}
+          {v.isToken && (v.coin ? <TokenPage v={v} /> : <PendingLaunchPanel v={v} />)}
+          {v.isCreate && <CreateChooserPage v={v} />}
+          {v.isCreateForm && <CreateFormPage v={v} />}
+          {v.isCampaign && (v.camp ? <CampaignPage v={v} /> : <PendingLaunchPanel v={v} />)}
+          {v.isPortfolio && <PortfolioPage v={v} />}
+          {v.isStats && <StatsPage v={v} />}
+          {v.isHow && <HowItWorksPage v={v} />}
+          {v.isDocs && <DocsPage v={v} />}
+        </main>
+      </div>
 
       {m && v.menuOpen && (
-        <div onClick={v.closeMenu} style={cs("position:fixed;inset:0;z-index:80;background:rgba(26,25,23,.45)")}>
-          <div onClick={(e) => e.stopPropagation()} style={cs("position:absolute;top:0;right:0;bottom:0;width:78vw;max-width:320px;background:var(--card);border-left:1px solid var(--line);display:flex;flex-direction:column;padding:16px")}>
-            <div style={cs("display:flex;justify-content:flex-end;margin-bottom:10px")}>
-              <button onClick={v.closeMenu} aria-label="Close menu" style={cs("width:34px;height:34px;border:1px solid var(--line);border-radius:8px;background:var(--paper);cursor:pointer;font-size:15px")}>✕</button>
+        <div onClick={v.closeMenu} style={cs("position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.6);display:flex;justify-content:flex-end")}>
+          <div onClick={(e) => e.stopPropagation()} style={cs("width:78%;max-width:290px;height:100%;background:var(--card);border-left:1px solid var(--line);display:flex;flex-direction:column")}>
+            <div style={cs("display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)")}>
+              <span style={cs("font-size:14.5px;font-weight:600")}>Menu</span>
+              <button onClick={v.closeMenu} aria-label="Close menu" style={cs("width:30px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--paper);cursor:pointer;font-size:15px;line-height:1")}>✕</button>
             </div>
-            {v.nav.map((n, i) => (
-              <button key={i} onClick={() => { n.go(); v.closeMenu(); }} style={cs(`text-align:left;padding:14px 10px;border:0;border-bottom:1px solid var(--soft);background:transparent;color:${n.c};font-size:16px;font-weight:${n.w};cursor:pointer`)}>{n.label}</button>
-            ))}
+            <div style={cs("display:flex;flex-direction:column;gap:3px;padding:10px")}>
+              {v.nav.map((n, i) => (
+                <button key={i} onClick={() => { n.go(); v.closeMenu(); }} style={cs(`text-align:left;padding:11px 12px;border:0;border-radius:6px;background:transparent;color:${n.c};font-size:14.5px;font-weight:${n.w};cursor:pointer`)}>{n.label}</button>
+              ))}
+            </div>
+            <div style={cs("flex:1")}></div>
+            <div style={cs("display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute)")}>
+              INK 57073 · SYNCED
+              <a href="https://x.com/duckfunfamily" target="_blank" rel="noreferrer" title="duckfun on X" style={cs("margin-left:auto;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--mute);flex:none;border-bottom:1px solid var(--line)")}>𝕏</a>
+            </div>
           </div>
         </div>
       )}
 
       {v.txOpen && (
-        <div style={cs("position:fixed;inset:0;z-index:95;background:rgba(26,25,23,.5);display:flex;align-items:center;justify-content:center;padding:20px")}>
+        <div style={cs("position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px")}>
           <div style={cs("width:100%;max-width:400px;border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
             <div style={cs(`padding:26px 22px;border-bottom:1px solid var(--line);text-align:center;background:${v.tx.headBg};color:${v.tx.headFg}`)}>
               <div style={cs(`width:46px;height:46px;margin:0 auto 16px;border:3px solid var(--ink);border-radius:999px;border-top-color:${v.tx.ringTop};animation:${v.tx.anim};display:flex;align-items:center;justify-content:center;font-size:19px`)}>{v.tx.glyph}</div>
@@ -919,7 +952,7 @@ export default function App() {
 
       {v.toast && (
         <div style={cs(`position:fixed;z-index:60;left:50%;bottom:28px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:13px 20px;border:1px solid var(--line);border-radius:8px;background:var(--card);animation:slidein .22s ease both;max-width:90vw`)}>
-          <span style={cs("width:7px;height:7px;background:var(--ink);flex:none")}></span>
+          <span style={cs("width:7px;height:7px;background:var(--lime);flex:none")}></span>
           <span style={cs("font-size:13px")}>{v.toast}</span>
         </div>
       )}
@@ -1076,8 +1109,26 @@ function buildViewModel(ctx) {
     chartOhlc = { o: fmtOhlc(last.open), h: fmtOhlc(last.high), l: fmtOhlc(last.low), c: fmtOhlc(last.close), up: last.close >= last.open };
   }
 
+  // Sidebar page title/subtitle, replacing the old top-nav's link row on
+  // desktop. Real data where it exists (token/campaign symbol+name), a
+  // short honest description everywhere else -- never a fabricated one.
+  const PAGE_META = {
+    home: { title: "Discover", sub: "Every token live on Ink" },
+    create: { title: "Launch a token", sub: "Bonding curve, instant V4 or crowdlaunch" },
+    createForm: { title: "Launch a token", sub: "" },
+    portfolio: { title: "Portfolio", sub: "Your holdings, launches and claims" },
+    stats: { title: "Stats", sub: "Platform-wide activity" },
+    how: { title: "How it works", sub: "Launching and trading, end to end" },
+    docs: { title: "Docs", sub: "Technical reference for the contracts" },
+  };
+  const pageMeta = (scr === "token" || scr === "campaign") && c
+    ? { title: c.ticker, sub: c.name }
+    : PAGE_META[scr] || { title: "", sub: "" };
+
   return {
     isMobile: s.mobile,
+    pageTitle: pageMeta.title, pageSub: pageMeta.sub,
+    navMain: nav.slice(0, 4), navLearn: nav.slice(4),
     connected: !!account, account, accountShort: account ? shortAddress(account) : "",
     balance: Number(formatEther(s.nativeBalance)).toFixed(4),
     walletLabel: account ? shortAddress(account) : "Connect wallet",
