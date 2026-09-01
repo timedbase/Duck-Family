@@ -29,8 +29,7 @@ export default function TokenPage({ v }) {
     <div>
       <button onClick={v.goHome} style={cs("border:0;background:transparent;font-family:'DM Mono',monospace;font-size:11.5px;letter-spacing:.1em;color:var(--mute);cursor:pointer;padding:0 0 14px")}>← DISCOVER</button>
 
-      <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);margin-bottom:16px;overflow:hidden")}>
-        <div style={cs(`height:4px;background:${sel.famBg}`)}></div>
+      <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);margin-bottom:16px;overflow:hidden")}>
         <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
           <div style={cs(`width:${v.isMobile ? "56px" : "84px"};height:${v.isMobile ? "56px" : "84px"};align-self:flex-start;flex:none;border-right:1px solid var(--line)`)}>
             <Thumb url={sel.imageUrl} bg={sel.famBg} fg={sel.famFg} initials={sel.initials} size="100%" fontSize={v.isMobile ? "18px" : "26px"} />
@@ -69,7 +68,7 @@ export default function TokenPage({ v }) {
       <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 366px"};gap:16px;align-items:start`)}>
         <div style={cs("display:flex;flex-direction:column;gap:16px;min-width:0")}>
 
-          <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden")}>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
             <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
               <div style={cs("display:flex")}>
                 {v.ranges.map((r, i) => (
@@ -101,7 +100,7 @@ export default function TokenPage({ v }) {
           </div>
 
           {v.curve && (
-            <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--lime);padding:20px")}>
+            <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--lime);padding:20px")}>
               <div style={cs("display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:14px")}>
                 <span style={cs("font-size:19px;font-weight:700;letter-spacing:-.03em")}>{v.curve.title}</span>
                 <span style={cs("font-family:'DM Mono',monospace;font-size:11.5px")}>{v.curve.headline}</span>
@@ -113,7 +112,7 @@ export default function TokenPage({ v }) {
             </div>
           )}
 
-          <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden")}>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
             <div style={cs("display:flex;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
               {v.tabs.map((t, i) => (
                 <button key={i} onClick={t.go} style={cs(`padding:12px 17px;border:0;border-right:1px solid var(--line);background:${t.bg};color:${t.fg};font-size:13.5px;font-weight:600;letter-spacing:-.01em;cursor:pointer`)}>{t.label}</button>
@@ -186,7 +185,7 @@ export default function TokenPage({ v }) {
                         <span style={cs("font-size:17px;font-weight:700;letter-spacing:-.03em")}>Liquidity</span>
                         <span style={cs(`font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:${v.liq.stBg};color:${v.liq.stFg}`)}>{v.liq.status}</span>
                       </div>
-                      <div style={cs("display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:14px;overflow:hidden")}>
+                      <div style={cs("display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;overflow:hidden")}>
                         {v.liq.facts.map((f, i) => (
                           <div key={i} style={cs("flex:1;min-width:150px;padding:12px 15px;border-right:1px solid var(--line);background:var(--card)")}>
                             <div style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>{f.k}</div>
@@ -200,14 +199,14 @@ export default function TokenPage({ v }) {
                     <div style={cs("padding:20px;border-bottom:1px solid var(--line)")}>
                       <div style={cs("font-size:17px;font-weight:700;letter-spacing:-.03em;margin-bottom:14px")}>Creator fees</div>
                       <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;align-items:start")}>
-                        <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--lime);padding:18px")}>
+                        <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--lime);padding:18px")}>
                           <div style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>CREATOR FEE ACCRUED (YOURS)</div>
                           <div style={cs("font-family:'DM Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-.04em;margin:7px 0 3px")}>{v.hookAccruedFailed ? "—" : v.hookAccrued.toFixed(5) + " " + sel.quote}</div>
                           <div style={cs("font-family:'DM Mono',monospace;font-size:11.5px;margin-bottom:16px")}>{v.hookAccruedFailed ? "Couldn't read this from the chain — try reopening this tab." : "This same claim also sweeps the LP position's trading fee — that side is always burned (token) / sent to the platform (quote), never paid to you"}</div>
                           <button onClick={v.claimCreatorAndHookFees} disabled={v.txPending} style={cs("width:100%;padding:13px;border:1px solid var(--line);border-radius:9px;background:var(--ink);color:var(--card);font-size:14px;font-weight:700;cursor:pointer")}>Claim your creator fee</button>
                         </div>
                         {tok.family === "CURVE" && (
-                          <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card)")} >
+                          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card)")} >
                             <div style={cs("padding:18px")}>
                             <div style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>CURVE TRADING FEE (1%)</div>
                             <div style={cs("font-size:12.5px;color:var(--mute);margin:9px 0 16px;line-height:1.5")}>{tok.migrated ? "Accrued during the curve phase, split 50/50 creator/platform." : "Claimable only after migration."}</div>
@@ -217,7 +216,7 @@ export default function TokenPage({ v }) {
                         )}
                       </div>
 
-                      <div style={cs("border:1px solid var(--line);border-radius:14px;margin-top:16px;background:var(--card);overflow:hidden")}>
+                      <div style={cs("border:1px solid var(--line);border-radius:10px;margin-top:16px;background:var(--card);overflow:hidden")}>
                         <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>CREATOR FEE ROUTING</div>
                         {!v.liq || v.liq.status === "NO POOL YET" ? (
                           <div style={cs("padding:16px;font-size:12.5px;color:var(--mute)")}>Not available until this token has a real V4 pool.</div>
@@ -250,12 +249,12 @@ export default function TokenPage({ v }) {
                         </div>
                         <p style={cs("margin:0 0 16px;font-size:13px;color:var(--mute);line-height:1.6;max-width:76ch")}>{v.cto.blurb}</p>
                         <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;align-items:start")}>
-                          <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);padding:18px")}>
+                          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);padding:18px")}>
                             <div style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>CTO PRICE</div>
                             <div style={cs("font-family:'DM Mono',monospace;font-size:30px;font-weight:500;letter-spacing:-.04em;margin:7px 0 16px")}>{v.cto.price}</div>
                             <button onClick={() => v.buyTakeover(v.creatorData.poolId)} disabled={v.txPending || v.cto.status === "PENDING"} style={cs("width:100%;padding:13px;border:1px solid var(--line);border-radius:9px;background:var(--orange);color:#fff;font-size:14px;font-weight:700;cursor:pointer")}>{v.cto.status === "PENDING" ? "Application pending" : "Apply for takeover"}</button>
                           </div>
-                          <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden")}>
+                          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
                             <div style={cs("display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12px")}><span style={cs("color:var(--mute)")}>CURRENT CREATOR</span><span style={cs("font-weight:500")}>{v.cto.creator}</span></div>
                             <div style={cs("display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12px")}><span style={cs("color:var(--mute)")}>PENDING APPLICANT</span><span style={cs("font-weight:500")}>{v.cto.applicant || "none"}</span></div>
                             <div style={cs("display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12px")}><span style={cs("color:var(--mute)")}>CANNOT CHANGE</span><span style={cs("font-weight:500")}>supply, pool, LP, socials</span></div>
@@ -274,7 +273,7 @@ export default function TokenPage({ v }) {
         </div>
 
         <div style={cs(`display:flex;flex-direction:column;gap:16px;${v.isMobile ? "" : "position:sticky;top:80px"}`)}>
-          <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden")}>
+          <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
             <div style={cs("display:flex;border-bottom:1px solid var(--line)")}>
               <button onClick={v.setBuy} style={cs(`flex:1;padding:14px;border:0;border-right:1px solid var(--line);background:${v.buyBg};color:${v.buyFg};font-size:15px;font-weight:700;letter-spacing:-.01em;cursor:pointer`)}>Buy</button>
               <button onClick={v.setSell} style={cs(`flex:1;padding:14px;border:0;background:${v.sellBg};color:${v.sellFg};font-size:15px;font-weight:700;letter-spacing:-.01em;cursor:pointer`)}>Sell</button>
