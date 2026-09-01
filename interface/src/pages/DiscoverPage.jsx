@@ -1,6 +1,7 @@
 import { cs } from "../cs.js";
 import Thumb from "../Thumb.jsx";
 import Sparkline from "../Sparkline.jsx";
+import { XIcon, TelegramIcon } from "../MetaChips.jsx";
 
 // Square, image-first block shared by the hero rail and the feed grid --
 // the token's own art is the card's visual anchor, with age/family as small
@@ -36,16 +37,16 @@ function ProgressRow({ t, height = "6px", fontSize = "10px" }) {
 // link instead of also triggering the card's own onClick (open token).
 function SocialRow({ socials, size = "22px" }) {
   const items = [
-    socials?.twitter && { href: socials.twitter, glyph: "𝕏" },
-    socials?.telegram && { href: socials.telegram, glyph: "✈" },
-    socials?.website && { href: socials.website, glyph: "🌐" },
+    socials?.twitter && { href: socials.twitter, icon: <XIcon size={11} /> },
+    socials?.telegram && { href: socials.telegram, icon: <TelegramIcon size={12} /> },
+    socials?.website && { href: socials.website, icon: "🌐" },
   ].filter(Boolean);
   if (items.length === 0) return null;
   return (
     <div style={cs("display:flex;gap:6px")}>
       {items.map((it, i) => (
         <a key={i} href={it.href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
-          style={cs(`width:${size};height:${size};flex:none;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--mute);font-size:11px;border-bottom:1px solid var(--line)`)}>{it.glyph}</a>
+          style={cs(`width:${size};height:${size};flex:none;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font-size:11px;border-bottom:1px solid var(--line)`)}>{it.icon}</a>
       ))}
     </div>
   );

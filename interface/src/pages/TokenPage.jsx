@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { cs } from "../cs.js";
 import PriceChart from "../PriceChart.jsx";
 import Thumb from "../Thumb.jsx";
-import { AddressChip, LinkChip, IconLinkChip } from "../MetaChips.jsx";
+import { AddressChip, LinkChip, IconLinkChip, XIcon, TelegramIcon } from "../MetaChips.jsx";
 
 // Numbered pager over an already-fetched, ever-growing row list (App.jsx
 // appends full pages as "load more" fires) -- shown pages are just a slice
@@ -136,8 +136,8 @@ export default function TokenPage({ v }) {
             </IconLinkChip>
           )}
           {tok.socials?.website && <LinkChip href={tok.socials.website}>Website</LinkChip>}
-          {tok.socials?.twitter && <LinkChip href={tok.socials.twitter}>X</LinkChip>}
-          {tok.socials?.telegram && <LinkChip href={tok.socials.telegram}>Telegram</LinkChip>}
+          {tok.socials?.twitter && <IconLinkChip href={tok.socials.twitter} title="X"><XIcon /></IconLinkChip>}
+          {tok.socials?.telegram && <IconLinkChip href={tok.socials.telegram} title="Telegram"><TelegramIcon /></IconLinkChip>}
         </div>
       </div>
 
