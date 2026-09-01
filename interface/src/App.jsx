@@ -1016,7 +1016,13 @@ function buildViewModel(ctx) {
     const m = heroMode.metric(coin);
     return {
       ...row,
-      flex: lead ? "1.6" : "1", basis: lead ? "360px" : "268px", minw: lead ? "320px" : "268px",
+      // On mobile the hero rail is a swipeable strip, not a fixed grid --
+      // size each card in vw so the lead card fits within one screen (with
+      // a peek of the next) instead of the desktop px basis clipping mid-
+      // card on a narrow phone before the user even scrolls.
+      flex: lead ? "1.6" : "1",
+      basis: s.mobile ? (lead ? "80vw" : "62vw") : (lead ? "360px" : "268px"),
+      minw: s.mobile ? (lead ? "80vw" : "62vw") : (lead ? "320px" : "268px"),
       sparkH: lead ? "52px" : "38px", logoSize: lead ? "86px" : "62px", logoType: lead ? "72px" : "52px",
       symType: lead ? "19px" : "16px", priceType: lead ? "17px" : "14px",
       sideMetric: m.k, sideValue: m.v,
