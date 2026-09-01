@@ -20,12 +20,38 @@ function TextInput(props) {
 function LockedInput({ value }) {
   return <input value={value} readOnly style={cs("padding:12px;border:1px solid var(--line);background:var(--card);font-size:14px;outline:0;color:var(--mute);font-family:'JetBrains Mono',monospace")} />;
 }
+// Real logos from Trust Wallet's public assets repo (trustwallet/assets on
+// GitHub) -- verified each URL actually resolves before wiring it in rather
+// than guessing paths. ETH/USDC/USD₮0 are indexed there by their Ethereum
+// mainnet address; the six xStock tokens (Backed Finance tokenized
+// equities) are Solana SPL tokens first, indexed by their Solana mint --
+// same artwork either way, this app just needs the image, not the chain
+// match. Anything not in this map (e.g. a platform token appended by
+// quoteOptionsFor) simply renders with no icon.
+const QUOTE_LOGOS = {
+  "ETH": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png",
+  "USDC": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+  "USD₮0": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xdAC17F958D2ee523a2206206994597C13D831ec7/logo.png",
+  "wSPYx": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/assets/XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W/logo.png",
+  "wAAPLx": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/assets/XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp/logo.png",
+  "wTSLAx": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/assets/XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB/logo.png",
+  "wNFLXx": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/assets/XsEH7wWfJJu2ZT3UCFeVfALnVA6CP5ur7Ee11KmzVpL/logo.png",
+  "wMSTRx": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/assets/XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ/logo.png",
+  "wNVDAx": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/assets/Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh/logo.png",
+};
 function QuoteChips({ options, value, onPick }) {
   return (
     <div style={cs("display:grid;grid-template-columns:repeat(3,1fr);gap:8px")}>
-      {options.map((o) => (
-        <button key={o.address} onClick={() => onPick(o.address)} style={cs(`border:1px solid var(--line);border-radius:8px;cursor:pointer;padding:11px 10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;background:${value.toLowerCase() === o.address.toLowerCase() ? "var(--ink)" : "var(--card)"};color:${value.toLowerCase() === o.address.toLowerCase() ? "var(--card)" : "var(--ink)"}`)}>{o.label}</button>
-      ))}
+      {options.map((o) => {
+        const active = value.toLowerCase() === o.address.toLowerCase();
+        const logo = QUOTE_LOGOS[o.label];
+        return (
+          <button key={o.address} onClick={() => onPick(o.address)} style={cs(`display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);border-radius:8px;cursor:pointer;padding:9px 10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;background:${active ? "var(--ink)" : "var(--card)"};color:${active ? "var(--card)" : "var(--ink)"}`)}>
+            {logo && <img src={logo} alt="" style={cs("width:18px;height:18px;border-radius:999px;flex:none;object-fit:cover")} />}
+            <span>{o.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

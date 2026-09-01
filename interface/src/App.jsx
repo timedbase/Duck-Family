@@ -973,11 +973,13 @@ export default function App() {
         <span style={cs("width:6px;height:6px;border-radius:99px;background:var(--lime);flex:none")}></span>
         <span>{m ? "INK 57073" : "Ink 57073 · synced"}</span>
         <div style={cs("margin-left:auto;display:flex;gap:6px")}>
-          <button onClick={v.goDocs} title="Docs" style={cs("width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--mute);cursor:pointer;padding:0")}>
+          <button onClick={v.goDocs} title="Docs" style={cs("width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);cursor:pointer;padding:0")}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v4h4" /><path d="M9 12h6M9 16h6" /></svg>
           </button>
-          <a href="https://x.com/duckfunfamily" target="_blank" rel="noreferrer" title="duckfun on X" style={cs("width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--mute)")}>𝕏</a>
-          <a href="https://t.me/DuckFunFamily" target="_blank" rel="noreferrer" title="duckfun on Telegram" style={cs("width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--mute)")}>
+          <a href="https://x.com/duckfunfamily" target="_blank" rel="noreferrer" title="duckfun on X" style={cs("width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)")}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 2h3.4l-7.4 8.5L23.6 22h-6.9l-5.4-7-6.2 7H1.7l7.9-9L1 2h7l4.9 6.4zm-1.2 18h1.9L6.5 4h-2z" /></svg>
+          </a>
+          <a href="https://t.me/DuckFunFamily" target="_blank" rel="noreferrer" title="duckfun on Telegram" style={cs("width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)")}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21.94 4.36a1.5 1.5 0 0 0-1.62-.2L2.7 11.4a1.4 1.4 0 0 0 .1 2.6l4.55 1.5 1.76 5.5a1.3 1.3 0 0 0 2.16.5l2.5-2.4 4.5 3.3a1.4 1.4 0 0 0 2.23-.85l3.1-14.9a1.5 1.5 0 0 0-.66-1.79zM9.4 14.9l-1.2 3.7-1.1-3.5 11.6-7.2z"/></svg>
           </a>
         </div>
