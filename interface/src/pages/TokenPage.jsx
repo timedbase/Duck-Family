@@ -74,6 +74,7 @@ export default function TokenPage({ v }) {
   const tok = v.coin;
   const [splitWallet, setSplitWallet] = useState("");
   const [splitPct, setSplitPct] = useState("");
+  const [feeRoutingOpen, setFeeRoutingOpen] = useState(false);
   const [tradeSheetOpen, setTradeSheetOpen] = useState(false);
   const [loadingMoreTrades, setLoadingMoreTrades] = useState(false);
   const [loadingMoreHolders, setLoadingMoreHolders] = useState(false);
@@ -324,7 +325,7 @@ export default function TokenPage({ v }) {
                 {v.creatorLoading && <div style={cs("padding:24px;font-size:13px;color:var(--mute)")}>Loading on-chain position + hook data…</div>}
                 {!v.creatorLoading && v.liq && (
                   <>
-                    <div style={cs("padding:20px;border-bottom:1px solid var(--line)")}>
+                    <div style={cs("padding:16px;border-bottom:1px solid var(--line)")}>
                       <div style={cs("display:flex;align-items:center;gap:11px;margin-bottom:14px;flex-wrap:wrap")}>
                         <span style={cs("font-size:17px;font-weight:700;letter-spacing:-.03em")}>Liquidity</span>
                         <span style={cs(`font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:${v.liq.stBg};color:${v.liq.stFg}`)}>{v.liq.status}</span>
@@ -337,10 +338,10 @@ export default function TokenPage({ v }) {
                           </div>
                         ))}
                       </div>
-                      <div style={cs("font-size:12.5px;color:var(--mute);margin-top:12px;line-height:1.55;max-width:76ch")}>The position is minted full-range and held by DuckLocker. It can never be withdrawn; only accrued trading fees are claimable.</div>
+                      <div style={cs("font-size:12px;color:var(--mute);margin-top:10px")}>Full-range and permanent. Only accrued fees are ever claimable.</div>
                     </div>
 
-                    <div style={cs("padding:20px;border-bottom:1px solid var(--line)")}>
+                    <div style={cs("padding:16px;border-bottom:1px solid var(--line)")}>
                       <div style={cs("font-size:17px;font-weight:700;letter-spacing:-.03em;margin-bottom:14px")}>Creator fees</div>
                       <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;align-items:start")}>
                         <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--lime);color:var(--on);box-shadow:var(--sh);padding:18px")}>
@@ -361,32 +362,36 @@ export default function TokenPage({ v }) {
                       </div>
 
                       <div style={cs("border:1px solid var(--line);border-radius:10px;margin-top:16px;background:var(--card);overflow:hidden")}>
-                        <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>CREATOR FEE ROUTING</div>
-                        {!v.liq || v.liq.status === "NO POOL YET" ? (
-                          <div style={cs("padding:16px;font-size:12.5px;color:var(--mute)")}>Not available until this token has a real V4 pool.</div>
-                        ) : (
-                          <>
-                            <div style={cs("padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px")}>
-                              <label style={cs("display:flex;flex-direction:column;gap:7px")}>
-                                <span style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>SPLIT WALLET (OPTIONAL)</span>
-                                <input value={splitWallet} onChange={(e) => setSplitWallet(e.target.value)} placeholder="0x…" style={cs("padding:11px 12px;border:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:13px;outline:0")} />
-                              </label>
-                              <label style={cs("display:flex;flex-direction:column;gap:7px")}>
-                                <span style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>% TO THAT WALLET</span>
-                                <input value={splitPct} onChange={(e) => setSplitPct(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" style={cs("padding:11px 12px;border:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:13px;outline:0")} />
-                              </label>
-                            </div>
-                            <div style={cs("padding:0 16px 16px")}>
-                              <button onClick={submitSplits} disabled={v.txPending} style={cs("padding:12px 20px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:13.5px;font-weight:600;cursor:pointer")}>Save fee settings</button>
-                              <div style={cs("font-size:12px;color:var(--mute);margin-top:12px;line-height:1.55;max-width:76ch")}>Leave blank to reset to 100% direct to the creator. This only routes the creator's sell-fee skim, not the LP-position fee.</div>
-                            </div>
-                          </>
+                        <button onClick={() => setFeeRoutingOpen((o) => !o)} style={cs("width:100%;display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border:0;background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute);cursor:pointer")}>
+                          <span>CREATOR FEE ROUTING (OPTIONAL)</span><span>{feeRoutingOpen ? "▴" : "▾"}</span>
+                        </button>
+                        {feeRoutingOpen && (
+                          !v.liq || v.liq.status === "NO POOL YET" ? (
+                            <div style={cs("padding:16px;font-size:12.5px;color:var(--mute)")}>Not available until this token has a real V4 pool.</div>
+                          ) : (
+                            <>
+                              <div style={cs("padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px")}>
+                                <label style={cs("display:flex;flex-direction:column;gap:7px")}>
+                                  <span style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>SPLIT WALLET (OPTIONAL)</span>
+                                  <input value={splitWallet} onChange={(e) => setSplitWallet(e.target.value)} placeholder="0x…" style={cs("padding:11px 12px;border:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:13px;outline:0")} />
+                                </label>
+                                <label style={cs("display:flex;flex-direction:column;gap:7px")}>
+                                  <span style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>% TO THAT WALLET</span>
+                                  <input value={splitPct} onChange={(e) => setSplitPct(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" style={cs("padding:11px 12px;border:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:13px;outline:0")} />
+                                </label>
+                              </div>
+                              <div style={cs("padding:0 16px 16px")}>
+                                <button onClick={submitSplits} disabled={v.txPending} style={cs("padding:12px 20px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:13.5px;font-weight:600;cursor:pointer")}>Save fee settings</button>
+                                <div style={cs("font-size:12px;color:var(--mute);margin-top:12px;line-height:1.55;max-width:76ch")}>Leave blank to reset to 100% direct to the creator. Only routes the sell-fee skim, not the LP-position fee.</div>
+                              </div>
+                            </>
+                          )
                         )}
                       </div>
                     </div>
 
                     {v.cto && (
-                      <div style={cs("padding:20px")}>
+                      <div style={cs("padding:16px")}>
                         <div style={cs("display:flex;align-items:center;gap:11px;margin-bottom:8px;flex-wrap:wrap")}>
                           <span style={cs("font-size:17px;font-weight:700;letter-spacing:-.03em")}>Community takeover</span>
                           <span style={cs("font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--orange);color:#fff")}>{v.cto.status}</span>
