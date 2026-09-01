@@ -130,7 +130,6 @@ export default function StatsPage({ v }) {
                 ))}
               </div>
             </div>
-            <div style={cs("font-size:11.5px;color:var(--mute);line-height:1.55;margin-top:16px")}>Creator fees: the curve's creator-side cut plus the hook's 2% sell fee, both paid straight to creators. Platform revenue: the curve's platform-side cut plus the pool's 0.5% sell-side LP fee -- the matching burn isn't counted here since it's supply shrinkage, not revenue.</div>
           </div>
         </>
       )}
