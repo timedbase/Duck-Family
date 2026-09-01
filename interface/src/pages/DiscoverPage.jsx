@@ -9,8 +9,8 @@ function ImageBlock({ t, badgeSize = "9px" }) {
   return (
     <div style={cs("position:relative;width:100%;padding-top:100%;overflow:hidden;flex:none")}>
       <Thumb url={t.imageUrl} bg={t.famBg} fg={t.famFg} initials={t.initials} size="100%" radius="0" fontSize={t.logoType || "44px"} style="position:absolute;top:0;left:0" />
-      <span style={cs(`position:absolute;top:8px;left:8px;padding:3px 8px;border-radius:999px;background:rgba(26,25,23,.72);color:#fff;font-family:'DM Mono',monospace;font-size:${badgeSize};letter-spacing:.04em;white-space:nowrap`)}>{t.age}</span>
-      <span style={cs(`position:absolute;top:8px;right:8px;padding:3px 8px;border-radius:999px;background:${t.famBg};color:${t.famFg};font-family:'DM Mono',monospace;font-size:${badgeSize};letter-spacing:.04em;white-space:nowrap`)}>{t.family}</span>
+      <span style={cs(`position:absolute;top:8px;left:8px;padding:3px 8px;border-radius:999px;background:rgba(26,25,23,.72);color:#fff;font-family:'JetBrains Mono',monospace;font-size:${badgeSize};letter-spacing:.04em;white-space:nowrap`)}>{t.age}</span>
+      <span style={cs(`position:absolute;top:8px;right:8px;padding:3px 8px;border-radius:999px;background:${t.famBg};color:${t.famFg};font-family:'JetBrains Mono',monospace;font-size:${badgeSize};letter-spacing:.04em;white-space:nowrap`)}>{t.family}</span>
     </div>
   );
 }
@@ -18,7 +18,7 @@ function ImageBlock({ t, badgeSize = "9px" }) {
 function ProgressRow({ t, height = "6px", fontSize = "10px" }) {
   return (
     <div>
-      <div style={cs(`display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:'DM Mono',monospace;font-size:${fontSize};letter-spacing:.07em;color:var(--mute);margin-bottom:6px`)}>
+      <div style={cs(`display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:'JetBrains Mono',monospace;font-size:${fontSize};letter-spacing:.07em;color:var(--mute);margin-bottom:6px`)}>
         <span style={cs("min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.progLabel}</span>
         <span style={cs("flex:none;color:var(--ink)")}>{t.progPct}</span>
       </div>
@@ -39,12 +39,12 @@ function HeroSlide({ t }) {
         <div>
           <div style={cs("display:flex;align-items:baseline;gap:7px;min-width:0")}>
             <span style={cs(`font-size:${t.symType};font-weight:700;letter-spacing:-.03em;flex:none`)}>{t.symbol}</span>
-            <span style={cs("font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.name}</span>
+            <span style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.name}</span>
           </div>
-          <div style={cs("font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>by {t.creator}</div>
+          <div style={cs("font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>by {t.creator}</div>
         </div>
 
-        <div style={cs("display:flex;align-items:baseline;gap:8px;font-family:'DM Mono',monospace;flex-wrap:wrap")}>
+        <div style={cs("display:flex;align-items:baseline;gap:8px;font-family:'JetBrains Mono',monospace;flex-wrap:wrap")}>
           <span style={cs(`font-size:${t.priceType};font-weight:500;letter-spacing:-.03em;color:var(--pos);flex:none`)}>MC {t.mcap}</span>
           <span style={cs(`font-size:12px;color:${t.chgColor};flex:none`)}>{t.chg}</span>
         </div>
@@ -57,7 +57,7 @@ function HeroSlide({ t }) {
 
         <ProgressRow t={t} />
 
-        <div style={cs("display:flex;gap:12px;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);min-width:0")}>
+        <div style={cs("display:flex;gap:12px;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute);min-width:0")}>
           <span style={cs("white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>VOL <span style={cs("color:var(--ink)")}>{t.vol}</span></span>
           <span style={cs("margin-left:auto;flex:none;white-space:nowrap")}>{t.sideMetric} <span style={cs("color:var(--ink)")}>{t.sideValue}</span></span>
         </div>
@@ -74,12 +74,12 @@ function FeedCard({ t }) {
         <div>
           <div style={cs("display:flex;align-items:baseline;gap:7px;min-width:0")}>
             <span style={cs("font-size:15px;font-weight:700;letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.name}</span>
-            <span style={cs("font-family:'DM Mono',monospace;font-size:11.5px;color:var(--mute);flex:none")}>{t.symbol}</span>
+            <span style={cs("font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mute);flex:none")}>{t.symbol}</span>
           </div>
-          <div style={cs("font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>by {t.creator} · {t.age}</div>
+          <div style={cs("font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>by {t.creator} · {t.age}</div>
         </div>
 
-        <div style={cs("display:flex;align-items:baseline;gap:8px;font-family:'DM Mono',monospace")}>
+        <div style={cs("display:flex;align-items:baseline;gap:8px;font-family:'JetBrains Mono',monospace")}>
           <span style={cs("font-size:14.5px;font-weight:500;letter-spacing:-.02em;color:var(--pos)")}>MC {t.mcap}</span>
           <span style={cs(`font-size:11.5px;color:${t.chgColor}`)}>{t.chg}</span>
         </div>
@@ -88,7 +88,7 @@ function FeedCard({ t }) {
 
         <ProgressRow t={t} height="5px" fontSize="9.5px" />
 
-        <div style={cs("display:flex;gap:10px;font-family:'DM Mono',monospace;font-size:10px;color:var(--mute)")}>
+        <div style={cs("display:flex;gap:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mute)")}>
           <span style={cs("white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>VOL <span style={cs("color:var(--ink)")}>{t.vol}</span></span>
           <span style={cs("margin-left:auto;white-space:nowrap")}>{t.holders} hldrs</span>
         </div>
@@ -99,7 +99,7 @@ function FeedCard({ t }) {
 
 function FilterSelect({ value, onChange, options, isMobile }) {
   return (
-    <select value={value} onChange={onChange} style={cs(`border:1px solid var(--line);border-radius:8px;background:var(--card);padding:${isMobile ? "7px 8px" : "8px 12px"};font-family:'DM Mono',monospace;font-size:${isMobile ? "11px" : "12px"};color:var(--ink);cursor:pointer;flex:1 1 110px;min-width:0`)}>
+    <select value={value} onChange={onChange} style={cs(`border:1px solid var(--line);border-radius:8px;background:var(--card);padding:${isMobile ? "7px 8px" : "8px 12px"};font-family:'JetBrains Mono',monospace;font-size:${isMobile ? "11px" : "12px"};color:var(--ink);cursor:pointer;flex:1 1 110px;min-width:0`)}>
       {options.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
     </select>
   );
@@ -115,7 +115,7 @@ export default function DiscoverPage({ v }) {
               <button key={i} onClick={h.go} style={cs(`padding:12px 18px;border:0;border-right:1px solid var(--line);background:${h.bg};color:${h.fg};font-size:13.5px;font-weight:600;letter-spacing:-.01em;cursor:pointer;white-space:nowrap`)}>{h.label}</button>
             ))}
           </div>
-          {!v.isMobile && <div style={cs("flex:1;display:flex;align-items:center;padding:0 18px;font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:var(--mute)")}>{v.heroCaption}</div>}
+          {!v.isMobile && <div style={cs("flex:1;display:flex;align-items:center;padding:0 18px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:var(--mute)")}>{v.heroCaption}</div>}
           <div style={cs("display:flex;flex:none")}>
             <button onClick={v.heroPrev} className="d-hover-lime" style={cs("width:46px;border:0;border-left:1px solid var(--line);background:var(--card);font-size:15px;cursor:pointer")}>←</button>
             <button onClick={v.heroNext} className="d-hover-lime" style={cs("width:46px;border:0;border-left:1px solid var(--line);background:var(--card);font-size:15px;cursor:pointer")}>→</button>
@@ -161,16 +161,16 @@ export default function DiscoverPage({ v }) {
 
       {v.layoutTable && !v.isMobile && (
         <div style={cs("border:1px solid var(--line);background:var(--card);border-radius:10px;overflow:hidden")}>
-          <div style={cs("display:grid;min-width:760px;grid-template-columns:2.2fr .9fr .8fr .9fr .9fr 1.4fr;gap:14px;padding:11px 18px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>
+          <div style={cs("display:grid;min-width:760px;grid-template-columns:2.2fr .9fr .8fr .9fr .9fr 1.4fr;gap:14px;padding:11px 18px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>
             <span>TOKEN</span><span style={cs("text-align:right")}>PRICE</span><span style={cs("text-align:right")}>24H</span><span style={cs("text-align:right")}>MCAP</span><span style={cs("text-align:right")}>VOLUME</span><span>PROGRESS</span>
           </div>
           {v.feed.map((t) => (
-            <div key={t.id} onClick={t.open} className="d-hover-paper" style={cs("display:grid;min-width:760px;grid-template-columns:2.2fr .9fr .8fr .9fr .9fr 1.4fr;gap:14px;padding:12px 18px;border-bottom:1px solid var(--soft);align-items:center;cursor:pointer;font-family:'DM Mono',monospace;font-size:12.5px")}>
+            <div key={t.id} onClick={t.open} className="d-hover-paper" style={cs("display:grid;min-width:760px;grid-template-columns:2.2fr .9fr .8fr .9fr .9fr 1.4fr;gap:14px;padding:12px 18px;border-bottom:1px solid var(--soft);align-items:center;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12.5px")}>
               <div style={cs("display:flex;align-items:center;gap:11px;min-width:0")}>
                 <Thumb url={t.imageUrl} bg={t.famBg} fg={t.famFg} initials={t.initials} size="26px" fontSize="11px" />
-                <span style={cs("font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;letter-spacing:-.02em")}>{t.symbol}</span>
+                <span style={cs("font-family:'Outfit',sans-serif;font-weight:700;font-size:14px;letter-spacing:-.02em")}>{t.symbol}</span>
                 <span style={cs("color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.name}</span>
-                <span style={cs(`flex:none;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;padding:3px 7px;border-radius:999px;background:${t.famBg};color:${t.famFg}`)}>{t.family}</span>
+                <span style={cs(`flex:none;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;padding:3px 7px;border-radius:999px;background:${t.famBg};color:${t.famFg}`)}>{t.family}</span>
               </div>
               <span style={cs("text-align:right;font-weight:500")}>{t.price}</span>
               <span style={cs(`text-align:right;color:${t.chgColor}`)}>{t.chg}</span>

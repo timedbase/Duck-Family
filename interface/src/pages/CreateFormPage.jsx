@@ -8,7 +8,7 @@ function labelFor(options, address) {
 function Field({ label, hint, children }) {
   return (
     <label style={cs("display:flex;flex-direction:column;gap:7px")}>
-      <span style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>{label}</span>
+      <span style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>{label}</span>
       {children}
       {hint && <span style={cs("font-size:11.5px;color:var(--mute);line-height:1.4")}>{hint}</span>}
     </label>
@@ -18,13 +18,13 @@ function TextInput(props) {
   return <input {...props} style={cs("padding:12px;border:1px solid var(--line);background:var(--paper);font-size:14px;outline:0")} />;
 }
 function LockedInput({ value }) {
-  return <input value={value} readOnly style={cs("padding:12px;border:1px solid var(--line);background:var(--card);font-size:14px;outline:0;color:var(--mute);font-family:'DM Mono',monospace")} />;
+  return <input value={value} readOnly style={cs("padding:12px;border:1px solid var(--line);background:var(--card);font-size:14px;outline:0;color:var(--mute);font-family:'JetBrains Mono',monospace")} />;
 }
 function QuoteChips({ options, value, onPick }) {
   return (
     <div style={cs("display:grid;grid-template-columns:repeat(3,1fr);gap:8px")}>
       {options.map((o) => (
-        <button key={o.address} onClick={() => onPick(o.address)} style={cs(`border:1px solid var(--line);border-radius:8px;cursor:pointer;padding:11px 10px;font-family:'DM Mono',monospace;font-size:12.5px;font-weight:700;background:${value.toLowerCase() === o.address.toLowerCase() ? "var(--ink)" : "var(--card)"};color:${value.toLowerCase() === o.address.toLowerCase() ? "var(--card)" : "var(--ink)"}`)}>{o.label}</button>
+        <button key={o.address} onClick={() => onPick(o.address)} style={cs(`border:1px solid var(--line);border-radius:8px;cursor:pointer;padding:11px 10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;background:${value.toLowerCase() === o.address.toLowerCase() ? "var(--ink)" : "var(--card)"};color:${value.toLowerCase() === o.address.toLowerCase() ? "var(--card)" : "var(--ink)"}`)}>{o.label}</button>
       ))}
     </div>
   );
@@ -80,7 +80,7 @@ export default function CreateFormPage({ v }) {
 
   return (
     <div style={cs("max-width:1060px;margin:0 auto")}>
-      <button onClick={v.backToChooser} style={cs("border:0;background:transparent;font-family:'DM Mono',monospace;font-size:11.5px;letter-spacing:.1em;color:var(--mute);cursor:pointer;padding:0 0 14px")}>← ALL LAUNCH TYPES</button>
+      <button onClick={v.backToChooser} style={cs("border:0;background:transparent;font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.1em;color:var(--mute);cursor:pointer;padding:0 0 14px")}>← ALL LAUNCH TYPES</button>
 
       <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 336px"};gap:16px;align-items:start`)}>
         <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
@@ -96,7 +96,7 @@ export default function CreateFormPage({ v }) {
             </div>
 
             <div style={cs("display:flex;align-items:center;gap:16px;flex-wrap:wrap")}>
-              <label style={cs("width:56px;height:56px;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;color:var(--mute);text-align:center;line-height:1.2;flex:none;cursor:pointer;overflow:hidden")}>
+              <label style={cs("width:56px;height:56px;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--mute);text-align:center;line-height:1.2;flex:none;cursor:pointer;overflow:hidden")}>
                 <input type="file" accept="image/*" onChange={v.onImagePick} style={cs("display:none")} />
                 {v.draftImage.previewUrl ? <img src={v.draftImage.previewUrl} alt="" style={cs("width:100%;height:100%;object-fit:cover")} /> : <>TOKEN<br />LOGO</>}
               </label>
@@ -175,7 +175,7 @@ export default function CreateFormPage({ v }) {
             )}
 
             <label style={cs("display:flex;flex-direction:column;gap:7px")}>
-              <span style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>DESCRIPTION</span>
+              <span style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>DESCRIPTION</span>
               <textarea rows="3" placeholder="What is this token for?" value={draft.desc}
                 onChange={(e) => setDraft({ desc: e.target.value.slice(0, 140) })}
                 style={cs("padding:12px;border:1px solid var(--line);background:var(--paper);font-size:14px;outline:0;resize:vertical")} />
@@ -190,18 +190,18 @@ export default function CreateFormPage({ v }) {
 
         <div style={cs(`display:flex;flex-direction:column;gap:16px;${v.isMobile ? "" : "position:sticky;top:80px"}`)}>
           <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
-            <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>ON SUBMIT</div>
+            <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>ON SUBMIT</div>
             {ON_SUBMIT[family].map((t, i) => (
               <div key={i} style={cs("display:flex;gap:12px;padding:13px 15px;border-bottom:1px solid var(--soft)")}>
-                <span style={cs("width:20px;height:20px;border-radius:999px;border:1px solid var(--line);font-family:'DM Mono',monospace;font-size:10.5px;display:flex;align-items:center;justify-content:center;flex:none")}>{i + 1}</span>
+                <span style={cs("width:20px;height:20px;border-radius:999px;border:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:10.5px;display:flex;align-items:center;justify-content:center;flex:none")}>{i + 1}</span>
                 <span style={cs("font-size:12.5px;line-height:1.45")}>{t}</span>
               </div>
             ))}
           </div>
           <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden")}>
-            <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>COSTS</div>
+            <div style={cs("padding:11px 15px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>COSTS</div>
             {costs.map((c, i) => (
-              <div key={i} style={cs("display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12.5px")}>
+              <div key={i} style={cs("display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px")}>
                 <span style={cs("color:var(--mute)")}>{c.k}</span><span style={cs("font-weight:500;text-align:right")}>{c.v}</span>
               </div>
             ))}

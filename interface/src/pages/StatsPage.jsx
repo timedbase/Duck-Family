@@ -42,10 +42,10 @@ export default function StatsPage({ v }) {
       <div style={cs("display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px")}>
         <div>
           <h1 style={cs(`margin:0;font-size:${v.isMobile ? "26px" : "38px"};letter-spacing:-.04em;font-weight:700;line-height:1`)}>Stats</h1>
-          <div style={cs("font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--mute);margin-top:9px")}>FROM THE SUBGRAPH · LAST 24 HOURS</div>
+          <div style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--mute);margin-top:9px")}>FROM THE SUBGRAPH · LAST 24 HOURS</div>
         </div>
         {updatedSecondsAgo != null && (
-          <div style={cs("display:flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-family:'DM Mono',monospace;font-size:11.5px;color:var(--mute)")}>
+          <div style={cs("display:flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mute)")}>
             <span style={cs("width:6px;height:6px;border-radius:999px;background:var(--pos)")}></span>updated {updatedSecondsAgo < 1 ? "just now" : updatedSecondsAgo + "s ago"}
           </div>
         )}
@@ -60,8 +60,8 @@ export default function StatsPage({ v }) {
           <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:16px")}>
             {cards.map((c, i) => (
               <div key={i} style={cs(`border:1px solid var(--line);border-radius:14px;background:${c.bg};padding:20px`)}>
-                <div style={cs("font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>{c.k}</div>
-                <div style={cs("font-family:'DM Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-.03em;margin-top:9px")}>{c.v}</div>
+                <div style={cs("font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>{c.k}</div>
+                <div style={cs("font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:500;letter-spacing:-.03em;margin-top:9px")}>{c.v}</div>
                 <div style={cs("font-size:11.5px;color:var(--mute);margin-top:5px")}>{c.sub}</div>
               </div>
             ))}
@@ -70,7 +70,7 @@ export default function StatsPage({ v }) {
           <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);padding:20px")}>
             <div style={cs("display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px")}>
               <h2 style={cs("margin:0;font-size:17px;font-weight:700;letter-spacing:-.03em")}>24h volume by venue</h2>
-              <span style={cs("font-family:'DM Mono',monospace;font-size:11.5px;color:var(--mute)")}>{money(stats.tradingVolumeUsd)} total</span>
+              <span style={cs("font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mute)")}>{money(stats.tradingVolumeUsd)} total</span>
             </div>
             <div style={cs("display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--soft);margin-bottom:18px")}>
               {stats.venues.map((venue, i) => (
@@ -83,8 +83,8 @@ export default function StatsPage({ v }) {
                   <span style={cs(`width:11px;height:11px;border-radius:3px;background:${i === 0 ? "var(--ink)" : "var(--lime)"};flex:none;margin-top:4px`)}></span>
                   <div style={cs("min-width:0")}>
                     <div style={cs("font-size:13.5px;font-weight:600;letter-spacing:-.01em")}>{venue.label}</div>
-                    <div style={cs("font-family:'DM Mono',monospace;font-size:15px;font-weight:500;margin-top:4px")}>{money(venue.volumeUsd)}</div>
-                    <div style={cs("font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);margin-top:3px")}>{venue.pct.toFixed(1)}% of volume</div>
+                    <div style={cs("font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500;margin-top:4px")}>{money(venue.volumeUsd)}</div>
+                    <div style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute);margin-top:3px")}>{venue.pct.toFixed(1)}% of volume</div>
                   </div>
                 </div>
               ))}
@@ -92,8 +92,8 @@ export default function StatsPage({ v }) {
                 <span style={cs("width:11px;height:11px;border-radius:3px;background:var(--orange);flex:none;margin-top:4px")}></span>
                 <div style={cs("min-width:0")}>
                   <div style={cs("font-size:13.5px;font-weight:600;letter-spacing:-.01em")}>Crowdlaunch</div>
-                  <div style={cs("font-family:'DM Mono',monospace;font-size:15px;font-weight:500;margin-top:4px")}>{stats.raiseContributedEth.toFixed(4)} ETH</div>
-                  <div style={cs("font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);margin-top:3px")}>ETH contributed, not trading volume</div>
+                  <div style={cs("font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500;margin-top:4px")}>{stats.raiseContributedEth.toFixed(4)} ETH</div>
+                  <div style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute);margin-top:3px")}>ETH contributed, not trading volume</div>
                 </div>
               </div>
             </div>

@@ -850,7 +850,7 @@ export default function App() {
           <div style={cs("flex:1;min-width:0")}></div>
           <div style={cs("display:flex;align-items:center;gap:8px;flex:none")}>
             {!m && (
-              <div style={cs("display:flex;align-items:center;gap:7px;padding:6px 11px;border:1px solid var(--line);border-radius:8px;background:var(--lime);font-family:'DM Mono',monospace;font-size:11.5px;white-space:nowrap")}>
+              <div style={cs("display:flex;align-items:center;gap:7px;padding:6px 11px;border:1px solid var(--line);border-radius:8px;background:var(--lime);font-family:'JetBrains Mono',monospace;font-size:11.5px;white-space:nowrap")}>
                 <span style={cs("width:6px;height:6px;background:var(--ink);flex:none")}></span>INK 57073
               </div>
             )}
@@ -879,7 +879,7 @@ export default function App() {
       </main>
 
       <footer style={cs("border-top:1px solid var(--line);background:var(--card)")}>
-        <div style={cs("max-width:1420px;margin:0 auto;padding:16px 20px;display:flex;gap:20px;flex-wrap:wrap;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--mute)")}>
+        <div style={cs("max-width:1420px;margin:0 auto;padding:16px 20px;display:flex;gap:20px;flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--mute)")}>
           <span>DUCKFUN.FAMILY</span>
           <span>INK 57073</span>
           <a href="https://explorer.inkonchain.com" target="_blank" rel="noreferrer">BLOCKSCOUT</a>
@@ -908,7 +908,7 @@ export default function App() {
               <div style={cs("font-size:19px;font-weight:700;letter-spacing:-.03em")}>{v.tx.title}</div>
               <div style={cs(`font-size:12.5px;margin-top:7px;line-height:1.5;opacity:${v.tx.headFg === "#fff" ? ".9" : "1"};color:${v.tx.headFg === "#fff" ? "#fff" : "var(--mute)"}`)}>{v.tx.sub}</div>
             </div>
-            <div style={cs("padding:14px 18px;border-bottom:1px solid var(--line);font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);word-break:break-all;line-height:1.5")}>{v.tx.hash}</div>
+            <div style={cs("padding:14px 18px;border-bottom:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute);word-break:break-all;line-height:1.5")}>{v.tx.hash}</div>
             <div style={cs("display:flex")}>
               <a href={v.tx.explorerUrl} target="_blank" rel="noreferrer" style={cs("flex:1;padding:14px;text-align:center;font-size:13.5px;font-weight:600;border:0;border-right:1px solid var(--line)")}>Explorer ↗</a>
               <button onClick={v.closeTx} style={cs("flex:1;padding:14px;border:0;background:var(--ink);color:var(--card);font-size:13.5px;font-weight:600;cursor:pointer")}>{v.tx.cta}</button>
@@ -1082,7 +1082,7 @@ function buildViewModel(ctx) {
     balance: Number(formatEther(s.nativeBalance)).toFixed(4),
     walletLabel: account ? shortAddress(account) : "Connect wallet",
     walletBg: account ? CARD : INK, walletFg: account ? INK : CARD,
-    walletFont: account ? "'DM Mono',monospace" : "'Space Grotesk',sans-serif",
+    walletFont: account ? "'JetBrains Mono',monospace" : "'Outfit',sans-serif",
     toggleWallet: () => (account ? disconnect() : openConnectModal && openConnectModal()),
     txPending: s.txPending,
 
@@ -1263,7 +1263,7 @@ function buildViewModel(ctx) {
 function PendingLaunchPanel({ v }) {
   return (
     <div style={cs("border:1px solid var(--line);background:var(--card);padding:40px 24px;text-align:center")}>
-      <div style={cs("font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.1em;color:var(--mute)")}>CONFIRMING YOUR LAUNCH</div>
+      <div style={cs("font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.1em;color:var(--mute)")}>CONFIRMING YOUR LAUNCH</div>
       <div style={cs("font-size:15px;margin-top:10px")}>This'll appear here as soon as it's indexed — usually just a few seconds.</div>
       <button onClick={v.goHome} style={cs("margin-top:18px;padding:10px 20px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer")}>Back to Discover</button>
     </div>

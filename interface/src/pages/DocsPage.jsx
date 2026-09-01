@@ -37,7 +37,7 @@ function Section({ id, title, blurb, rows }) {
         <div style={cs("font-size:13.5px;color:var(--mute);line-height:1.55;max-width:70ch")}>{blurb}</div>
       </div>
       {rows.map((r, i) => (
-        <div key={i} style={cs("display:flex;justify-content:space-between;gap:14px;padding:12px 20px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12.5px")}>
+        <div key={i} style={cs("display:flex;justify-content:space-between;gap:14px;padding:12px 20px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px")}>
           <span style={cs("color:var(--mute)")}>{r.k}</span><span style={cs("font-weight:500;text-align:right")}>{r.v}</span>
         </div>
       ))}
@@ -122,10 +122,10 @@ export default function DocsPage({ v }) {
             <div style={cs("font-size:19px;font-weight:700;letter-spacing:-.03em;margin-bottom:8px")}>Deployments</div>
             <div style={cs("font-size:13.5px;color:var(--mute);line-height:1.55;max-width:70ch")}>duckfun runs on Ink mainnet. Every contract below is verified on Blockscout — tap an address to copy it, or check it yourself.</div>
           </div>
-          <div style={cs("display:flex;justify-content:space-between;gap:14px;padding:12px 20px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12.5px")}>
+          <div style={cs("display:flex;justify-content:space-between;gap:14px;padding:12px 20px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px")}>
             <span style={cs("color:var(--mute)")}>Chain</span><span style={cs("font-weight:500")}>Ink · 57073</span>
           </div>
-          <div style={cs("display:flex;justify-content:space-between;gap:14px;padding:12px 20px;border-bottom:1px solid var(--soft);font-family:'DM Mono',monospace;font-size:12.5px")}>
+          <div style={cs("display:flex;justify-content:space-between;gap:14px;padding:12px 20px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px")}>
             <span style={cs("color:var(--mute)")}>Subgraph</span><span style={cs("font-weight:500")}>duckfun-ink · current (timestamp-versioned deploys)</span>
           </div>
           {CONTRACTS.map((c, i) => (

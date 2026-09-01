@@ -48,7 +48,7 @@ export default function HowItWorksPage({ v }) {
       <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:18px")}>
         {steps.map((s, i) => (
           <div key={i} className="d-lift" style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;padding:20px;display:flex;flex-direction:column")}>
-            <span style={cs(`width:32px;height:32px;border-radius:999px;background:${s.bg};display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:13px;flex:none`)}>{s.n}</span>
+            <span style={cs(`width:32px;height:32px;border-radius:999px;background:${s.bg};display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;flex:none`)}>{s.n}</span>
             <div style={cs("font-size:16px;font-weight:700;letter-spacing:-.025em;margin-top:14px")}>{s.k}</div>
             <div style={cs("font-size:13.5px;color:var(--mute);line-height:1.6;margin-top:8px")}>{s.v}</div>
           </div>

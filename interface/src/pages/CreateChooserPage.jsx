@@ -27,7 +27,7 @@ export default function CreateChooserPage({ v }) {
               <div style={cs(`width:64px;flex:none;border-right:1px solid var(--line);background:${f.accent};color:${f.accentFg};display:flex;align-items:center;justify-content:center;font-size:24px`)}>{f.glyph}</div>
               <div style={cs("padding:14px 16px;flex:1;min-width:0")}>
                 <div style={cs("font-size:19px;font-weight:700;letter-spacing:-.03em")}>{f.title}</div>
-                <div style={cs("font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.1em;color:var(--mute);margin-top:4px")}>{f.contract}</div>
+                <div style={cs("font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.1em;color:var(--mute);margin-top:4px")}>{f.contract}</div>
               </div>
             </div>
             <div style={cs("padding:16px")}>

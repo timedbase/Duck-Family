@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { cs } from "./cs.js";
 
-const chipStyle = "display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border:1px solid var(--line);border-radius:7px;background:var(--paper);font-family:'DM Mono',monospace;font-size:11.5px;line-height:1;white-space:nowrap;border-bottom:1px solid var(--line)";
+const chipStyle = "display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border:1px solid var(--line);border-radius:7px;background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1;white-space:nowrap;border-bottom:1px solid var(--line)";
 
 export function AddressChip({ address, full }) {
   const [copied, setCopied] = useState(false);

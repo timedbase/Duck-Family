@@ -41,14 +41,14 @@ export default function PortfolioPage({ v }) {
     <div style={cs("display:flex;flex-direction:column;gap:16px")}>
       <div>
         <h1 style={cs(`margin:0 0 4px;font-size:${v.isMobile ? "26px" : "36px"};letter-spacing:-.045em;font-weight:700;line-height:1.05`)}>Portfolio</h1>
-        <div style={cs("font-family:'DM Mono',monospace;font-size:12.5px;color:var(--mute)")}>{v.accountShort} · INK</div>
+        <div style={cs("font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--mute)")}>{v.accountShort} · INK</div>
       </div>
 
       <div style={cs("display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px")}>
         {pfStats.map((st, i) => (
           <div key={i} style={cs(`border:1px solid var(--line);background:${st.bg};border-radius:14px;padding:16px 18px;display:flex;flex-direction:column`)}>
-            <div style={cs("font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>{st.label}</div>
-            <div style={cs("font-family:'DM Mono',monospace;font-size:22px;font-weight:500;letter-spacing:-.03em;margin-top:8px")}>{st.value}</div>
+            <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>{st.label}</div>
+            <div style={cs("font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:500;letter-spacing:-.03em;margin-top:8px")}>{st.value}</div>
             <div style={cs("font-size:11.5px;color:var(--mute);margin-top:6px")}>{st.sub}</div>
           </div>
         ))}
@@ -57,7 +57,7 @@ export default function PortfolioPage({ v }) {
       <div>
         <div style={cs("display:flex;align-items:baseline;gap:10px;margin-bottom:12px")}>
           <h2 style={cs("margin:0;font-size:19px;font-weight:700;letter-spacing:-.03em")}>Holdings</h2>
-          <span style={cs("font-family:'DM Mono',monospace;font-size:11px;color:var(--mute)")}>{held.length} position{held.length === 1 ? "" : "s"}</span>
+          <span style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute)")}>{held.length} position{held.length === 1 ? "" : "s"}</span>
         </div>
         {held.length === 0 && (
           <div style={cs("border:1px solid var(--line);border-radius:14px;background:var(--card);padding:40px 0;display:flex;flex-direction:column;align-items:center;gap:10px")}>
@@ -80,10 +80,10 @@ export default function PortfolioPage({ v }) {
                   <div style={cs("flex:1;min-width:0;display:flex;flex-direction:column")}>
                     <div style={cs("display:flex;align-items:baseline;gap:7px;min-width:0")}>
                       <span style={cs("font-size:15.5px;font-weight:700;letter-spacing:-.025em;flex:none")}>{co ? co.ticker : h.token?.id?.slice(0, 8)}</span>
-                      <span style={cs("font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--mute);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{co?.family}</span>
+                      <span style={cs("font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--mute);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{co?.family}</span>
                     </div>
-                    <div style={cs("font-family:'DM Mono',monospace;font-size:17px;font-weight:500;letter-spacing:-.03em;margin-top:8px")}>{co ? usdOrQuote(valueUsd, value, co.quote) : "—"}</div>
-                    <div style={cs("font-family:'DM Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{balanceTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })}{sharePct != null ? " · " + sharePct.toFixed(sharePct < 1 ? 3 : 1) + "% of supply" : ""}</div>
+                    <div style={cs("font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:500;letter-spacing:-.03em;margin-top:8px")}>{co ? usdOrQuote(valueUsd, value, co.quote) : "—"}</div>
+                    <div style={cs("font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{balanceTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })}{sharePct != null ? " · " + sharePct.toFixed(sharePct < 1 ? 3 : 1) + "% of supply" : ""}</div>
                     <div style={cs("flex:1;min-height:10px")}></div>
                     <button onClick={() => co && v.openToken(co.id)} className="d-hover-lime" style={cs("align-self:flex-start;padding:8px 15px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:12.5px;font-weight:600;cursor:pointer")}>Open</button>
                   </div>
@@ -103,7 +103,7 @@ export default function PortfolioPage({ v }) {
               <div key={i} style={cs("border:1px solid var(--line);background:var(--card);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px")}>
                 <div style={cs("min-width:0;flex:1")}>
                   <div style={cs("font-size:13.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{cl.title}</div>
-                  <div style={cs("font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{cl.sub}</div>
+                  <div style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{cl.sub}</div>
                 </div>
                 <button onClick={cl.open || (() => {})} style={cs(`padding:9px 16px;border:1px solid var(--line);border-radius:8px;background:${cl.bg};color:${cl.fg};font-size:12.5px;font-weight:700;cursor:pointer;flex:none`)}>{cl.cta}</button>
               </div>
@@ -130,7 +130,7 @@ export default function PortfolioPage({ v }) {
                   <Thumb url={co?.imageUrl} bg={co ? co.famBg : "var(--card)"} fg={co ? co.famFg : "var(--ink)"} initials={co ? co.initials : "??"} size="34px" radius="11px" fontSize="12px" />
                   <div style={cs("min-width:0;flex:1")}>
                     <button onClick={() => v.openToken(t.id)} style={cs("border:0;background:transparent;cursor:pointer;padding:0;text-align:left;font-size:13.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%")}>{co ? co.ticker + " · " + co.name : t.id.slice(0, 10)}</button>
-                    <div style={cs("font-family:'DM Mono',monospace;font-size:11px;color:var(--mute);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.family} · {ageLabel(Math.round((Date.now() / 1000 - Number(t.createdAt)) / 60))} old</div>
+                    <div style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>{t.family} · {ageLabel(Math.round((Date.now() / 1000 - Number(t.createdAt)) / 60))} old</div>
                   </div>
                   <button onClick={() => v.claimCreatorFees(t.id)} className="d-hover-lime" style={cs("padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:12px;font-weight:600;cursor:pointer;flex:none")}>Claim fees</button>
                 </div>

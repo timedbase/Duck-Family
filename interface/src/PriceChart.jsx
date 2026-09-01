@@ -23,7 +23,7 @@ export default function PriceChart({ candles, height = 320 }) {
     const neg = styles.getPropertyValue("--neg").trim() || "#d2331a";
 
     const chart = createChart(containerRef.current, {
-      layout: { background: { type: ColorType.Solid, color: card }, textColor: mute, fontFamily: "'DM Mono',monospace", fontSize: 11 },
+      layout: { background: { type: ColorType.Solid, color: card }, textColor: mute, fontFamily: "'JetBrains Mono',monospace", fontSize: 11 },
       grid: { vertLines: { color: soft }, horzLines: { color: soft } },
       rightPriceScale: { borderColor: ink },
       timeScale: { borderColor: ink, timeVisible: true },
