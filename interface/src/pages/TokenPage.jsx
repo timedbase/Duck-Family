@@ -106,72 +106,60 @@ export default function TokenPage({ v }) {
     <div>
       <button onClick={v.goHome} style={cs("border:0;background:transparent;font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.1em;color:var(--mute);cursor:pointer;padding:0 0 14px")}>← DISCOVER</button>
 
-      <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);margin-bottom:16px;overflow:hidden")}>
-        <div style={cs(`display:flex;${v.isMobile ? "flex-direction:column" : "align-items:center"};gap:${v.isMobile ? "12px" : "16px"};padding:${v.isMobile ? "14px" : "16px 20px"};border-bottom:1px solid var(--line)`)}>
-          <div style={cs(`display:flex;align-items:center;gap:${v.isMobile ? "12px" : "16px"}`)}>
-            <Thumb url={sel.imageUrl} bg={sel.famBg} fg={sel.famFg} initials={sel.initials} size={v.isMobile ? "44px" : "52px"} radius="10px" fontSize={v.isMobile ? "15px" : "18px"} flex="none" />
-            <div style={cs("min-width:0;flex:1;display:flex;flex-direction:column;gap:8px")}>
-              <div style={cs("display:flex;align-items:baseline;gap:9px;flex-wrap:wrap")}>
-                <h1 style={cs(`margin:0;font-size:${v.isMobile ? "18px" : "22px"};font-weight:700;letter-spacing:-.03em`)}>{sel.name}</h1>
-                <span style={cs("font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--mute)")}>{sel.symbol}</span>
-                <span style={cs(`font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:${sel.famBg};color:${sel.famFg}`)}>{sel.family}</span>
-              </div>
-              {!v.isMobile && (
-                <div style={cs("display:flex;gap:6px;flex-wrap:wrap")}>
-                  <AddressChip address={sel.address} full={tok.id} />
-                  <LinkChip href={`https://explorer.inkonchain.com/address/${tok.id}`}>Explorer</LinkChip>
-                  <LinkChip href={`https://basedbot.app/token/ink/${tok.id}`}>BasedBot</LinkChip>
-                  <LinkChip href={`https://gmgn.ai/ink/token/${tok.id}`}>GMGN</LinkChip>
-                  {tok.socials?.website && <LinkChip href={tok.socials.website}>Website</LinkChip>}
-                  {tok.socials?.twitter && <LinkChip href={tok.socials.twitter}>X</LinkChip>}
-                  {tok.socials?.telegram && <LinkChip href={tok.socials.telegram}>Telegram</LinkChip>}
-                </div>
-              )}
+      <div style={cs(`display:flex;flex-direction:column;gap:14px;padding:${v.isMobile ? "14px" : "18px"};border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);margin-bottom:16px`)}>
+        <div style={cs("display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap")}>
+          <Thumb url={sel.imageUrl} bg={sel.famBg} fg={sel.famFg} initials={sel.initials} size={v.isMobile ? "56px" : "68px"} radius="10px" fontSize={v.isMobile ? "19px" : "24px"} flex="none" />
+          <div style={cs("min-width:220px;flex:1")}>
+            <div style={cs("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+              <span style={cs(`font-size:${v.isMobile ? "20px" : "24px"};font-weight:700;letter-spacing:-.03em`)}>{sel.symbol}</span>
+              <span style={cs(`font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;padding:2px 9px;border-radius:999px;border:1px solid var(--line);background:${sel.famBg};color:${sel.famFg}`)}>{sel.family}</span>
             </div>
-            {!v.isMobile && (
-              <div style={cs("text-align:right;flex:none;margin-left:auto")}>
-                <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--mute)")}>{v.chartMode === "mcap" ? "MARKET CAP" : "PRICE"}</div>
-                <div style={cs("font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:500;letter-spacing:-.03em;line-height:1.2")}>{sel.price}</div>
-                <div style={cs(`font-family:'JetBrains Mono',monospace;font-size:11.5px;color:${sel.chgColor}`)}>{sel.chg} · {v.range}</div>
-              </div>
-            )}
+            <div style={cs("font-size:14px;color:var(--mute);margin-top:6px")}>{sel.name}</div>
           </div>
-          {v.isMobile && (
-            <>
-              <div style={cs("display:flex;gap:6px;flex-wrap:wrap")}>
-                <AddressChip address={sel.address} full={tok.id} />
-                <LinkChip href={`https://explorer.inkonchain.com/address/${tok.id}`}>Explorer</LinkChip>
-                <LinkChip href={`https://basedbot.app/token/ink/${tok.id}`}>BasedBot</LinkChip>
-                <LinkChip href={`https://gmgn.ai/ink/token/${tok.id}`}>GMGN</LinkChip>
-                {tok.socials?.website && <LinkChip href={tok.socials.website}>Website</LinkChip>}
-                {tok.socials?.twitter && <LinkChip href={tok.socials.twitter}>X</LinkChip>}
-                {tok.socials?.telegram && <LinkChip href={tok.socials.telegram}>Telegram</LinkChip>}
-              </div>
-              <div style={cs("display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px solid var(--soft)")}>
-                <span style={cs("font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--mute)")}>{v.chartMode === "mcap" ? "MARKET CAP" : "PRICE"}</span>
-                <span style={cs("display:flex;align-items:baseline;gap:8px")}>
-                  <span style={cs("font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:500;letter-spacing:-.03em")}>{sel.price}</span>
-                  <span style={cs(`font-family:'JetBrains Mono',monospace;font-size:11.5px;color:${sel.chgColor}`)}>{sel.chg} · {v.range}</span>
-                </span>
-              </div>
-            </>
-          )}
+          <div style={cs("text-align:right;font-family:'JetBrains Mono',monospace;flex:none")}>
+            <div style={cs(`font-size:${v.isMobile ? "22px" : "28px"};font-weight:500;letter-spacing:-.04em`)}>{sel.price}</div>
+            <div style={cs(`font-size:13px;margin-top:5px;color:${sel.chgColor}`)}>{sel.chg} · {v.range}</div>
+          </div>
         </div>
-        {tok.desc && <div style={cs("padding:10px 20px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--mute);max-width:70ch;line-height:1.5")}>{tok.desc}</div>}
-        <div style={cs("display:flex;flex-wrap:wrap")}>
-          {v.tokenStats.map((st, i) => (
-            <div key={i} style={cs("flex:1;min-width:110px;padding:9px 14px;border-right:1px solid var(--line);background:var(--card)")}>
-              <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--mute)")}>{st.k}</div>
-              <div style={cs("font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500;letter-spacing:-.02em;margin-top:3px")}>{st.v}</div>
-            </div>
-          ))}
+        <div style={cs("display:flex;gap:6px;flex-wrap:wrap")}>
+          <AddressChip address={sel.address} full={tok.id} />
+          <LinkChip href={`https://explorer.inkonchain.com/address/${tok.id}`}>Explorer</LinkChip>
+          <LinkChip href={`https://basedbot.app/token/ink/${tok.id}`}>BasedBot</LinkChip>
+          <LinkChip href={`https://gmgn.ai/ink/token/${tok.id}`}>GMGN</LinkChip>
+          {tok.socials?.website && <LinkChip href={tok.socials.website}>Website</LinkChip>}
+          {tok.socials?.twitter && <LinkChip href={tok.socials.twitter}>X</LinkChip>}
+          {tok.socials?.telegram && <LinkChip href={tok.socials.telegram}>Telegram</LinkChip>}
         </div>
+        {tok.desc && <div style={cs("font-size:12.5px;color:var(--mute);max-width:70ch;line-height:1.5")}>{tok.desc}</div>}
       </div>
 
       <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) 366px"};gap:16px;align-items:start`)}>
         <div style={cs("display:flex;flex-direction:column;gap:16px;min-width:0")}>
 
           <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);overflow:hidden")}>
+            <div style={cs("display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line)")}>
+              {v.tokenStats.map((st, i) => (
+                <div key={i} style={cs("min-width:72px")}>
+                  <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--mute)")}>{st.k}</div>
+                  <div style={cs("font-family:'JetBrains Mono',monospace;font-size:13.5px;font-weight:500;margin-top:3px;white-space:nowrap")}>{st.v}</div>
+                </div>
+              ))}
+              {!tok.poolId && (
+                <>
+                  <div style={cs("flex:1;min-width:8px")}></div>
+                  <div style={cs("display:flex")}>
+                    {v.ranges.map((r, i) => (
+                      <button key={i} onClick={r.go} style={cs(`padding:6px 10px;border:1px solid var(--line);border-right-width:${i === v.ranges.length - 1 ? "1px" : "0"};background:${r.bg};color:${r.fg};font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer`)}>{r.label}</button>
+                    ))}
+                  </div>
+                  <div style={cs("display:flex;margin-left:6px")}>
+                    {["price", "mcap"].map((mode, i) => (
+                      <button key={mode} onClick={() => v.setChartMode(mode)} style={cs(`padding:6px 10px;border:1px solid var(--line);border-right-width:${i === 0 ? "0" : "1px"};background:${v.chartMode === mode ? "var(--ink)" : "var(--card)"};color:${v.chartMode === mode ? "var(--card)" : "var(--mute)"};font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;cursor:pointer`)}>{mode === "price" ? "PRICE" : "MCAP"}</button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             {tok.poolId ? (
               // A real V4 pool exists (post-migration / instant-launch / a
               // finalized raise) -- DEXTools indexes Ink's V4 pools by their
@@ -189,27 +177,14 @@ export default function TokenPage({ v }) {
               />
             ) : (
               <>
-                <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
-                  <div style={cs("display:flex")}>
-                    {v.ranges.map((r, i) => (
-                      <button key={i} onClick={r.go} style={cs(`padding:9px 14px;border:0;border-right:1px solid var(--line);background:${r.bg};color:${r.fg};font-family:'JetBrains Mono',monospace;font-size:11.5px;cursor:pointer`)}>{r.label}</button>
-                    ))}
+                {v.chartOhlc && (
+                  <div style={cs("display:flex;align-items:center;gap:16px;padding:8px 14px;border-bottom:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute)")}>
+                    <span>O <span style={cs("color:var(--ink)")}>{v.chartOhlc.o}</span></span>
+                    <span>H <span style={cs("color:var(--ink)")}>{v.chartOhlc.h}</span></span>
+                    <span>L <span style={cs("color:var(--ink)")}>{v.chartOhlc.l}</span></span>
+                    <span>C <span style={cs(`color:${v.chartOhlc.up ? "var(--pos)" : "var(--neg)"}`)}>{v.chartOhlc.c}</span></span>
                   </div>
-                  <div style={cs("display:flex;border-right:1px solid var(--line)")}>
-                    {["price", "mcap"].map((mode) => (
-                      <button key={mode} onClick={() => v.setChartMode(mode)} style={cs(`padding:9px 14px;border:0;border-right:1px solid var(--soft);background:${v.chartMode === mode ? "var(--ink)" : "transparent"};color:${v.chartMode === mode ? "var(--card)" : "var(--mute)"};font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;cursor:pointer`)}>{mode === "price" ? "PRICE" : "MCAP"}</button>
-                    ))}
-                  </div>
-                  <div style={cs("flex:1")}></div>
-                  {v.chartOhlc && (
-                    <div style={cs("display:flex;align-items:center;gap:16px;padding:0 18px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute)")}>
-                      <span>O <span style={cs("color:var(--ink)")}>{v.chartOhlc.o}</span></span>
-                      <span>H <span style={cs("color:var(--ink)")}>{v.chartOhlc.h}</span></span>
-                      <span>L <span style={cs("color:var(--ink)")}>{v.chartOhlc.l}</span></span>
-                      <span>C <span style={cs(`color:${v.chartOhlc.up ? "var(--pos)" : "var(--neg)"}`)}>{v.chartOhlc.c}</span></span>
-                    </div>
-                  )}
-                </div>
+                )}
                 {v.candles.length > 0 ? (
                   <div style={cs("padding:14px")}>
                     <PriceChart candles={v.candles} height={v.isMobile ? 240 : 280} />
