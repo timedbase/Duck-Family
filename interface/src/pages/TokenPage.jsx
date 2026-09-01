@@ -63,7 +63,7 @@ function TradePanel({ v, sel, tok }) {
         </div>
         <div style={cs("display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute);margin-top:12px")}><span>YOUR BALANCE</span><span style={cs("color:var(--ink)")}>{v.myBalanceTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })} {sel.symbol.replace("$", "")}</span></div>
         <button onClick={v.submitTx} disabled={v.txPending} style={cs(`width:100%;padding:16px;margin-top:14px;border:1px solid var(--line);border-radius:9px;background:${v.ctaBg};color:${v.ctaFg};font-size:16px;font-weight:700;letter-spacing:-.01em;cursor:pointer`)}>{v.ctaLabel}</button>
-        <div style={cs("font-size:12px;color:var(--mute);line-height:1.55;margin-top:14px")}>{tok.family === "CURVE" && !tok.migrated ? "Buys route native ETH in automatically for ERC20-quoted curves. Sell proceeds land in the quote asset directly. The curve's own 1% trading fee applies both ways." : "Routes through the real Uniswap V4 pool via the Universal Router. Both buy and sell settle in native ETH. Anti-MEV blocks a second swap, either direction, from the same address in the same block. A 2% creator fee is taken from every sell, paid straight to the token's creator."}</div>
+        <div style={cs("font-size:11.5px;color:var(--mute);margin-top:12px")}>{tok.family === "CURVE" && !tok.migrated ? "Trades against the bonding curve." : "Routes through Uniswap V4."}</div>
       </div>
     </div>
   );
@@ -107,38 +107,62 @@ export default function TokenPage({ v }) {
       <button onClick={v.goHome} style={cs("border:0;background:transparent;font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.1em;color:var(--mute);cursor:pointer;padding:0 0 14px")}>← DISCOVER</button>
 
       <div style={cs("border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);margin-bottom:16px;overflow:hidden")}>
-        <div style={cs("display:flex;align-items:stretch;border-bottom:1px solid var(--line);flex-wrap:wrap")}>
-          <div style={cs(`width:${v.isMobile ? "56px" : "84px"};height:${v.isMobile ? "56px" : "84px"};align-self:flex-start;flex:none;border-right:1px solid var(--line)`)}>
-            <Thumb url={sel.imageUrl} bg={sel.famBg} fg={sel.famFg} initials={sel.initials} size="100%" fontSize={v.isMobile ? "18px" : "26px"} />
-          </div>
-          <div style={cs("flex:1;min-width:260px;padding:16px 20px;display:flex;flex-direction:column;gap:10px")}>
-            <div style={cs("display:flex;align-items:baseline;gap:11px;flex-wrap:wrap")}>
-              <h1 style={cs(`margin:0;font-size:${v.isMobile ? "20px" : "28px"};font-weight:700;letter-spacing:-.04em`)}>{sel.name}</h1>
-              <span style={cs("font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--mute)")}>{sel.symbol}</span>
-              <span style={cs(`font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:${sel.famBg};color:${sel.famFg}`)}>{sel.family}</span>
+        <div style={cs(`display:flex;${v.isMobile ? "flex-direction:column" : "align-items:center"};gap:${v.isMobile ? "12px" : "16px"};padding:${v.isMobile ? "14px" : "16px 20px"};border-bottom:1px solid var(--line)`)}>
+          <div style={cs(`display:flex;align-items:center;gap:${v.isMobile ? "12px" : "16px"}`)}>
+            <Thumb url={sel.imageUrl} bg={sel.famBg} fg={sel.famFg} initials={sel.initials} size={v.isMobile ? "44px" : "52px"} radius="10px" fontSize={v.isMobile ? "15px" : "18px"} flex="none" />
+            <div style={cs("min-width:0;flex:1;display:flex;flex-direction:column;gap:8px")}>
+              <div style={cs("display:flex;align-items:baseline;gap:9px;flex-wrap:wrap")}>
+                <h1 style={cs(`margin:0;font-size:${v.isMobile ? "18px" : "22px"};font-weight:700;letter-spacing:-.03em`)}>{sel.name}</h1>
+                <span style={cs("font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--mute)")}>{sel.symbol}</span>
+                <span style={cs(`font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:${sel.famBg};color:${sel.famFg}`)}>{sel.family}</span>
+              </div>
+              {!v.isMobile && (
+                <div style={cs("display:flex;gap:6px;flex-wrap:wrap")}>
+                  <AddressChip address={sel.address} full={tok.id} />
+                  <LinkChip href={`https://explorer.inkonchain.com/address/${tok.id}`}>Explorer</LinkChip>
+                  <LinkChip href={`https://basedbot.app/token/ink/${tok.id}`}>BasedBot</LinkChip>
+                  <LinkChip href={`https://gmgn.ai/ink/token/${tok.id}`}>GMGN</LinkChip>
+                  {tok.socials?.website && <LinkChip href={tok.socials.website}>Website</LinkChip>}
+                  {tok.socials?.twitter && <LinkChip href={tok.socials.twitter}>X</LinkChip>}
+                  {tok.socials?.telegram && <LinkChip href={tok.socials.telegram}>Telegram</LinkChip>}
+                </div>
+              )}
             </div>
-            <div style={cs("display:flex;gap:7px;flex-wrap:wrap")}>
-              <AddressChip address={sel.address} full={tok.id} />
-              <LinkChip href={`https://explorer.inkonchain.com/address/${tok.id}`}>Explorer</LinkChip>
-              <LinkChip href={`https://basedbot.app/token/ink/${tok.id}`}>BasedBot</LinkChip>
-              <LinkChip href={`https://gmgn.ai/ink/token/${tok.id}`}>GMGN</LinkChip>
-              {tok.socials?.website && <LinkChip href={tok.socials.website}>Website</LinkChip>}
-              {tok.socials?.twitter && <LinkChip href={tok.socials.twitter}>X</LinkChip>}
-              {tok.socials?.telegram && <LinkChip href={tok.socials.telegram}>Telegram</LinkChip>}
-            </div>
-            {tok.desc && <div style={cs("font-size:13px;color:var(--mute);max-width:60ch;line-height:1.5")}>{tok.desc}</div>}
+            {!v.isMobile && (
+              <div style={cs("text-align:right;flex:none;margin-left:auto")}>
+                <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--mute)")}>{v.chartMode === "mcap" ? "MARKET CAP" : "PRICE"}</div>
+                <div style={cs("font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:500;letter-spacing:-.03em;line-height:1.2")}>{sel.price}</div>
+                <div style={cs(`font-family:'JetBrains Mono',monospace;font-size:11.5px;color:${sel.chgColor}`)}>{sel.chg} · {v.range}</div>
+              </div>
+            )}
           </div>
-          <div style={cs("border-left:1px solid var(--line);padding:16px 22px;text-align:right;flex:none;display:flex;flex-direction:column;justify-content:center")}>
-            <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>{v.chartMode === "mcap" ? "MARKET CAP" : "PRICE"}</div>
-            <div style={cs("font-family:'JetBrains Mono',monospace;font-size:34px;font-weight:500;letter-spacing:-.04em;line-height:1;margin-top:6px")}>{sel.price}</div>
-            <div style={cs(`font-family:'JetBrains Mono',monospace;font-size:13px;color:${sel.chgColor};margin-top:5px`)}>{sel.chg} · {v.range}</div>
-          </div>
+          {v.isMobile && (
+            <>
+              <div style={cs("display:flex;gap:6px;flex-wrap:wrap")}>
+                <AddressChip address={sel.address} full={tok.id} />
+                <LinkChip href={`https://explorer.inkonchain.com/address/${tok.id}`}>Explorer</LinkChip>
+                <LinkChip href={`https://basedbot.app/token/ink/${tok.id}`}>BasedBot</LinkChip>
+                <LinkChip href={`https://gmgn.ai/ink/token/${tok.id}`}>GMGN</LinkChip>
+                {tok.socials?.website && <LinkChip href={tok.socials.website}>Website</LinkChip>}
+                {tok.socials?.twitter && <LinkChip href={tok.socials.twitter}>X</LinkChip>}
+                {tok.socials?.telegram && <LinkChip href={tok.socials.telegram}>Telegram</LinkChip>}
+              </div>
+              <div style={cs("display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px solid var(--soft)")}>
+                <span style={cs("font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--mute)")}>{v.chartMode === "mcap" ? "MARKET CAP" : "PRICE"}</span>
+                <span style={cs("display:flex;align-items:baseline;gap:8px")}>
+                  <span style={cs("font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:500;letter-spacing:-.03em")}>{sel.price}</span>
+                  <span style={cs(`font-family:'JetBrains Mono',monospace;font-size:11.5px;color:${sel.chgColor}`)}>{sel.chg} · {v.range}</span>
+                </span>
+              </div>
+            </>
+          )}
         </div>
+        {tok.desc && <div style={cs("padding:10px 20px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--mute);max-width:70ch;line-height:1.5")}>{tok.desc}</div>}
         <div style={cs("display:flex;flex-wrap:wrap")}>
           {v.tokenStats.map((st, i) => (
-            <div key={i} style={cs("flex:1;min-width:130px;padding:12px 18px;border-right:1px solid var(--line);background:var(--card)")}>
-              <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--mute)")}>{st.k}</div>
-              <div style={cs("font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:500;letter-spacing:-.02em;margin-top:5px")}>{st.v}</div>
+            <div key={i} style={cs("flex:1;min-width:110px;padding:9px 14px;border-right:1px solid var(--line);background:var(--card)")}>
+              <div style={cs("font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--mute)")}>{st.k}</div>
+              <div style={cs("font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500;letter-spacing:-.02em;margin-top:3px")}>{st.v}</div>
             </div>
           ))}
         </div>
@@ -160,7 +184,7 @@ export default function TokenPage({ v }) {
                 key={tok.poolId}
                 title={`${sel.symbol} chart on DEXTools`}
                 src={`https://www.dextools.io/widget-chart/en/ink/pe-light/${tok.poolId}?theme=light&chartType=1&chartResolution=30&drawingToolbars=false&showTradeHistory=false&chartInUsd=true`}
-                style={cs(`width:100%;height:${v.isMobile ? "420px" : "560px"};border:0;display:block`)}
+                style={cs(`width:100%;height:${v.isMobile ? "360px" : "480px"};border:0;display:block`)}
                 loading="lazy"
               />
             ) : (
@@ -188,7 +212,7 @@ export default function TokenPage({ v }) {
                 </div>
                 {v.candles.length > 0 ? (
                   <div style={cs("padding:14px")}>
-                    <PriceChart candles={v.candles} height={v.isMobile ? 260 : 320} />
+                    <PriceChart candles={v.candles} height={v.isMobile ? 240 : 280} />
                   </div>
                 ) : (
                   <div style={cs("padding:60px 18px;text-align:center;color:var(--mute);font-size:13px")}>No trades in this window yet.</div>

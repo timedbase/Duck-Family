@@ -31,7 +31,7 @@ import { findBlockedTerm } from "./moderation.js";
 import { resolveTokenImage, resolveTokenSocials, resolveTokenDescription, resolveTokenNameSymbol } from "./ipfs.js";
 
 const REFRESH_MS = 15000;
-const PAGE_SIZE = 50; // Trades/Holders tabs page at this size, both server- and client-side.
+const PAGE_SIZE = 10; // Trades/Holders tabs page at this size, both server- and client-side.
 const GAS_RESERVE_WEI = parseEther("0.005");
 const INK = "var(--ink)", CARD = "var(--card)", LIME = "var(--lime)", ORANGE = "var(--orange)";
 
