@@ -25,7 +25,7 @@ import {
 } from "./chain/actions.js";
 import { buyOnPoolWithNative, sellOnPoolForNative } from "./chain/dex.js";
 import { previewCurveBuy, previewCurveSell, previewCurveBuyWithNative, previewPoolBuyWithNative, previewPoolSellForNative, applySlippage } from "./chain/quotes.js";
-import { ZERO_ADDRESS, DEFAULT_QUOTE_TOKENS, RAISE_DEFAULT_QUOTE_ASSETS } from "./chain/addresses.js";
+import { ZERO_ADDRESS, DEFAULT_QUOTE_TOKENS, CURVE_LAUNCHER_QUOTE_TOKENS, STOCK_QUOTE_TOKENS, RAISE_DEFAULT_QUOTE_ASSETS, LIQUID_QUOTE_TOKEN_SYMBOLS } from "./chain/addresses.js";
 import { fetchTokenMeta, fetchTokenMetaUri } from "./chain/tokenMeta.js";
 import { findBlockedTerm } from "./moderation.js";
 import { resolveTokenImage, resolveTokenSocials, resolveTokenDescription, resolveTokenNameSymbol } from "./ipfs.js";
@@ -54,7 +54,7 @@ function quoteOptionsFor(base, platformToken) {
 }
 function decimalsFor(address, platformTokens = []) {
   if (address.toLowerCase() === ZERO_ADDRESS) return 18;
-  const all = [...DEFAULT_QUOTE_TOKENS, ...platformTokens.filter(Boolean)];
+  const all = [...DEFAULT_QUOTE_TOKENS, ...STOCK_QUOTE_TOKENS, ...platformTokens.filter(Boolean)];
   const t = all.find((q) => q.address.toLowerCase() === address.toLowerCase());
   return t ? t.decimals : 18;
 }
@@ -1220,8 +1220,12 @@ function buildViewModel(ctx) {
       if (s.raiseDefaults) return;
       getRaiseDefaults().then((d) => set({ raiseDefaults: d })).catch(() => {});
     },
-    quoteOptions: quoteOptionsFor(DEFAULT_QUOTE_TOKENS, s.platformTokens[s.family === "launcher" ? "launcher" : "incubation"]),
+    quoteOptions: quoteOptionsFor(CURVE_LAUNCHER_QUOTE_TOKENS, s.platformTokens[s.family === "launcher" ? "launcher" : "incubation"]),
     raiseQuoteOptions: quoteOptionsFor(RAISE_DEFAULT_QUOTE_ASSETS, s.platformTokens.raise),
+    // ETH ("") always has a route by definition; a platform token isn't in
+    // LIQUID_QUOTE_TOKEN_SYMBOLS either, so it correctly falls to false too
+    // until this platform actually wires a route for its own token.
+    quoteHasEthRoute: (label) => label === "ETH" || LIQUID_QUOTE_TOKEN_SYMBOLS.includes(label),
     createCta: !account ? "Connect wallet to launch" : s.txPending ? "Confirming…" : "Launch",
     submitCreate: ctx.submitCreate,
     simulating: s.simulating, simulateCreate: ctx.simulateCreate,

@@ -121,7 +121,7 @@ export default function CreateFormPage({ v }) {
             {family === "incubation" && (
               <>
                 <Field label="QUOTE ASSET" hint="Only USDC/USDT0 have a real ETH route for buyWithNative — pick ETH if unsure">
-                  <QuoteChips options={v.quoteOptions} value={v.draftCurve.quoteToken} onPick={(a) => v.setCurve({ quoteToken: a })} />
+                  <QuoteChips options={v.quoteOptions} value={v.draftCurve.quoteToken} onPick={(a) => v.setCurve({ quoteToken: a, earlyBuyAmount: "0" })} />
                 </Field>
                 <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "1fr" : "1fr 1fr"};gap:18px`)}>
                   <Field label={`START TARGET (${labelFor(v.quoteOptions, v.draftCurve.quoteToken)})`} hint="Raw quote amount where the curve opens">
@@ -131,9 +131,11 @@ export default function CreateFormPage({ v }) {
                     <TextInput value={v.draftCurve.migrationTargetQuote} onChange={(e) => v.setCurve({ migrationTargetQuote: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="60000" />
                   </Field>
                 </div>
-                <Field label={`OPTIONAL INSTANT BUY (${labelFor(v.quoteOptions, v.draftCurve.quoteToken)})`} hint="Bought off the curve in the same transaction as creation">
-                  <TextInput value={v.draftCurve.earlyBuyAmount} onChange={(e) => v.setCurve({ earlyBuyAmount: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="0" />
-                </Field>
+                {v.quoteHasEthRoute(labelFor(v.quoteOptions, v.draftCurve.quoteToken)) && (
+                  <Field label={`OPTIONAL INSTANT BUY (${labelFor(v.quoteOptions, v.draftCurve.quoteToken)})`} hint="Bought off the curve in the same transaction as creation">
+                    <TextInput value={v.draftCurve.earlyBuyAmount} onChange={(e) => v.setCurve({ earlyBuyAmount: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="0" />
+                  </Field>
+                )}
                 <Field label="SUPPLY / SPLIT (THIS APP'S DEFAULT)" hint="Fixed at deploy, no mint function ever — deflationary by default"><LockedInput value="1,000,000,000 — 80% curve / 20% liquidity" /></Field>
               </>
             )}
@@ -142,14 +144,16 @@ export default function CreateFormPage({ v }) {
               <>
                 <Field label="TOTAL SUPPLY" hint="Fixed at deploy, no mint function ever — deflationary by default"><LockedInput value="1,000,000,000 — fixed, no further mint path" /></Field>
                 <Field label="QUOTE ASSET" hint="Paired side of the V4 pool">
-                  <QuoteChips options={v.quoteOptions} value={v.draftInstant.quoteToken} onPick={(a) => v.setInstant({ quoteToken: a })} />
+                  <QuoteChips options={v.quoteOptions} value={v.draftInstant.quoteToken} onPick={(a) => v.setInstant({ quoteToken: a, buyAmountHype: "0" })} />
                 </Field>
                 <Field label={`LAUNCH MARKET CAP (${labelFor(v.quoteOptions, v.draftInstant.quoteToken)})`} hint="Virtual FDV the pool is seeded at">
                   <TextInput value={v.draftInstant.launchMarketCap} onChange={(e) => v.setInstant({ launchMarketCap: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="10" />
                 </Field>
-                <Field label="OPTIONAL INSTANT BUY (ETH)" hint="Swapped into the quote asset and used to buy the new pool immediately">
-                  <TextInput value={v.draftInstant.buyAmountHype} onChange={(e) => v.setInstant({ buyAmountHype: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="0" />
-                </Field>
+                {v.quoteHasEthRoute(labelFor(v.quoteOptions, v.draftInstant.quoteToken)) && (
+                  <Field label="OPTIONAL INSTANT BUY (ETH)" hint="Swapped into the quote asset and used to buy the new pool immediately">
+                    <TextInput value={v.draftInstant.buyAmountHype} onChange={(e) => v.setInstant({ buyAmountHype: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="0" />
+                  </Field>
+                )}
                 <Field label="FEE / TICK SPACING"><LockedInput value="10000 / 200 (this platform's 1% pool convention)" /></Field>
               </>
             )}

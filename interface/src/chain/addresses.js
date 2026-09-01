@@ -57,11 +57,40 @@ export const DEFAULT_QUOTE_TOKENS = [
   { address: getAddress("0x0200C29006150606B650577BBE7B6248F58470c1"), symbol: "USD₮0", decimals: 6 },
 ];
 
-// DuckRaise's quoteAssetAllowed is the same narrow set -- every asset above
-// already has a real ETH route, which a raise's dexQuoteAsset requires.
+// A different, newer set of tokenized-equity "xStock" assets (not the 12
+// disabled ones above) -- real, verified liquidity confirmed on-chain
+// against a genuine Uniswap V3 factory on Ink (0x640887A9...), but every
+// one of them is only paired with USDG there, and USDG itself has no
+// liquid path back to ETH/USDC/USDT0 on that factory (checked exhaustively:
+// no WETH/USDG pool at any fee tier, no direct USDT0- or USDC-quote pool
+// for any of these six, and the USDT0/USDG pools that do exist have zero
+// liquidity). wNVDAx is the one exception with its own direct WETH pool
+// (fee 10000, real liquidity) -- LaunchRouting.sol already has a
+// UNIVERSAL_ROUTER_STYLE route shape ready for it, just not wired via
+// setRoutes yet. Until a real Uniswap-only bridge into USDG opens up (or
+// more direct WETH pools appear), none of these six get "optional instant
+// buy" -- see LIQUID_QUOTE_TOKEN_SYMBOLS below.
+export const STOCK_QUOTE_TOKENS = [
+  { address: getAddress("0xE7E553Cd128F0011777323A0b44a7b96EA1CB540"), symbol: "wSPYx", decimals: 18 },
+  { address: getAddress("0x943BF64D566c32A2Bcd41AC92FB63C111cC9De8f"), symbol: "wAAPLx", decimals: 18 },
+  { address: getAddress("0xc3FdBe3A68EE5dE461D30415a8165cf9Aefe1171"), symbol: "wTSLAx", decimals: 18 },
+  { address: getAddress("0x7d87fD6A379714194a797c0bBB8B40c30D250856"), symbol: "wNFLXx", decimals: 18 },
+  { address: getAddress("0x30987adF0B11dc698438a99BA04ec3a1AB2c7EaB"), symbol: "wMSTRx", decimals: 18 },
+  { address: getAddress("0xa8ddb5Cd96b5222AFe198316E9A57CAA642850D5"), symbol: "wNVDAx", decimals: 18 },
+];
+
+// Incubation/Launcher can quote in any of the above, liquid or not -- their
+// "optional instant buy" is just skipped client-side for the illiquid ones
+// (see LIQUID_QUOTE_TOKEN_SYMBOLS). Raise has no such fallback: finalize()
+// always swaps the raised ETH into the quote asset to seed the pool, so an
+// illiquid quote asset would make the raise permanently unfinalizable.
+// Keep this one strictly to assets with a real route.
+export const CURVE_LAUNCHER_QUOTE_TOKENS = [...DEFAULT_QUOTE_TOKENS, ...STOCK_QUOTE_TOKENS];
 export const RAISE_DEFAULT_QUOTE_ASSETS = DEFAULT_QUOTE_TOKENS;
 
-// USDC/USDT0 are the only two of the 15 with real Ink liquidity today (see
-// contracts/deploy/deployments/ink.json's notes) -- the ones buyWithNative/
-// early-buy routing actually works against out of the box.
+// USDC/USDT0 are the only quote assets with real Ink liquidity confirmed all
+// the way back to native ETH -- the ones buyWithNative/early-buy routing
+// actually works against out of the box. Every STOCK_QUOTE_TOKENS entry is
+// deliberately excluded (see the comment above), including wNVDAx, until
+// its route is actually wired on-chain via setRoutes.
 export const LIQUID_QUOTE_TOKEN_SYMBOLS = ["USDC", "USD₮0"];
