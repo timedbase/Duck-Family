@@ -33,6 +33,7 @@ import { resolveTokenImage, resolveTokenSocials, resolveTokenDescription, resolv
 
 const REFRESH_MS = 15000;
 const PAGE_SIZE = 10; // Trades/Holders tabs page at this size, both server- and client-side.
+const HEALTH_CHECK_MS = 30000; // matches the backend's own subgraph-poll interval (see backend/src/health.ts)
 const GAS_RESERVE_WEI = parseEther("0.005");
 const INK = "var(--ink)", CARD = "var(--card)", LIME = "var(--lime)", ORANGE = "var(--orange)";
 
@@ -161,6 +162,7 @@ export default function App() {
     raiseDefaults: null, platformTokens: { incubation: null, launcher: null, raise: null },
     creatorData: null, creatorLoading: false,
     campaignDetail: null,
+    health: { ok: true, frontendMs: null, subgraphMs: null, checkedAt: null },
   });
   const set = useCallback((patch) => setS((st) => ({ ...st, ...(typeof patch === "function" ? patch(st) : patch) })), []);
 
@@ -332,6 +334,35 @@ export default function App() {
     const t = setInterval(refreshBalance, REFRESH_MS);
     return () => clearInterval(t);
   }, [account, refreshBalance, loadPortfolio, set]);
+
+  // Real, measured system status for the persistent bottom bar: the backend
+  // occasionally times its own subgraph round-trip (see backend/src/
+  // health.ts) and reports the last reading via /health; this measures the
+  // frontend's own round-trip to that same endpoint on top, so the bar
+  // reflects both legs -- API reachability AND subgraph health -- not a
+  // hardcoded "synced".
+  useEffect(() => {
+    let cancelled = false;
+    async function checkHealth() {
+      const start = performance.now();
+      try {
+        const res = await api.health();
+        if (cancelled) return;
+        set({ health: {
+          ok: res.ok && res.subgraph?.ok !== false,
+          frontendMs: Math.round(performance.now() - start),
+          subgraphMs: res.subgraph?.latencyMs ?? null,
+          checkedAt: Date.now(),
+        } });
+      } catch {
+        if (cancelled) return;
+        set({ health: { ok: false, frontendMs: null, subgraphMs: null, checkedAt: Date.now() } });
+      }
+    }
+    checkHealth();
+    const t = setInterval(checkHealth, HEALTH_CHECK_MS);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [set]);
 
   // Shared by loadTokenDetail (CURVE/INSTANT) and loadCampaignDetail (RAISE)
   // -- metaURI() is the same ERC20 field on every family's token clone.
@@ -992,8 +1023,10 @@ export default function App() {
           nav link now, alongside the chain-sync status and the social
           links, none of which need to sit in the nav/header anymore. */}
       <div style={cs(`position:fixed;left:${m ? "0" : "236px"};right:0;bottom:0;z-index:55;display:flex;align-items:center;gap:10px;height:44px;padding:0 ${m ? "12px" : "20px"};border-top:1px solid var(--line);background:rgba(23,23,23,.92);backdrop-filter:blur(8px);font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute)`)}>
-        <span style={cs("width:6px;height:6px;border-radius:99px;background:var(--lime);flex:none")}></span>
-        <span>{m ? "INK 57073" : "Ink 57073 · synced"}</span>
+        <span style={cs(`width:6px;height:6px;border-radius:99px;background:${v.health.checkedAt && !v.health.ok ? "var(--neg)" : "var(--lime)"};flex:none`)}></span>
+        <span title={v.health.checkedAt ? `API ${v.health.frontendMs}ms · Subgraph ${v.health.subgraphMs != null ? v.health.subgraphMs + "ms" : "—"}` : "Checking system status…"}>
+          {m ? "INK 57073" : "Ink 57073"}{v.health.frontendMs != null && ` · ${v.health.frontendMs}ms`}
+        </span>
         <div style={cs("margin-left:auto;display:flex;gap:6px")}>
           <button onClick={v.goDocs} title="Docs" style={cs("width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);cursor:pointer;padding:0")}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v4h4" /><path d="M9 12h6M9 16h6" /></svg>
@@ -1384,6 +1417,7 @@ function buildViewModel(ctx) {
 
     tx: walletTx, txOpen: !!s.tx, closeTx: () => set({ tx: null }),
     toast: s.toast,
+    health: s.health,
   };
 }
 

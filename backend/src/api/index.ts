@@ -10,6 +10,7 @@ import platformRouter from "./routes/platform.js";
 import uploadRouter from "./routes/upload.js";
 import commentsRouter from "./routes/comments.js";
 import { ensureSchema } from "../db/client.js";
+import { startHealthChecks, getSubgraphHealth } from "../health.js";
 
 const app = express();
 // Render puts one reverse proxy in front of this service, which sets
@@ -27,7 +28,7 @@ app.use(rateLimit({
   legacyHeaders: false,
 }));
 
-app.get("/health", (_req, res) => res.json({ ok: true }));
+app.get("/health", (_req, res) => res.json({ ok: true, subgraph: getSubgraphHealth() }));
 
 app.use("/tokens", tokensRouter);
 app.use("/tokens", commentsRouter);
@@ -61,6 +62,8 @@ app.use(errorHandler);
 ensureSchema()
   .then(() => console.log("comments schema ready"))
   .catch((err) => console.warn("comments storage unavailable:", err instanceof Error ? err.message : err));
+
+startHealthChecks();
 
 const port = Number(process.env.PORT ?? 3000);
 app.listen(port, () => {

@@ -47,6 +47,7 @@ export const api = {
   holders: (address, limit = 50, offset = 0) => getJSON(`/tokens/${address}/holders?limit=${limit}&offset=${offset}`),
   comments: (address, limit = 50, offset = 0) => getJSON(`/tokens/${address}/comments?limit=${limit}&offset=${offset}`),
   postComment: (address, wallet, body) => postJSON(`/tokens/${address}/comments`, { wallet, body }),
+  health: () => getJSON("/health"),
   campaigns: () => getJSON("/campaigns"),
   campaign: (id) => getJSON(`/campaigns/${id}`),
   portfolio: (address) => getJSON(`/portfolio/${address}`),

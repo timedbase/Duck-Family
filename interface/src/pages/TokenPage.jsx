@@ -4,17 +4,36 @@ import PriceChart from "../PriceChart.jsx";
 import Thumb from "../Thumb.jsx";
 import { AddressChip, LinkChip, IconLinkChip, XIcon, TelegramIcon } from "../MetaChips.jsx";
 
+// Windowed page list -- first, last, current ± 1, "…" for the gaps -- so a
+// tab with dozens of pages shows "1 … 9 10 11 … 40" instead of forty
+// buttons in a row. Small counts (<=7) just show every page, no ellipsis.
+function pageWindow(current, total, siblings = 1) {
+  const maxButtons = siblings * 2 + 5; // first + last + current + siblings*2 + 2 ellipsis slots
+  if (total <= maxButtons) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const left = Math.max(current - siblings, 1);
+  const right = Math.min(current + siblings, total);
+  const pages = [1];
+  if (left > 2) pages.push("…");
+  for (let i = left; i <= right; i++) if (i !== 1 && i !== total) pages.push(i);
+  if (right < total - 1) pages.push("…");
+  pages.push(total);
+  return pages;
+}
+
 // Real numbered pagination: every button is a plain page number, and the
-// full range renders immediately from the backend's total count -- clicking
-// any of them (even one never viewed before) fetches that exact page
-// directly, with no separate "load more" step or affordance.
+// full range is known immediately from the backend's total count --
+// clicking any of them (even one never viewed before) fetches that exact
+// page directly, with no separate "load more" step or affordance.
 function Pager({ page, totalPages, loading, onPageChange }) {
   if (totalPages <= 1) return null;
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+  const pages = pageWindow(page, totalPages);
   return (
     <div style={cs("display:flex;align-items:center;gap:6px;padding:14px 18px;min-width:460px;flex-wrap:wrap")}>
       <button onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page === 1 || loading} style={cs(`width:30px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:13px;cursor:pointer;opacity:${page === 1 ? .4 : 1}`)}>‹</button>
-      {pages.map((p) => (
+      {pages.map((p, i) => p === "…" ? (
+        <span key={"e" + i} style={cs("min-width:30px;height:30px;display:flex;align-items:center;justify-content:center;color:var(--mute);font-family:'JetBrains Mono',monospace;font-size:12px")}>…</span>
+      ) : (
         <button key={p} onClick={() => onPageChange(p)} disabled={loading} style={cs(`min-width:30px;height:30px;padding:0 8px;border:1px solid var(--line);border-radius:6px;background:${p === page ? "var(--ink)" : "var(--card)"};color:${p === page ? "var(--card)" : "var(--ink)"};font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;opacity:${loading && p !== page ? .5 : 1}`)}>{p}</button>
       ))}
       <button onClick={() => onPageChange(Math.min(totalPages, page + 1))} disabled={page === totalPages || loading} style={cs(`width:30px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:13px;cursor:pointer;opacity:${page === totalPages ? .4 : 1}`)}>›</button>
