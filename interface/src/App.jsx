@@ -1262,6 +1262,10 @@ function buildViewModel(ctx) {
     hookAccrued: s.creatorData ? Number(s.creatorData.hookAccrued || 0n) / 1e18 : 0,
     hookAccruedFailed: !!s.creatorData?.hookAccruedFailed,
     hookSplits: s.creatorData?.hookSplits || [],
+    // setFeeSplits is contract-gated to the pool's own creator (NotCreator()
+    // revert otherwise) -- checked client-side too so a connected non-creator
+    // wallet gets a plain notice instead of a guaranteed-fail transaction.
+    isCreator: !!(account && s.creatorData?.creator && account.toLowerCase() === s.creatorData.creator.toLowerCase()),
     buying, amt, myBalanceTokens, myContribution,
     buy: (amtEth) => ctx.buy(c, amtEth), sell: (tokenAmt) => ctx.sell(c, tokenAmt),
     setBuy: () => set({ side: "buy" }), setSell: () => set({ side: "sell", amount: myBalanceTokens ? String(myBalanceTokens / 2) : "0" }),

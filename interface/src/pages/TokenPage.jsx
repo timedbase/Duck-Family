@@ -93,14 +93,21 @@ export default function TokenPage({ v }) {
     const poolId = v.liq && v.creatorData?.poolId;
     if (!poolId) return;
     const pct = parseFloat(splitPct) || 0;
-    if (!splitWallet.trim() || pct <= 0 || pct >= 100) {
+    if (!splitWallet.trim() || pct <= 0) {
       v.saveFeeSplits(poolId, []); // empty resets to 100% direct to creator
       return;
     }
-    v.saveFeeSplits(poolId, [
-      { wallet: splitWallet.trim(), bps: Math.round(pct * 100) },
-      { wallet: v.account, bps: 10000 - Math.round(pct * 100) },
-    ]);
+    // 100 (or above, clamped) means the whole fee goes to the split wallet --
+    // a single entry summing to 10000 bps, not a 0%-to-creator second entry,
+    // since the contract requires every non-empty split array to sum to
+    // exactly BPS (10000).
+    const bps = Math.min(10000, Math.round(pct * 100));
+    v.saveFeeSplits(poolId, bps >= 10000
+      ? [{ wallet: splitWallet.trim(), bps: 10000 }]
+      : [
+          { wallet: splitWallet.trim(), bps },
+          { wallet: v.account, bps: 10000 - bps },
+        ]);
   };
 
   return (
@@ -368,6 +375,8 @@ export default function TokenPage({ v }) {
                         {feeRoutingOpen && (
                           !v.liq || v.liq.status === "NO POOL YET" ? (
                             <div style={cs("padding:16px;font-size:12.5px;color:var(--mute)")}>Not available until this token has a real V4 pool.</div>
+                          ) : !v.isCreator ? (
+                            <div style={cs("padding:16px;font-size:12.5px;color:var(--mute)")}>Only the creator ({v.cto ? v.cto.creator : "—"}) can change fee routing for this token.</div>
                           ) : (
                             <>
                               <div style={cs("padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px")}>
