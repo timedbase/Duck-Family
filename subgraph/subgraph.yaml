@@ -38,6 +38,8 @@ dataSources:
           handler: handleEmergencyMigrated
         - event: CurveFeeClaimed(indexed address,indexed address,uint256,uint256)
           handler: handleCurveFeeClaimed
+        - event: DexConfigUpdated(address,address,address,address)
+          handler: handleDexConfigUpdated
       file: ./src/duck-incubation.ts
 
   - kind: ethereum
@@ -61,6 +63,8 @@ dataSources:
       eventHandlers:
         - event: TokenLaunched(indexed address,indexed address,indexed address,address,address,bytes32,uint256)
           handler: handleTokenLaunched
+        - event: DexAdded(indexed address,address,address,address)
+          handler: handleDexAdded
       file: ./src/duck-launcher.ts
 
   - kind: ethereum
@@ -96,6 +100,8 @@ dataSources:
           handler: handleClaimed
         - event: Refunded(indexed uint256,indexed address,uint256)
           handler: handleRefunded
+        - event: DexConfigSet(address,address,address,address)
+          handler: handleDexConfigSet
       file: ./src/duck-raise.ts
 
   - kind: ethereum
@@ -209,6 +215,43 @@ dataSources:
       file: ./src/duck-meta-override.ts
 
 templates:
+  # Any hook rotated in after deployment via addDex (DuckLauncher) /
+  # setDexConfig (DuckIncubation, DuckRaise) -- the ORIGINAL, constructor-set
+  # hook above is a static dataSource since it never has a DexAdded/
+  # DexConfigUpdated/DexConfigSet event of its own to trigger a .create()
+  # from. Without this, a hook rotation (a real one happened 2026-08-30,
+  # silently orphaning every token launched after it -- no price, no trades,
+  # no chart, since Pool/PoolSwap/HookFeeClaim/CTOApplication for that hook
+  # were never indexed) breaks every future token until someone notices.
+  - kind: ethereum
+    name: DuckHookV4Dynamic
+    network: ink
+    source:
+      abi: DuckHookV4
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Pool
+        - HookFeeClaim
+        - CTOApplication
+      abis:
+        - name: DuckHookV4
+          file: ./abis/DuckHookV4.json
+      eventHandlers:
+        - event: PoolRegistered(indexed bytes32,indexed address,indexed address,uint256)
+          handler: handlePoolRegisteredDynamic
+        - event: FeesClaimed(indexed bytes32,uint256)
+          handler: handleFeesClaimedDynamic
+        - event: CTOApplied(indexed bytes32,indexed address,address,uint256)
+          handler: handleCTOAppliedDynamic
+        - event: CTOApproved(indexed bytes32,address)
+          handler: handleCTOApprovedDynamic
+        - event: CTORejected(indexed bytes32,indexed address)
+          handler: handleCTORejectedDynamic
+      file: ./src/duck-hook.ts
+
   - kind: ethereum
     name: DuckToken
     network: ink

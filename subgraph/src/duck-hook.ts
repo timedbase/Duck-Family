@@ -1,84 +1,137 @@
-import { BigInt } from "@graphprotocol/graph-ts";
+import { BigInt, Bytes } from "@graphprotocol/graph-ts";
 import {
-  PoolRegistered,
-  FeesClaimed,
-  CTOApplied,
-  CTOApproved,
-  CTORejected,
+  PoolRegistered as PoolRegisteredStatic,
+  FeesClaimed as FeesClaimedStatic,
+  CTOApplied as CTOAppliedStatic,
+  CTOApproved as CTOApprovedStatic,
+  CTORejected as CTORejectedStatic,
 } from "../generated/DuckHookV4/DuckHookV4";
+// The original, constructor-set hook (see subgraph.yaml's static DuckHookV4
+// dataSource) and any hook rotated in later via addDex/setDexConfig (see
+// the DuckHookV4Dynamic template, started from duck-launcher.ts/
+// duck-incubation.ts/duck-raise.ts's DexAdded/DexConfigUpdated/
+// DexConfigSet handlers) are the same ABI, but codegen gives a static
+// dataSource and a template distinct, non-interchangeable event classes --
+// hence the Static/Dynamic import split and thin per-source wrappers below,
+// both delegating to the same entity-mutation logic.
+import {
+  PoolRegistered as PoolRegisteredDynamic,
+  FeesClaimed as FeesClaimedDynamic,
+  CTOApplied as CTOAppliedDynamic,
+  CTOApproved as CTOApprovedDynamic,
+  CTORejected as CTORejectedDynamic,
+} from "../generated/templates/DuckHookV4Dynamic/DuckHookV4";
 import { Pool, HookFeeClaim, CTOApplication } from "../generated/schema";
 
-export function handlePoolRegistered(event: PoolRegistered): void {
-  let pool = new Pool(event.params.poolId.toHexString());
-  pool.token = event.params.token.toHexString();
-  pool.creator = event.params.creator;
-  pool.hookFeeBps = event.params.hookFeeBps;
-  pool.registeredAt = event.block.timestamp;
-  pool.registeredAtBlock = event.block.number;
+function registerPool(poolId: Bytes, token: Bytes, creator: Bytes, hookFeeBps: BigInt, timestamp: BigInt, blockNumber: BigInt): void {
+  let pool = new Pool(poolId.toHexString());
+  pool.token = token.toHexString();
+  pool.creator = creator;
+  pool.hookFeeBps = hookFeeBps;
+  pool.registeredAt = timestamp;
+  pool.registeredAtBlock = blockNumber;
   pool.swapCount = BigInt.zero();
   pool.save();
 }
 
-export function handleFeesClaimed(event: FeesClaimed): void {
-  let pool = Pool.load(event.params.poolId.toHexString());
+export function handlePoolRegistered(event: PoolRegisteredStatic): void {
+  registerPool(event.params.poolId, event.params.token, event.params.creator, event.params.hookFeeBps, event.block.timestamp, event.block.number);
+}
+export function handlePoolRegisteredDynamic(event: PoolRegisteredDynamic): void {
+  registerPool(event.params.poolId, event.params.token, event.params.creator, event.params.hookFeeBps, event.block.timestamp, event.block.number);
+}
+
+function claimFees(poolId: Bytes, amount: BigInt, timestamp: BigInt, blockNumber: BigInt, txHash: Bytes, logIndex: BigInt): void {
+  let pool = Pool.load(poolId.toHexString());
   if (pool == null) return;
 
-  let claim = new HookFeeClaim(event.transaction.hash.toHexString() + "-" + event.logIndex.toString());
+  let claim = new HookFeeClaim(txHash.toHexString() + "-" + logIndex.toString());
   claim.pool = pool.id;
-  claim.amount = event.params.amount;
-  claim.timestamp = event.block.timestamp;
-  claim.blockNumber = event.block.number;
-  claim.txHash = event.transaction.hash;
+  claim.amount = amount;
+  claim.timestamp = timestamp;
+  claim.blockNumber = blockNumber;
+  claim.txHash = txHash;
   claim.save();
 }
 
-export function handleCTOApplied(event: CTOApplied): void {
-  let pool = Pool.load(event.params.poolId.toHexString());
+export function handleFeesClaimed(event: FeesClaimedStatic): void {
+  claimFees(event.params.poolId, event.params.amount, event.block.timestamp, event.block.number, event.transaction.hash, event.logIndex);
+}
+export function handleFeesClaimedDynamic(event: FeesClaimedDynamic): void {
+  claimFees(event.params.poolId, event.params.amount, event.block.timestamp, event.block.number, event.transaction.hash, event.logIndex);
+}
+
+function applyForCTO(
+  poolId: Bytes, applicant: Bytes, newCreator: Bytes, paid: BigInt,
+  timestamp: BigInt, blockNumber: BigInt, txHash: Bytes, logIndex: BigInt
+): void {
+  let pool = Pool.load(poolId.toHexString());
   if (pool == null) return;
 
-  let id = event.params.poolId.toHexString() + "-" + event.transaction.hash.toHexString() + "-" + event.logIndex.toString();
+  let id = poolId.toHexString() + "-" + txHash.toHexString() + "-" + logIndex.toString();
   let application = new CTOApplication(id);
   application.pool = pool.id;
-  application.applicant = event.params.applicant;
-  application.newCreator = event.params.newCreator;
-  application.paid = event.params.paid;
+  application.applicant = applicant;
+  application.newCreator = newCreator;
+  application.paid = paid;
   application.status = "PENDING";
-  application.appliedAt = event.block.timestamp;
-  application.appliedAtBlock = event.block.number;
-  application.appliedAtTx = event.transaction.hash;
+  application.appliedAt = timestamp;
+  application.appliedAtBlock = blockNumber;
+  application.appliedAtTx = txHash;
   application.save();
 
   pool.pendingCTO = id;
   pool.save();
 }
 
-export function handleCTOApproved(event: CTOApproved): void {
-  let pool = Pool.load(event.params.poolId.toHexString());
+export function handleCTOApplied(event: CTOAppliedStatic): void {
+  applyForCTO(event.params.poolId, event.params.applicant, event.params.newCreator, event.params.paid, event.block.timestamp, event.block.number, event.transaction.hash, event.logIndex);
+}
+export function handleCTOAppliedDynamic(event: CTOAppliedDynamic): void {
+  applyForCTO(event.params.poolId, event.params.applicant, event.params.newCreator, event.params.paid, event.block.timestamp, event.block.number, event.transaction.hash, event.logIndex);
+}
+
+function approveCTO(poolId: Bytes, newCreator: Bytes, timestamp: BigInt, blockNumber: BigInt): void {
+  let pool = Pool.load(poolId.toHexString());
   if (pool == null || pool.pendingCTO == null) return;
 
   let application = CTOApplication.load(pool.pendingCTO!);
   if (application == null) return;
   application.status = "APPROVED";
-  application.resolvedAt = event.block.timestamp;
-  application.resolvedAtBlock = event.block.number;
+  application.resolvedAt = timestamp;
+  application.resolvedAtBlock = blockNumber;
   application.save();
 
-  pool.creator = event.params.newCreator;
+  pool.creator = newCreator;
   pool.pendingCTO = null;
   pool.save();
 }
 
-export function handleCTORejected(event: CTORejected): void {
-  let pool = Pool.load(event.params.poolId.toHexString());
+export function handleCTOApproved(event: CTOApprovedStatic): void {
+  approveCTO(event.params.poolId, event.params.newCreator, event.block.timestamp, event.block.number);
+}
+export function handleCTOApprovedDynamic(event: CTOApprovedDynamic): void {
+  approveCTO(event.params.poolId, event.params.newCreator, event.block.timestamp, event.block.number);
+}
+
+function rejectCTO(poolId: Bytes, timestamp: BigInt, blockNumber: BigInt): void {
+  let pool = Pool.load(poolId.toHexString());
   if (pool == null || pool.pendingCTO == null) return;
 
   let application = CTOApplication.load(pool.pendingCTO!);
   if (application == null) return;
   application.status = "REJECTED";
-  application.resolvedAt = event.block.timestamp;
-  application.resolvedAtBlock = event.block.number;
+  application.resolvedAt = timestamp;
+  application.resolvedAtBlock = blockNumber;
   application.save();
 
   pool.pendingCTO = null;
   pool.save();
+}
+
+export function handleCTORejected(event: CTORejectedStatic): void {
+  rejectCTO(event.params.poolId, event.block.timestamp, event.block.number);
+}
+export function handleCTORejectedDynamic(event: CTORejectedDynamic): void {
+  rejectCTO(event.params.poolId, event.block.timestamp, event.block.number);
 }

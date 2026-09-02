@@ -6,10 +6,11 @@ import {
   CampaignFailed,
   Claimed,
   Refunded,
+  DexConfigSet,
 } from "../generated/DuckRaise/DuckRaise";
 import { TokenMetadata } from "../generated/DuckRaise/TokenMetadata";
 import { Token, Campaign, Contribution } from "../generated/schema";
-import { DuckToken } from "../generated/templates";
+import { DuckToken, DuckHookV4Dynamic } from "../generated/templates";
 
 // DuckRaise.TOTAL_SUPPLY -- fixed for every campaign, not carried in
 // CampaignCreated itself.
@@ -125,4 +126,13 @@ export function handleRefunded(event: Refunded): void {
   contribution.refunded = true;
   contribution.refundedAmount = contribution.refundedAmount.plus(event.params.amount);
   contribution.save();
+}
+
+// Fires whenever the owner points this positionManager at a different hook
+// (see subgraph.yaml's DuckHookV4Dynamic template comment) -- starts
+// indexing Pool/HookFeeClaim/CTOApplication for it from here on, instead of
+// silently orphaning every successful campaign's pool that ends up on the
+// new hook.
+export function handleDexConfigSet(event: DexConfigSet): void {
+  DuckHookV4Dynamic.create(event.params.hook);
 }

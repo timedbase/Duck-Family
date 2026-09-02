@@ -6,10 +6,11 @@ import {
   TokenMigrated,
   EmergencyMigrated,
   CurveFeeClaimed,
+  DexConfigUpdated,
 } from "../generated/DuckIncubation/DuckIncubation";
 import { TokenMetadata } from "../generated/DuckIncubation/TokenMetadata";
 import { Token, Trade, Migration, CurveFeeClaim } from "../generated/schema";
-import { DuckToken } from "../generated/templates";
+import { DuckToken, DuckHookV4Dynamic } from "../generated/templates";
 import { recordTrade, quoteHexOf } from "./lib";
 
 export function handleTokenCreated(event: TokenCreated): void {
@@ -151,4 +152,12 @@ export function handleCurveFeeClaimed(event: CurveFeeClaimed): void {
   claim.blockNumber = event.block.number;
   claim.txHash = event.transaction.hash;
   claim.save();
+}
+
+// Fires whenever the owner points this positionManager at a different hook
+// (see subgraph.yaml's DuckHookV4Dynamic template comment) -- starts
+// indexing Pool/HookFeeClaim/CTOApplication for it from here on, instead of
+// silently orphaning every migrated-curve token that ends up on the new hook.
+export function handleDexConfigUpdated(event: DexConfigUpdated): void {
+  DuckHookV4Dynamic.create(event.params.hook);
 }

@@ -1,8 +1,8 @@
 import { BigInt, BigDecimal } from "@graphprotocol/graph-ts";
-import { TokenLaunched } from "../generated/DuckLauncher/DuckLauncher";
+import { TokenLaunched, DexAdded } from "../generated/DuckLauncher/DuckLauncher";
 import { TokenMetadata } from "../generated/DuckLauncher/TokenMetadata";
 import { Token } from "../generated/schema";
-import { DuckToken } from "../generated/templates";
+import { DuckToken, DuckHookV4Dynamic } from "../generated/templates";
 
 // DuckLauncher.TOTAL_SUPPLY -- fixed for every instant launch, not carried
 // in the TokenLaunched event itself.
@@ -37,4 +37,12 @@ export function handleTokenLaunched(event: TokenLaunched): void {
   token.save();
 
   DuckToken.create(event.params.token);
+}
+
+// Fires whenever the owner points this positionManager at a different hook
+// (see subgraph.yaml's DuckHookV4Dynamic template comment) -- starts
+// indexing Pool/HookFeeClaim/CTOApplication for it from here on, instead of
+// silently orphaning every token launched under the new hook.
+export function handleDexAdded(event: DexAdded): void {
+  DuckHookV4Dynamic.create(event.params.hook);
 }
