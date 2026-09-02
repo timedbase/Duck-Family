@@ -4,23 +4,20 @@ import PriceChart from "../PriceChart.jsx";
 import Thumb from "../Thumb.jsx";
 import { AddressChip, LinkChip, IconLinkChip, XIcon, TelegramIcon } from "../MetaChips.jsx";
 
-// Numbered pager over an already-fetched, ever-growing row list (App.jsx
-// appends full pages as "load more" fires) -- shown pages are just a slice
-// of what's loaded; the last number doubles as "fetch the next page" when
-// `hasMore` says the backend has more rows than we've pulled down yet.
-function Pager({ page, setPage, totalPages, hasMore, loading, onLoadMore }) {
-  if (totalPages <= 1 && !hasMore) return null;
+// Real numbered pagination: every button is a plain page number, and the
+// full range renders immediately from the backend's total count -- clicking
+// any of them (even one never viewed before) fetches that exact page
+// directly, with no separate "load more" step or affordance.
+function Pager({ page, totalPages, loading, onPageChange }) {
+  if (totalPages <= 1) return null;
   const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
   return (
     <div style={cs("display:flex;align-items:center;gap:6px;padding:14px 18px;min-width:460px;flex-wrap:wrap")}>
-      <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} style={cs(`width:30px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:13px;cursor:pointer;opacity:${page === 1 ? .4 : 1}`)}>‹</button>
+      <button onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page === 1 || loading} style={cs(`width:30px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:13px;cursor:pointer;opacity:${page === 1 ? .4 : 1}`)}>‹</button>
       {pages.map((p) => (
-        <button key={p} onClick={() => setPage(p)} style={cs(`min-width:30px;height:30px;padding:0 8px;border:1px solid var(--line);border-radius:6px;background:${p === page ? "var(--ink)" : "var(--card)"};color:${p === page ? "var(--card)" : "var(--ink)"};font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer`)}>{p}</button>
+        <button key={p} onClick={() => onPageChange(p)} disabled={loading} style={cs(`min-width:30px;height:30px;padding:0 8px;border:1px solid var(--line);border-radius:6px;background:${p === page ? "var(--ink)" : "var(--card)"};color:${p === page ? "var(--card)" : "var(--ink)"};font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;opacity:${loading && p !== page ? .5 : 1}`)}>{p}</button>
       ))}
-      {hasMore && (
-        <button onClick={async () => { await onLoadMore(); setPage(totalPages + 1); }} disabled={loading} style={cs("min-width:30px;height:30px;padding:0 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer")}>{loading ? "…" : totalPages + 1}</button>
-      )}
-      <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} style={cs(`width:30px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:13px;cursor:pointer;opacity:${page === totalPages ? .4 : 1}`)}>›</button>
+      <button onClick={() => onPageChange(Math.min(totalPages, page + 1))} disabled={page === totalPages || loading} style={cs(`width:30px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:13px;cursor:pointer;opacity:${page === totalPages ? .4 : 1}`)}>›</button>
     </div>
   );
 }
@@ -76,18 +73,26 @@ export default function TokenPage({ v }) {
   const [splitPct, setSplitPct] = useState("");
   const [feeRoutingOpen, setFeeRoutingOpen] = useState(false);
   const [tradeSheetOpen, setTradeSheetOpen] = useState(false);
-  const [loadingMoreTrades, setLoadingMoreTrades] = useState(false);
-  const [loadingMoreHolders, setLoadingMoreHolders] = useState(false);
+  const [loadingTrades, setLoadingTrades] = useState(false);
+  const [loadingHolders, setLoadingHolders] = useState(false);
+  const [loadingComments, setLoadingComments] = useState(false);
   const [tradePage, setTradePage] = useState(1);
   const [holderPage, setHolderPage] = useState(1);
-  useEffect(() => { setTradePage(1); setHolderPage(1); }, [tok?.id]);
+  const [commentPage, setCommentPage] = useState(1);
+  useEffect(() => { setTradePage(1); setHolderPage(1); setCommentPage(1); }, [tok?.id]);
   if (!sel || !tok) return null;
 
   const pageSize = v.pageSize;
-  const tradeTotalPages = Math.max(1, Math.ceil(tok.trades.length / pageSize));
-  const tradePageRows = tok.trades.slice((tradePage - 1) * pageSize, tradePage * pageSize);
-  const holderTotalPages = Math.max(1, Math.ceil(tok.holderRows.length / pageSize));
-  const holderPageRows = tok.holderRows.slice((holderPage - 1) * pageSize, holderPage * pageSize);
+  // tok.trades/holderRows/chat each hold exactly the current page's rows
+  // (fetched directly by page number, see App.jsx) -- no client-side
+  // slicing needed, unlike the old ever-growing "load more" arrays.
+  const tradeTotalPages = Math.max(1, Math.ceil((tok.tradesTotal || 0) / pageSize));
+  const holderTotalPages = Math.max(1, Math.ceil((tok.holdersTotal || 0) / pageSize));
+  const commentTotalPages = Math.max(1, Math.ceil((tok.commentsTotal || 0) / pageSize));
+
+  const gotoTradePage = async (p) => { setLoadingTrades(true); await v.fetchTradesPage(p); setTradePage(p); setLoadingTrades(false); };
+  const gotoHolderPage = async (p) => { setLoadingHolders(true); await v.fetchHoldersPage(p); setHolderPage(p); setLoadingHolders(false); };
+  const gotoCommentPage = async (p) => { setLoadingComments(true); await v.fetchCommentsPage(p); setCommentPage(p); setLoadingComments(false); };
 
   const submitSplits = () => {
     const poolId = v.liq && v.creatorData?.poolId;
@@ -236,7 +241,7 @@ export default function TokenPage({ v }) {
               <div>
                 {tok.trades.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No trades yet.</div>}
                 {v.isMobile ? (
-                  tradePageRows.map((r, i) => (
+                  tok.trades.map((r, i) => (
                     <div key={i} style={cs("display:flex;flex-direction:column;gap:6px;padding:12px 16px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px")}>
                       <div style={cs("display:flex;align-items:center;gap:9px")}>
                         <span title={r.side} style={cs(`width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center;background:${r.bg};color:${r.fg};font-size:10.5px;font-weight:500;border-radius:999px`)}>{r.sideLabel}</span>
@@ -254,7 +259,7 @@ export default function TokenPage({ v }) {
                     <div style={cs("display:grid;min-width:460px;grid-template-columns:86px 1fr 1fr 1.3fr 70px;gap:14px;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>
                       <span>SIDE</span><span style={cs("text-align:right")}>{sel.quote}</span><span style={cs("text-align:right")}>{sel.symbol.replace("$", "")}</span><span>WALLET</span><span style={cs("text-align:right")}>AGE</span>
                     </div>
-                    {tradePageRows.map((r, i) => (
+                    {tok.trades.map((r, i) => (
                       <div key={i} style={cs("display:grid;min-width:460px;grid-template-columns:86px 1fr 1fr 1.3fr 70px;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px;align-items:center")}>
                         <span><span title={r.side} style={cs(`width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;background:${r.bg};color:${r.fg};font-size:10.5px;font-weight:500;border-radius:999px`)}>{r.sideLabel}</span></span>
                         <span style={cs("text-align:right")}>{r.quote}</span>
@@ -265,8 +270,7 @@ export default function TokenPage({ v }) {
                     ))}
                   </div>
                 )}
-                <Pager page={tradePage} setPage={setTradePage} totalPages={tradeTotalPages} hasMore={tok.tradesHasMore}
-                  loading={loadingMoreTrades} onLoadMore={async () => { setLoadingMoreTrades(true); await v.loadMoreTrades(); setLoadingMoreTrades(false); }} />
+                <Pager page={tradePage} totalPages={tradeTotalPages} loading={loadingTrades} onPageChange={gotoTradePage} />
               </div>
             )}
 
@@ -274,7 +278,7 @@ export default function TokenPage({ v }) {
               <div>
                 {tok.holderRows.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No holders indexed yet.</div>}
                 {v.isMobile ? (
-                  holderPageRows.map((h, i) => (
+                  tok.holderRows.map((h, i) => (
                     <div key={i} style={cs("display:flex;flex-direction:column;gap:6px;padding:12px 16px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px")}>
                       <div style={cs("display:flex;align-items:center;gap:9px")}>
                         <span style={cs("color:var(--mute);width:20px;flex:none")}>{h.rank}</span>
@@ -291,7 +295,7 @@ export default function TokenPage({ v }) {
                     <div style={cs("display:grid;min-width:460px;grid-template-columns:44px 1.4fr 1fr .8fr 90px;gap:14px;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>
                       <span>#</span><span>WALLET</span><span style={cs("text-align:right")}>BALANCE</span><span style={cs("text-align:right")}>SHARE</span><span style={cs("text-align:right")}>TAG</span>
                     </div>
-                    {holderPageRows.map((h, i) => (
+                    {tok.holderRows.map((h, i) => (
                       <div key={i} style={cs("display:grid;min-width:460px;grid-template-columns:44px 1.4fr 1fr .8fr 90px;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px;align-items:center")}>
                         <span style={cs("color:var(--mute)")}>{h.rank}</span>
                         <a href={`https://explorer.inkonchain.com/address/${h.full}`} target="_blank" rel="noreferrer" title={h.full}>{h.who}</a>
@@ -302,8 +306,7 @@ export default function TokenPage({ v }) {
                     ))}
                   </div>
                 )}
-                <Pager page={holderPage} setPage={setHolderPage} totalPages={holderTotalPages} hasMore={tok.holdersHasMore}
-                  loading={loadingMoreHolders} onLoadMore={async () => { setLoadingMoreHolders(true); await v.loadMoreHolders(); setLoadingMoreHolders(false); }} />
+                <Pager page={holderPage} totalPages={holderTotalPages} loading={loadingHolders} onPageChange={gotoHolderPage} />
               </div>
             )}
 
@@ -311,19 +314,23 @@ export default function TokenPage({ v }) {
               <div>
                 <div style={cs("display:flex;gap:0;border-bottom:1px solid var(--line)")}>
                   <input value={v.chatDraft} onChange={v.setChatDraft} placeholder={`Say something about ${sel.symbol}…`} style={cs("flex:1;min-width:0;padding:14px 18px;border:0;outline:0;background:var(--card);font-size:13.5px")} />
-                  <button onClick={v.postChat} style={cs("padding:0 22px;border:0;border-left:1px solid var(--line);background:var(--ink);color:var(--card);font-size:13px;font-weight:600;cursor:pointer;flex:none")}>Post</button>
+                  <button onClick={async () => { if (await v.postChat()) setCommentPage(1); }} style={cs("padding:0 22px;border:0;border-left:1px solid var(--line);background:var(--ink);color:var(--card);font-size:13px;font-weight:600;cursor:pointer;flex:none")}>Post</button>
                 </div>
-                {tok.chat.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No comments yet. This session only, not persisted.</div>}
+                {tok.chat.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No comments yet. Be the first.</div>}
                 {tok.chat.map((c, i) => (
                   <div key={i} style={cs("padding:15px 18px;border-bottom:1px solid var(--soft)")}>
-                    <div style={cs("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+                    <div style={cs("display:flex;align-items:center;gap:8px;flex-wrap:wrap")}>
                       <span style={cs("font-family:'JetBrains Mono',monospace;font-size:12px")}>{c.wallet}</span>
                       <span style={cs(`font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;padding:2px 8px;border-radius:999px;border:${c.tagBd};background:${c.tagBg};color:${c.tagFg}`)}>{c.tag}</span>
+                      {c.holdPct != null && (
+                        <span title={`% of ${sel.symbol} supply this wallet currently holds`} style={cs(`font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.02em;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:${c.holdPct === "0%" ? "var(--paper)" : "var(--lime)"};color:${c.holdPct === "0%" ? "var(--mute)" : "var(--on)"}`)}>{c.holdPct} held</span>
+                      )}
                       <span style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute)")}>{c.age}</span>
                     </div>
                     <p style={cs("margin:9px 0 0;font-size:14px;line-height:1.5")}>{c.body}</p>
                   </div>
                 ))}
+                <Pager page={commentPage} totalPages={commentTotalPages} loading={loadingComments} onPageChange={gotoCommentPage} />
               </div>
             )}
 

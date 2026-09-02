@@ -363,3 +363,26 @@ function ageAgo(unixSeconds) {
   if (secs < 3600) return Math.round(secs / 60) + "m";
   return Math.round(secs / 3600) + "h";
 }
+
+// null for "anon" (no wallet to look up); otherwise the commenter's real
+// current share of supply, fetched live from the subgraph by the backend --
+// never a figure computed or cached client-side, since it'd go stale the
+// moment that wallet trades.
+function holdPctLabel(pct) {
+  if (pct == null) return null;
+  if (pct === 0) return "0%";
+  if (pct < 0.1) return "<0.1%";
+  return pct.toFixed(1) + "%";
+}
+
+export function commentToRow(c, labels) {
+  const label = c.wallet !== "anon" ? labelFor(c.wallet, labels) : null;
+  return {
+    wallet: c.wallet === "anon" ? "anon" : (label || shortAddress(c.wallet)),
+    tag: label ? label.split(" ")[0].toUpperCase() : "HOLDER",
+    tagBg: "var(--paper)", tagFg: "var(--mute)", tagBd: "1px solid var(--line)",
+    holdPct: holdPctLabel(c.holdPct),
+    age: ageAgo(c.timestamp),
+    body: c.body,
+  };
+}

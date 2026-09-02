@@ -1,3 +1,11 @@
+databases:
+  # Backs persisted token comments/chat (backend/src/db) -- nothing else in
+  # the API uses this; every other read stays subgraph/RPC-sourced. Starter
+  # plan, same region as the web service so the connection stays internal.
+  - name: duckfun-comments-db
+    plan: starter
+    region: oregon
+
 services:
   - type: web
     name: duckfun-family-api
@@ -19,3 +27,7 @@ services:
         value: "3000"
       - key: PINATA_JWT
         sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: duckfun-comments-db
+          property: connectionString

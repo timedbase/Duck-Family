@@ -14,7 +14,7 @@ import StatsPage from "./pages/StatsPage.jsx";
 import HowItWorksPage from "./pages/HowItWorksPage.jsx";
 import DocsPage from "./pages/DocsPage.jsx";
 import { api, shortAddress, quoteSymbol, API_BASE } from "./api.js";
-import { tokenToCoin, tradeToRow, holderToRow, buildCandles, buildSparkline, buildTicks, labelFor, compactNumber, quoteAmount, usdOrQuote } from "./adapters.js";
+import { tokenToCoin, tradeToRow, holderToRow, commentToRow, buildCandles, buildSparkline, buildTicks, labelFor, compactNumber, quoteAmount, usdOrQuote } from "./adapters.js";
 import { ageLabel } from "./data.js";
 import {
   createCurveToken, buyCurve, buyCurveWithNative, sellCurve, claimCurveFee,
@@ -249,7 +249,7 @@ export default function App() {
           const prev = byId.get(next.id);
           return prev ? {
             ...next, trades: prev.trades, holderRows: prev.holderRows, rawTrades: prev.rawTrades, chat: prev.chat, imageUrl: prev.imageUrl, desc: prev.desc, metaUri: prev.metaUri, socials: prev.socials,
-            tradesHasMore: prev.tradesHasMore, tradesOffset: prev.tradesOffset, holdersHasMore: prev.holdersHasMore, holdersOffset: prev.holdersOffset,
+            tradesTotal: prev.tradesTotal, holdersTotal: prev.holdersTotal, commentsTotal: prev.commentsTotal,
           } : next;
         });
         return { ...st, coins: merged, coinsLoading: false, coinsError: "" };
@@ -370,77 +370,98 @@ export default function App() {
 
   const loadTokenDetail = useCallback(async (address, knownMetaUri, overrideUri, knownImageUrl) => {
     loadTokenMeta(address, knownMetaUri, overrideUri, knownImageUrl);
+    await Promise.all([fetchTradesPage(address, 1), fetchHoldersPage(address, 1)]);
+    // Comments are Postgres-backed, a different and newer subsystem than
+    // the subgraph-sourced trades/holders above -- fired independently so a
+    // DB hiccup (or a deployment with DATABASE_URL not set yet) leaves the
+    // rest of the page working, not fails it too.
+    fetchCommentsPage(address, 1);
+  }, []);
+
+  // True numbered pagination, not "load more": every page fetches exactly
+  // that page directly (offset computed from the page number), so jumping
+  // straight to page 7 works without having visited 2-6 first. Each REPLACES
+  // the tab's rows rather than appending, unlike the old cursor-based
+  // approach this replaced.
+  async function fetchTradesPage(address, page) {
     try {
-      const [tradesRes, holdersRes] = await Promise.all([api.trades(address, PAGE_SIZE, 0), api.holders(address, PAGE_SIZE, 0)]);
+      const res = await api.trades(address, PAGE_SIZE, (page - 1) * PAGE_SIZE);
       setS((st) => {
         const coin = st.coins.find((c) => c.id === address);
         if (!coin) return st;
-        const totalSupply = coin.totalSupply ? Number(coin.totalSupply) / 1e18 : 1_000_000_000;
         const labels = {};
         if (coin.creator) labels[coin.creator.toLowerCase()] = "Creator";
         return {
           ...st,
           coins: st.coins.map((c) => c.id === address ? {
             ...c,
-            trades: tradesRes.items.map((tr) => tradeToRow(tr, labels, coin.quote)),
-            rawTrades: tradesRes.items, tradesHasMore: tradesRes.hasMore, tradesOffset: tradesRes.items.length,
-            holderRows: holdersRes.items.map((h, i) => holderToRow(h, i, totalSupply, labels)),
-            holdersHasMore: holdersRes.hasMore, holdersOffset: holdersRes.items.length,
+            trades: res.items.map((tr) => tradeToRow(tr, labels, coin.quote)),
+            rawTrades: res.items, tradesTotal: res.total,
           } : c),
         };
       });
-    } catch (e) { console.error("failed to load token detail", e); }
-  }, []);
-
-  // "Load more" for the Trades/Holders tabs -- appends the next page rather
-  // than re-fetching from the top, using each coin's own running offset so
-  // repeated clicks page forward instead of re-requesting the same rows.
-  async function loadMoreTrades(address) {
-    const coin = s.coins.find((c) => c.id === address);
-    if (!coin || !coin.tradesHasMore) return;
-    try {
-      const res = await api.trades(address, PAGE_SIZE, coin.tradesOffset || 0);
-      setS((st) => {
-        const cur = st.coins.find((c) => c.id === address);
-        if (!cur) return st;
-        const labels = {};
-        if (cur.creator) labels[cur.creator.toLowerCase()] = "Creator";
-        const newRows = res.items.map((tr) => tradeToRow(tr, labels, cur.quote));
-        return {
-          ...st,
-          coins: st.coins.map((c) => c.id === address ? {
-            ...c,
-            trades: [...c.trades, ...newRows], rawTrades: [...c.rawTrades, ...res.items],
-            tradesHasMore: res.hasMore, tradesOffset: (c.tradesOffset || 0) + res.items.length,
-          } : c),
-        };
-      });
-    } catch (e) { console.error("failed to load more trades", e); }
+    } catch (e) { console.error("failed to load trades page", e); }
   }
 
-  async function loadMoreHolders(address) {
-    const coin = s.coins.find((c) => c.id === address);
-    if (!coin || !coin.holdersHasMore) return;
+  async function fetchHoldersPage(address, page) {
     try {
-      const res = await api.holders(address, PAGE_SIZE, coin.holdersOffset || 0);
+      const res = await api.holders(address, PAGE_SIZE, (page - 1) * PAGE_SIZE);
       setS((st) => {
-        const cur = st.coins.find((c) => c.id === address);
-        if (!cur) return st;
-        const totalSupply = cur.totalSupply ? Number(cur.totalSupply) / 1e18 : 1_000_000_000;
+        const coin = st.coins.find((c) => c.id === address);
+        if (!coin) return st;
+        const totalSupply = coin.totalSupply ? Number(coin.totalSupply) / 1e18 : 1_000_000_000;
         const labels = {};
-        if (cur.creator) labels[cur.creator.toLowerCase()] = "Creator";
-        const startRank = cur.holderRows.length;
-        const newRows = res.items.map((h, i) => holderToRow(h, startRank + i, totalSupply, labels));
+        if (coin.creator) labels[coin.creator.toLowerCase()] = "Creator";
+        const startRank = (page - 1) * PAGE_SIZE;
         return {
           ...st,
           coins: st.coins.map((c) => c.id === address ? {
             ...c,
-            holderRows: [...c.holderRows, ...newRows],
-            holdersHasMore: res.hasMore, holdersOffset: (c.holdersOffset || 0) + res.items.length,
+            holderRows: res.items.map((h, i) => holderToRow(h, startRank + i, totalSupply, labels)),
+            holdersTotal: res.total,
           } : c),
         };
       });
-    } catch (e) { console.error("failed to load more holders", e); }
+    } catch (e) { console.error("failed to load holders page", e); }
+  }
+
+  async function fetchCommentsPage(address, page) {
+    try {
+      const res = await api.comments(address, PAGE_SIZE, (page - 1) * PAGE_SIZE);
+      setS((st) => {
+        const coin = st.coins.find((c) => c.id === address);
+        if (!coin) return st;
+        const labels = {};
+        if (coin.creator) labels[coin.creator.toLowerCase()] = "Creator";
+        return {
+          ...st,
+          coins: st.coins.map((c) => c.id === address ? {
+            ...c,
+            chat: res.items.map((cm) => commentToRow(cm, labels)),
+            commentsTotal: res.total,
+          } : c),
+        };
+      });
+    } catch (e) { console.error("failed to load comments page", e); }
+  }
+
+  // Refetches page 1 rather than prepending locally -- consistent with the
+  // "always fetch the real page" pagination model above (prepending would
+  // leave the tab holding PAGE_SIZE+1 rows until the next page fetch, and
+  // wouldn't update commentsTotal). Returns whether it succeeded so the
+  // caller can reset its own page-number state back to 1.
+  async function postComment(coin, text) {
+    if (!text) return false;
+    set({ chatDraft: "" });
+    try {
+      await api.postComment(coin.id, account || "", text);
+      await fetchCommentsPage(coin.id, 1);
+      return true;
+    } catch (e) {
+      flash(errorText(e, "Couldn't post comment."));
+      set({ chatDraft: text }); // don't lose what they typed on a failed post
+      return false;
+    }
   }
 
   function errorText(e, fallback) {
@@ -883,7 +904,7 @@ export default function App() {
 
   const v = buildViewModel({
     s, set, account, isConnected, disconnect, openConnectModal,
-    loadCoins, loadPortfolio, loadTokenDetail, loadMoreTrades, loadMoreHolders, openToken, flash, requireWallet,
+    loadCoins, loadPortfolio, loadTokenDetail, fetchTradesPage, fetchHoldersPage, fetchCommentsPage, postComment, openToken, flash, requireWallet,
     buy, sell, submitCreate, simulateCreate, onImagePick, clearImage, setSocial,
     contribute, claimCampaignTokens, claimCampaignRefundAction, finalizeCampaignAction,
     claimCreatorFees, claimAllCreatorFees, loadCreatorData, claimCreatorAndHookFees, claimCurveFeeAction, saveFeeSplits, buyTakeover,
@@ -1306,16 +1327,12 @@ function buildViewModel(ctx) {
     range: s.range, ranges: ["5M", "1H", "4H", "1D", "ALL"].map((label) => Object.assign({ label, go: () => set({ range: label }) }, block(s.range === label))),
     tab: s.tab, tabs: ["Trades", "Holders", "Comments", "Creator + liquidity"].map((label) => Object.assign({ label, go: () => set({ tab: label }) }, block(s.tab === label))),
     tabTrades: s.tab === "Trades", tabHolders: s.tab === "Holders", tabComments: s.tab === "Comments", tabCreator: s.tab === "Creator + liquidity",
-    loadMoreTrades: () => c && ctx.loadMoreTrades(c.id), loadMoreHolders: () => c && ctx.loadMoreHolders(c.id), pageSize: PAGE_SIZE,
+    fetchTradesPage: (page) => c && ctx.fetchTradesPage(c.id, page),
+    fetchHoldersPage: (page) => c && ctx.fetchHoldersPage(c.id, page),
+    fetchCommentsPage: (page) => c && ctx.fetchCommentsPage(c.id, page),
+    pageSize: PAGE_SIZE,
     chatDraft: s.chatDraft, setChatDraft: (e) => set({ chatDraft: e.target.value }),
-    postChat: () => {
-      const text = s.chatDraft.trim();
-      if (!text || !c) return;
-      set((st) => ({
-        chatDraft: "",
-        coins: st.coins.map((x) => x.id === c.id ? { ...x, chat: [{ wallet: account ? shortAddress(account) : "anon", tag: "HOLDER", tagBg: "var(--paper)", tagFg: "var(--mute)", tagBd: "1px solid var(--line)", age: "now", body: text }].concat(x.chat) } : x),
-      }));
-    },
+    postChat: () => c && ctx.postComment(c, s.chatDraft.trim()),
 
     creatorData: s.creatorData, creatorLoading: s.creatorLoading,
     loadCreatorData: () => c && ctx.loadCreatorData(c),

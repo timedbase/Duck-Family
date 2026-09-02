@@ -27,11 +27,26 @@ async function getJSON(path) {
   return res.json();
 }
 
+async function postJSON(path, body) {
+  const res = await fetch(API_BASE + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    throw new Error(detail?.error || `${path} -> HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export const api = {
   tokens: (params = "") => getJSON("/tokens" + params),
   token: (address) => getJSON(`/tokens/${address}`),
   trades: (address, limit = 50, offset = 0) => getJSON(`/tokens/${address}/trades?limit=${limit}&offset=${offset}`),
   holders: (address, limit = 50, offset = 0) => getJSON(`/tokens/${address}/holders?limit=${limit}&offset=${offset}`),
+  comments: (address, limit = 50, offset = 0) => getJSON(`/tokens/${address}/comments?limit=${limit}&offset=${offset}`),
+  postComment: (address, wallet, body) => postJSON(`/tokens/${address}/comments`, { wallet, body }),
   campaigns: () => getJSON("/campaigns"),
   campaign: (id) => getJSON(`/campaigns/${id}`),
   portfolio: (address) => getJSON(`/portfolio/${address}`),

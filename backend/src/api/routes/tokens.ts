@@ -280,11 +280,14 @@ router.get("/:address/trades", async (req, res) => {
   const limit = Math.min(Number(req.query.limit ?? 50), 200);
   const offset = Math.max(Number(req.query.offset ?? 0), 0);
   // Trades merge two independently-paginated subgraph sources (curve Trade
-  // entities + raw PoolSwap rows) before sorting -- there's no single
-  // cursor that pages both at once, so each source is asked for enough rows
-  // to cover the requested page (offset + limit, +1 to detect a next page)
-  // and the real pagination happens after the merge/sort below.
-  const fetchCount = offset + limit + 1;
+  // entities + raw PoolSwap rows) before sorting -- there's no single cursor
+  // that pages both at once, and no running total-trade-count field on
+  // either Token or Pool, so real (not "next page exists") pagination needs
+  // an actual count. Fetching up to CAP from each side unconditionally
+  // (regardless of the requested page) gives an exact total for anything up
+  // to CAP combined trades -- fine at today's volume, same "revisit once
+  // this routinely hits it" tradeoff as platform.ts's /stats route.
+  const CAP = 1000;
 
   try {
     const data = await querySubgraph<{
@@ -306,7 +309,7 @@ router.get("/:address/trades", async (req, res) => {
         token(id: $token) { quoteToken }
         position(id: $token) { poolId }
       }`,
-      { token: address, first: fetchCount }
+      { token: address, first: CAP }
     );
 
     let poolTrades: SubgraphTrade[] = [];
@@ -319,14 +322,13 @@ router.get("/:address/trades", async (req, res) => {
             id sender amount0 amount1 timestamp blockNumber txHash
           }
         }`,
-        { pool: data.position.poolId, first: fetchCount }
+        { pool: data.position.poolId, first: CAP }
       );
       poolTrades = swapData.poolSwaps.map((s) => poolSwapToTrade(s, tokenIsCurrency0));
     }
 
     const merged = [...data.trades, ...poolTrades].sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
-    const items = merged.slice(offset, offset + limit);
-    res.json({ items, hasMore: merged.length > offset + limit });
+    res.json({ items: merged.slice(offset, offset + limit), total: merged.length });
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }
@@ -338,15 +340,20 @@ router.get("/:address/holders", async (req, res) => {
   const offset = Math.max(Number(req.query.offset ?? 0), 0);
 
   try {
-    const data = await querySubgraph<{ holders: unknown[] }>(
+    // Token.holderCount is a running counter maintained on every
+    // zero-balance crossing (see schema.graphql), so it's already exactly
+    // "accounts with balance > 0" -- the same set this query filters to --
+    // with no separate count query needed.
+    const data = await querySubgraph<{ holders: unknown[]; token: { holderCount: number } | null }>(
       `query TokenHolders($token: String!, $first: Int!, $skip: Int!) {
         holders(first: $first, skip: $skip, orderBy: balance, orderDirection: desc, where: { token: $token, balance_gt: "0" }) {
           account balance updatedAt updatedAtBlock
         }
+        token(id: $token) { holderCount }
       }`,
-      { token: address, first: limit + 1, skip: offset }
+      { token: address, first: limit, skip: offset }
     );
-    res.json({ items: data.holders.slice(0, limit), hasMore: data.holders.length > limit });
+    res.json({ items: data.holders, total: data.token?.holderCount ?? data.holders.length });
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }

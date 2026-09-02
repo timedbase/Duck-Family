@@ -8,6 +8,8 @@ import campaignsRouter from "./routes/campaigns.js";
 import portfolioRouter from "./routes/portfolio.js";
 import platformRouter from "./routes/platform.js";
 import uploadRouter from "./routes/upload.js";
+import commentsRouter from "./routes/comments.js";
+import { ensureSchema } from "../db/client.js";
 
 const app = express();
 // Render puts one reverse proxy in front of this service, which sets
@@ -28,6 +30,7 @@ app.use(rateLimit({
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.use("/tokens", tokensRouter);
+app.use("/tokens", commentsRouter);
 app.use("/campaigns", campaignsRouter);
 app.use("/portfolio", portfolioRouter);
 app.use("/upload", uploadRouter);
@@ -51,6 +54,13 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   res.status(err?.status ?? 500).json({ error: err instanceof Error ? err.message : "internal error" });
 };
 app.use(errorHandler);
+
+// Best-effort: DATABASE_URL missing/unreachable logs a warning and leaves
+// comments 503ing rather than taking the whole API down over one optional
+// subsystem (see db/client.ts).
+ensureSchema()
+  .then(() => console.log("comments schema ready"))
+  .catch((err) => console.warn("comments storage unavailable:", err instanceof Error ? err.message : err));
 
 const port = Number(process.env.PORT ?? 3000);
 app.listen(port, () => {
