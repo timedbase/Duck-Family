@@ -1,11 +1,3 @@
-databases:
-  # Backs persisted token comments/chat (backend/src/db) -- nothing else in
-  # the API uses this; every other read stays subgraph/RPC-sourced. Starter
-  # plan, same region as the web service so the connection stays internal.
-  - name: duckfun-comments-db
-    plan: starter
-    region: oregon
-
 services:
   - type: web
     name: duckfun-family-api
@@ -27,7 +19,14 @@ services:
         value: "3000"
       - key: PINATA_JWT
         sync: false
+      # Backs persisted token comments/chat (backend/src/db) -- nothing else
+      # in the API uses this; every other read stays subgraph/RPC-sourced.
+      # The Postgres itself (duckfun-comments-db, plan basic_256mb -- "starter"
+      # is a legacy plan name Render rejects for new databases, which is why
+      # an earlier `databases:` block here never actually provisioned one via
+      # Blueprint sync) was created directly via the Render API/dashboard,
+      # not by this Blueprint, so this stays a plain managed secret like the
+      # other two above rather than a fromDatabase reference to a resource
+      # this file doesn't actually own.
       - key: DATABASE_URL
-        fromDatabase:
-          name: duckfun-comments-db
-          property: connectionString
+        sync: false
