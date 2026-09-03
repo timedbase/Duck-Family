@@ -52,6 +52,37 @@ export const DUCK_LAUNCHER_ABI = [
   },
 ] as const;
 
+// DuckLauncherArc's DexConfig struct isn't just Ink's plus trailing fields --
+// it INSERTS `router` (V3 SwapRouter) before `enabled` and adds `isV3` after
+// it: (singleton, permit2, hook, router, enabled, isV3) vs Ink's (singleton,
+// permit2, hook, enabled). Decoding Arc's dexes() with Ink's 4-output ABI
+// silently reads `router` as if it were `enabled` (index 3 in both, but a
+// different real field) -- for the V4 entry, router is always address(0),
+// which decodes as a truthy-looking `false` bool, so this doesn't throw, it
+// just lies. Confirmed live via a manual 6-field `cast call` before adding
+// this: the real enabled value was `true` the whole time.
+export const DUCK_LAUNCHER_ARC_ABI = [
+  { type: "function", name: "owner", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "platformWallet", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "platformToken", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "launchFee", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "quoteTokens", stateMutability: "view", inputs: [{ type: "address" }], outputs: [{ type: "bool" }] },
+  {
+    type: "function",
+    name: "dexes",
+    stateMutability: "view",
+    inputs: [{ type: "address" }],
+    outputs: [
+      { type: "address", name: "singleton" },
+      { type: "address", name: "permit2" },
+      { type: "address", name: "hook" },
+      { type: "address", name: "router" },
+      { type: "bool", name: "enabled" },
+      { type: "bool", name: "isV3" },
+    ],
+  },
+] as const;
+
 export const DUCK_RAISE_ABI = [
   { type: "function", name: "owner", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
   { type: "function", name: "platformWallet", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },

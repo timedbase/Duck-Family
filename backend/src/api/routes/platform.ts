@@ -6,6 +6,7 @@ import type { ChainSlug } from "../../chain/registry.js";
 import {
   DUCK_INCUBATION_ABI,
   DUCK_LAUNCHER_ABI,
+  DUCK_LAUNCHER_ARC_ABI,
   DUCK_RAISE_ABI,
   DUCK_LOCKER_ABI,
   DUCK_HOOK_ABI,
@@ -99,25 +100,34 @@ export default function createPlatformRouter(chain: ChainSlug) {
   });
 
   router.get("/launcher", async (_req, res) => {
+    // DuckLauncherArc's DexConfig struct isn't Ink's plus trailing fields --
+    // it inserts `router` before `enabled` (see chain/abis.ts's
+    // DUCK_LAUNCHER_ARC_ABI comment), so decoding it needs the chain-correct
+    // ABI, not the shared one every other route in this file safely reuses.
+    const launcherAbi = chain === "arc" ? DUCK_LAUNCHER_ARC_ABI : DUCK_LAUNCHER_ABI;
     try {
       const publicClient = getPublicClient(chain);
       const [platformWallet, platformToken, launchFee, dex] = await Promise.all([
-        publicClient.readContract({ address: addr.DUCK_LAUNCHER, abi: DUCK_LAUNCHER_ABI, functionName: "platformWallet" }),
-        publicClient.readContract({ address: addr.DUCK_LAUNCHER, abi: DUCK_LAUNCHER_ABI, functionName: "platformToken" }),
-        publicClient.readContract({ address: addr.DUCK_LAUNCHER, abi: DUCK_LAUNCHER_ABI, functionName: "launchFee" }),
+        publicClient.readContract({ address: addr.DUCK_LAUNCHER, abi: launcherAbi, functionName: "platformWallet" }),
+        publicClient.readContract({ address: addr.DUCK_LAUNCHER, abi: launcherAbi, functionName: "platformToken" }),
+        publicClient.readContract({ address: addr.DUCK_LAUNCHER, abi: launcherAbi, functionName: "launchFee" }),
         publicClient.readContract({
           address: addr.DUCK_LAUNCHER,
-          abi: DUCK_LAUNCHER_ABI,
+          abi: launcherAbi,
           functionName: "dexes",
           args: [addr.V4_POSITION_MANAGER],
         }),
-      ]) as [unknown, unknown, bigint, readonly [string, string, string, boolean]];
+      ]) as [unknown, unknown, bigint, readonly boolean[] & readonly string[]];
+      // Ink's tuple is (singleton, permit2, hook, enabled); Arc's is
+      // (singleton, permit2, hook, router, enabled, isV3) -- enabled is
+      // index 3 on Ink, index 4 on Arc.
+      const enabledIdx = chain === "arc" ? 4 : 3;
       res.json({
         address: addr.DUCK_LAUNCHER,
         platformWallet,
         platformToken,
         launchFee: launchFee.toString(),
-        dex: { positionManager: addr.V4_POSITION_MANAGER, singleton: dex[0], permit2: dex[1], hook: dex[2], enabled: dex[3] },
+        dex: { positionManager: addr.V4_POSITION_MANAGER, singleton: dex[0], permit2: dex[1], hook: dex[2], enabled: dex[enabledIdx] },
       });
     } catch (err) {
       res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
