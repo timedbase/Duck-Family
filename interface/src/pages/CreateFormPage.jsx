@@ -170,16 +170,20 @@ export default function CreateFormPage({ v }) {
               const hasV3 = !!v.chain.V3_POSITION_MANAGER;
               const dex = hasV3 ? v.draftInstant.dex : "v4";
               // V3 forbids a native-currency quote (DuckLauncherArc reverts
-              // NativeNotSupportedOnV3) -- only real ERC20 options are valid.
-              const erc20QuoteOptions = v.quoteOptions.filter((o) => o.address !== ZERO_ADDRESS);
-              const quoteOptions = dex === "v3" ? erc20QuoteOptions : v.quoteOptions;
+              // NativeNotSupportedOnV3) -- a merged native/ERC20 option (see
+              // quoteOptionsFor in App.jsx -- Arc's native currency and its
+              // ERC20 USDC mirror share the same symbol, so they're shown as
+              // one chip, not two) resolves to its real ERC20 address here;
+              // a pure-native option with no ERC20 form isn't offered at all.
+              const v3QuoteOptions = v.v3QuoteOptionsFor(v.quoteOptions);
+              const quoteOptions = dex === "v3" ? v3QuoteOptions : v.quoteOptions;
               return (
                 <>
                   {hasV3 && (
                     <Field label="DEX" hint={dex === "v3" ? "Full Uniswap V3 pool. No native-currency quote; a real quote asset is required." : "Uniswap V4 pool (this platform's default)."}>
                       <div style={cs("display:grid;grid-template-columns:1fr 1fr;gap:8px")}>
                         {[{ k: "v4", label: "V4" }, { k: "v3", label: "V3" }].map((o) => (
-                          <button key={o.k} onClick={() => v.setInstant({ dex: o.k, quoteToken: o.k === "v3" ? (erc20QuoteOptions[0]?.address || ZERO_ADDRESS) : ZERO_ADDRESS, buyAmountHype: "0" })}
+                          <button key={o.k} onClick={() => v.setInstant({ dex: o.k, quoteToken: o.k === "v3" ? (v3QuoteOptions[0]?.address || ZERO_ADDRESS) : ZERO_ADDRESS, buyAmountHype: "0" })}
                             style={cs(`border:1px solid var(--line);border-radius:8px;cursor:pointer;padding:9px 10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;background:${dex === o.k ? "var(--ink)" : "var(--card)"};color:${dex === o.k ? "var(--card)" : "var(--ink)"}`)}>
                             {o.label}
                           </button>

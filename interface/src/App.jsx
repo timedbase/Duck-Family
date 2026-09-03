@@ -58,15 +58,41 @@ function truncateDecimals(numStr, decimals) {
 // Native currency first (always tradeable directly), then the platform's
 // default-allowed quote tokens, then that family's platformToken() (if the
 // owner has set one) -- fetched live, see getPlatformTokens.
+//
+// On Arc, native currency IS called "USDC" (see chain/addresses.js), and
+// the real ERC20 USDC mirror also reports symbol() "USDC" -- genuinely the
+// same underlying asset presented two ways (Circle's own docs: the ERC20
+// interface is just a view over the same native balance, not a separate
+// wrapped token). Showing both as separate picker chips would look like a
+// confusing duplicate, and they're not actually independent choices from a
+// user's perspective -- so a same-symbol ERC20 entry is merged into the
+// native option instead of listed separately: one "USDC" chip, carrying
+// both addresses so a caller that specifically needs the ERC20 form (V3,
+// which forbids native entirely) can still get at it via `erc20Address`.
 function quoteOptionsFor(chain, base, platformToken) {
+  const erc20Match = base.find((t) => t.symbol === chain.nativeSymbol);
+  const rest = base.filter((t) => t !== erc20Match);
   const options = [
-    { label: chain.nativeSymbol, address: ZERO_ADDRESS },
-    ...base.map((t) => ({ label: t.symbol, address: t.address, decimals: t.decimals })),
+    {
+      label: chain.nativeSymbol, address: ZERO_ADDRESS,
+      erc20Address: erc20Match?.address ?? null, erc20Decimals: erc20Match?.decimals ?? null,
+    },
+    ...rest.map((t) => ({ label: t.symbol, address: t.address, decimals: t.decimals })),
   ];
   if (platformToken && !options.some((o) => o.address.toLowerCase() === platformToken.address.toLowerCase())) {
     options.push({ label: platformToken.symbol, address: platformToken.address, decimals: platformToken.decimals });
   }
   return options;
+}
+
+// V3 forbids native currency entirely -- for a merged native/ERC20 option
+// (see quoteOptionsFor above), that means substituting the ERC20 address
+// silently while keeping the same "USDC" chip the user already picked; a
+// pure-native option with no ERC20 form at all just isn't offered for V3.
+function v3QuoteOptionsFor(options) {
+  return options
+    .filter((o) => o.address !== ZERO_ADDRESS || o.erc20Address)
+    .map((o) => (o.address === ZERO_ADDRESS ? { ...o, address: o.erc20Address, decimals: o.erc20Decimals } : o));
 }
 function decimalsFor(chain, address, platformTokens = []) {
   if (address.toLowerCase() === ZERO_ADDRESS) return 18;
@@ -1539,6 +1565,7 @@ function buildViewModel(ctx) {
     // falls to false too until this platform actually wires a route for
     // its own token.
     quoteHasEthRoute: (label) => label === chain.nativeSymbol || chain.LIQUID_QUOTE_TOKEN_SYMBOLS.includes(label),
+    v3QuoteOptionsFor,
     createCta: !account ? "Connect wallet to launch" : s.txPending ? "Confirming…" : "Launch",
     submitCreate: ctx.submitCreate,
     simulating: s.simulating, simulateCreate: ctx.simulateCreate,
