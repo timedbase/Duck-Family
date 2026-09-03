@@ -8,9 +8,9 @@ dataSources:
     name: DuckIncubation
     network: ink
     source:
-      address: "0x5c4f0938FC434b60b57209BbC971544b73876675"
+      address: "0xB9f7213262FE429387eAD6EB63e547Ba05E0D935"
       abi: DuckIncubation
-      startBlock: 54557753
+      startBlock: 54942856
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -71,9 +71,9 @@ dataSources:
     name: DuckRaise
     network: ink
     source:
-      address: "0x39D17950BaaD5737d08b027F0494E2C261B37Cf2"
+      address: "0xdEb4D7fe8BEA866B91A2be8ED35D171F8312269b"
       abi: DuckRaise
-      startBlock: 54557753
+      startBlock: 54942856
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9

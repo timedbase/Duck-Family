@@ -8,7 +8,7 @@ import { parseAbi } from "viem";
 
 // Error entries are included alongside the functions/events above so viem
 // can decode a revert's 4-byte selector into a readable name (e.g.
-// "InsufficientCreationFee(500000000000000, 0)") instead of surfacing the
+// "InsufficientCreationFee()") instead of surfacing the
 // raw "signature 0x..." that wallets show when they can't match unknown
 // revert data.
 export const DUCK_INCUBATION_ABI = parseAbi([
@@ -28,7 +28,7 @@ export const DUCK_INCUBATION_ABI = parseAbi([
   "function getFeeSplits(address token_) view returns ((address wallet, uint16 bps)[])",
   "error ActivePool()", "error AlreadyMigrated()", "error AntibotBlocksOutOfRange()", "error ApprovalFailed()",
   "error CloneFailed()", "error DeadlineExpired()", "error ExceedsSoldSupply()", "error InsufficientContractBalance()",
-  "error InsufficientCreationFee(uint256 required, uint256 provided)", "error InsufficientOutput()",
+  "error InsufficientCreationFee()", "error InsufficientOutput()",
   "error InsufficientPoolQuote()", "error InvalidAllocation()", "error InvalidFeeSplitBps()", "error InvalidHookFeeBps()",
   "error InvalidMarketCaps()", "error InvalidSupply()", "error LiquidityReserveViolation()", "error MigrationPending()",
   "error MigrationTargetNotReached()", "error NativeNotAccepted()", "error NativeQuoteNoSwapNeeded()",

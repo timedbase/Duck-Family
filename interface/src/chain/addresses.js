@@ -7,11 +7,11 @@ export const INK_CHAIN_ID = 57073;
 export const PUBLIC_RPC_URL = "https://rpc-gel.inkonchain.com";
 export const BLOCK_EXPLORER_URL = "https://explorer.inkonchain.com";
 
-export const DUCK_INCUBATION = getAddress("0x5c4f0938FC434b60b57209BbC971544b73876675");
+export const DUCK_INCUBATION = getAddress("0xB9f7213262FE429387eAD6EB63e547Ba05E0D935");
 export const DUCK_LAUNCHER = getAddress("0x2A84711A5c0Ee62118CEee1A37C0dA46a6980353");
-export const DUCK_RAISE = getAddress("0x39D17950BaaD5737d08b027F0494E2C261B37Cf2");
+export const DUCK_RAISE = getAddress("0xdEb4D7fe8BEA866B91A2be8ED35D171F8312269b");
 export const DUCK_LOCKER = getAddress("0x74738a87e4D4E0eB2706724a9314d1b4452ecdFE");
-export const DUCK_HOOK = getAddress("0xA547E097bCcA60737b8264C4dDB9bC3bE74880C4");
+export const DUCK_HOOK = getAddress("0x067A168DA351d40e086B974F16F94CB0f3dF00c4");
 // Standalone, platform-owned metadata-override registry -- see
 // contracts/common/DuckMetaOverride.sol. Not used for any on-chain reads
 // today (the subgraph indexes its events onto Token.metaOverrideUri
