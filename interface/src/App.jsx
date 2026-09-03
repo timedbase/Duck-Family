@@ -159,10 +159,12 @@ export default function App() {
   const deepLinkToken = useRef((window.location.pathname.match(ADDRESS_PATH_RE) || [])[1] || null);
   const firstUrlSync = useRef(true);
   const skipNextPush = useRef(false);
+  const chainMenuRef = useRef(null);
+  const walletMenuRef = useRef(null);
 
   const [s, setS] = useState({
     chain: loadStoredChain(),
-    mobile: false, menuOpen: false, sort: "Last activity",
+    mobile: false, menuOpen: false, chainMenuOpen: false, walletMenuOpen: false, sort: "Last activity",
     layout: "cards", filter: "All", query: "",
     mcapFilter: "any", launchedFilter: "any", quoteFilter: "any",
     tokenId: null, side: "buy", amount: "250", range: "1D", chartMode: "price", tab: "Trades", chatDraft: "",
@@ -195,6 +197,7 @@ export default function App() {
   // across a chain switch could silently resolve to a completely different,
   // unrelated token/campaign.
   function setChain(next) {
+    set({ chainMenuOpen: false });
     if (next === s.chain) return;
     storeChain(next);
     set((st) => ({
@@ -221,6 +224,25 @@ export default function App() {
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
   }, [set]);
+
+  // Close the chain/wallet dropdowns on an outside click. A full-viewport
+  // "click-catcher" overlay div would be the simpler-looking fix, but it's
+  // a real trap here: these dropdowns render inside the sticky header,
+  // which establishes its own stacking context (position:sticky + z-index),
+  // so a `position:fixed` descendant's z-index only ever competes within
+  // that context -- <main>'s later-DOM-order content still paints (and
+  // receives clicks) on top of the entire header, overlay included, no
+  // matter how high its z-index goes. A document-level listener sidesteps
+  // stacking entirely.
+  useEffect(() => {
+    if (!s.chainMenuOpen && !s.walletMenuOpen) return;
+    function onDocClick(e) {
+      if (s.chainMenuOpen && chainMenuRef.current && !chainMenuRef.current.contains(e.target)) set({ chainMenuOpen: false });
+      if (s.walletMenuOpen && walletMenuRef.current && !walletMenuRef.current.contains(e.target)) set({ walletMenuOpen: false });
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [s.chainMenuOpen, s.walletMenuOpen, set]);
 
   // URL routing: keep the address bar in sync with s.screen/tokenId/family
   // (state -> URL), support the browser's back/forward buttons (URL ->
@@ -567,6 +589,14 @@ export default function App() {
     if (openConnectModal) openConnectModal();
     else flash("Connect a wallet first.");
     return false;
+  }
+  function copyWalletAddress() {
+    if (!account) return;
+    navigator.clipboard?.writeText(account).then(() => flash("Address copied.")).catch(() => flash("Couldn't copy address."));
+  }
+  function disconnectWallet() {
+    set({ walletMenuOpen: false });
+    disconnect();
   }
   function openToken(rawId) {
     // Case-insensitive lookup: a /0x... URL typed or pasted from a block
@@ -1002,7 +1032,7 @@ export default function App() {
   // ---------- render ----------
 
   const v = buildViewModel({
-    s, chain, set, account, isConnected, disconnect, openConnectModal, setChain,
+    s, chain, set, account, isConnected, disconnect, openConnectModal, setChain, copyWalletAddress, disconnectWallet,
     loadCoins, loadPortfolio, loadTokenDetail, fetchTradesPage, fetchHoldersPage, fetchCommentsPage, postComment, openToken, flash, requireWallet,
     buy, sell, submitCreate, simulateCreate, onImagePick, clearImage, setSocial,
     contribute, claimCampaignTokens, claimCampaignRefundAction, finalizeCampaignAction,
@@ -1061,12 +1091,42 @@ export default function App() {
                 <input value={v.query} onChange={v.setQuery} placeholder="Search name, symbol or address" style={cs("border:0;outline:0;background:transparent;font-size:13px;width:100%")} />
               </div>
             )}
-            <div style={cs("display:flex;align-items:center;height:36px;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex:none")}>
-              {v.chainOptions.map((o) => (
-                <button key={o.slug} onClick={o.go} style={cs(`height:100%;padding:0 ${m ? "10px" : "13px"};border:0;background:${o.bg};color:${o.fg};font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer`)}>{o.label}</button>
-              ))}
+            <div ref={chainMenuRef} style={cs("position:relative;flex:none")}>
+              <button onClick={v.toggleChainMenu} style={cs(`display:flex;align-items:center;gap:7px;height:36px;padding:0 ${m ? "9px" : "12px"};border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer`)}>
+                {v.chainName}
+                <span style={cs(`font-size:9px;color:var(--mute);transform:${v.chainMenuOpen ? "rotate(180deg)" : "none"}`)}>▾</span>
+              </button>
+              {v.chainMenuOpen && (
+                <div style={cs("position:absolute;top:42px;right:0;z-index:50;min-width:120px;border:1px solid var(--line);border-radius:8px;background:var(--card);box-shadow:var(--sh);overflow:hidden;padding:4px")}>
+                  {v.chainOptions.map((o) => (
+                    <button key={o.slug} onClick={o.go} style={cs(`display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:9px 10px;border:0;border-radius:6px;background:${o.slug === v.chainSlug ? "var(--paper)" : "transparent"};color:var(--ink);font-size:13px;font-weight:${o.slug === v.chainSlug ? "700" : "500"};text-align:left;cursor:pointer`)}>
+                      {o.label}
+                      {o.slug === v.chainSlug && <span style={cs("color:var(--lime);font-size:12px")}>✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <button onClick={v.toggleWallet} style={cs(`height:36px;padding:0 14px;border:1px solid var(--line);border-radius:6px;background:${v.walletBg};color:${v.walletFg};font-family:${v.walletFont};font-size:13px;font-weight:500;white-space:nowrap;flex:none;cursor:pointer`)}>{v.walletLabel}</button>
+            <div ref={walletMenuRef} style={cs("position:relative;flex:none")}>
+              <button onClick={v.toggleWallet} style={cs(`display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border:1px solid var(--line);border-radius:6px;background:${v.walletBg};color:${v.walletFg};font-family:${v.walletFont};font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer`)}>
+                {v.connected && <span style={cs("width:7px;height:7px;border-radius:99px;background:var(--lime);flex:none")}></span>}
+                {v.walletLabel}
+                {v.connected && <span style={cs(`font-size:9px;opacity:.7;transform:${v.walletMenuOpen ? "rotate(180deg)" : "none"}`)}>▾</span>}
+              </button>
+              {v.connected && v.walletMenuOpen && (
+                <div style={cs("position:absolute;top:42px;right:0;z-index:50;min-width:220px;border:1px solid var(--line);border-radius:8px;background:var(--card);box-shadow:var(--sh);overflow:hidden")}>
+                  <div style={cs("padding:12px 14px;border-bottom:1px solid var(--line)")}>
+                    <div style={cs("font-family:'JetBrains Mono',monospace;font-size:13.5px;font-weight:600")}>{v.accountShort}</div>
+                    <div style={cs("font-size:11.5px;color:var(--mute);margin-top:3px")}>{v.balance} {v.nativeSymbol} on {v.chainName}</div>
+                  </div>
+                  <button onClick={() => { v.copyWalletAddress(); v.closeWalletMenu(); }} style={cs("display:block;width:100%;padding:11px 14px;border:0;background:transparent;color:var(--ink);font-size:13px;font-weight:500;text-align:left;cursor:pointer")}>Copy address</button>
+                  {v.walletExplorerUrl && (
+                    <a href={v.walletExplorerUrl} target="_blank" rel="noreferrer" onClick={v.closeWalletMenu} style={cs("display:block;padding:11px 14px;font-size:13px;font-weight:500;color:var(--ink);border-bottom:0")}>View on Explorer ↗</a>
+                  )}
+                  <button onClick={v.disconnectWallet} style={cs("display:block;width:100%;padding:11px 14px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--neg);font-size:13px;font-weight:600;text-align:left;cursor:pointer")}>Disconnect</button>
+                </div>
+              )}
+            </div>
             {m && (
               <button onClick={v.openMenu} aria-label="Menu" style={cs("display:flex;width:36px;height:36px;align-items:center;justify-content:center;flex-direction:column;gap:4px;border:1px solid var(--line);border-radius:6px;background:var(--card);cursor:pointer;padding:0;flex:none")}>
                 <span style={cs("width:15px;height:1.5px;background:var(--ink);display:block")}></span>
@@ -1163,8 +1223,7 @@ export default function App() {
 
 function buildViewModel(ctx) {
   const { s, chain, set, account, isConnected, disconnect, openConnectModal } = ctx;
-  const chainOptions = CHAIN_SLUGS.map((slug) =>
-    Object.assign({ slug, label: CHAINS[slug].name, go: () => ctx.setChain(slug) }, block(s.chain === slug)));
+  const chainOptions = CHAIN_SLUGS.map((slug) => ({ slug, label: CHAINS[slug].name, go: () => ctx.setChain(slug) }));
   const scr = s.screen;
 
   const nav = [["Discover", "home"], ["Launch", "create"], ["Stats", "stats"], ["Portfolio", "portfolio"], ["How it works", "how"], ["Docs", "docs"]].map(([label, key]) => {
@@ -1310,7 +1369,16 @@ function buildViewModel(ctx) {
     walletLabel: account ? shortAddress(account) : "Connect wallet",
     walletBg: account ? CARD : INK, walletFg: account ? INK : CARD,
     walletFont: account ? "'JetBrains Mono',monospace" : "'Outfit',sans-serif",
-    toggleWallet: () => (account ? disconnect() : openConnectModal && openConnectModal()),
+    // Connected: click opens a dropdown (balance, copy address, explorer
+    // link, disconnect) instead of disconnecting immediately on one click --
+    // disconnect is now a deliberate action inside that menu, not the
+    // button's own default behavior.
+    toggleWallet: () => (account ? set((st) => ({ walletMenuOpen: !st.walletMenuOpen })) : (openConnectModal && openConnectModal())),
+    walletMenuOpen: s.walletMenuOpen,
+    closeWalletMenu: () => set({ walletMenuOpen: false }),
+    copyWalletAddress: ctx.copyWalletAddress,
+    disconnectWallet: ctx.disconnectWallet,
+    walletExplorerUrl: account && chain.blockExplorerUrl ? `${chain.blockExplorerUrl}/address/${account}` : null,
     txPending: s.txPending,
 
     nav,
@@ -1497,6 +1565,9 @@ function buildViewModel(ctx) {
     toast: s.toast,
     health: s.health,
     chain, chainOptions, chainSlug: s.chain, chainName: chain.name, chainId: chain.chainId, nativeSymbol: chain.nativeSymbol,
+    chainMenuOpen: s.chainMenuOpen,
+    toggleChainMenu: () => set((st) => ({ chainMenuOpen: !st.chainMenuOpen })),
+    closeChainMenu: () => set({ chainMenuOpen: false }),
   };
 }
 
