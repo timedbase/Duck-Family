@@ -1,4 +1,5 @@
 import { querySubgraph } from "./subgraph/client.js";
+import { CHAIN_SLUGS, type ChainSlug } from "./chain/registry.js";
 
 // Polled occasionally in the background (see startHealthChecks), not on
 // every /health request -- a real subgraph round-trip on every hit would
@@ -15,21 +16,27 @@ export type SubgraphHealth = {
   error?: string;
 };
 
-let lastHealth: SubgraphHealth = {
+const NOT_CHECKED_YET: SubgraphHealth = {
   ok: false, latencyMs: null, blockNumber: null, hasIndexingErrors: null, checkedAt: 0,
 };
 
-export function getSubgraphHealth(): SubgraphHealth {
+const lastHealth: Record<ChainSlug, SubgraphHealth> = {
+  ink: { ...NOT_CHECKED_YET },
+  arc: { ...NOT_CHECKED_YET },
+};
+
+export function getSubgraphHealth(): Record<ChainSlug, SubgraphHealth> {
   return lastHealth;
 }
 
-export async function checkSubgraphHealth(): Promise<void> {
+async function checkOne(chain: ChainSlug): Promise<void> {
   const start = Date.now();
   try {
     const data = await querySubgraph<{ _meta: { block: { number: string }; hasIndexingErrors: boolean } | null }>(
+      chain,
       `{ _meta { block { number } hasIndexingErrors } }`
     );
-    lastHealth = {
+    lastHealth[chain] = {
       ok: !data._meta?.hasIndexingErrors,
       latencyMs: Date.now() - start,
       blockNumber: data._meta?.block?.number ?? null,
@@ -37,7 +44,7 @@ export async function checkSubgraphHealth(): Promise<void> {
       checkedAt: Date.now(),
     };
   } catch (err) {
-    lastHealth = {
+    lastHealth[chain] = {
       ok: false,
       latencyMs: Date.now() - start,
       blockNumber: null,
@@ -46,6 +53,10 @@ export async function checkSubgraphHealth(): Promise<void> {
       error: err instanceof Error ? err.message : String(err),
     };
   }
+}
+
+export async function checkSubgraphHealth(): Promise<void> {
+  await Promise.all(CHAIN_SLUGS.map(checkOne));
 }
 
 export function startHealthChecks(intervalMs = 30_000): void {

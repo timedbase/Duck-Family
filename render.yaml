@@ -15,6 +15,12 @@ services:
         value: https://api.goldsky.com/api/public/project_cmhtxnzpqm81001w94ksmgira/subgraphs/duckfun-ink/current/gn
       - key: INK_RPC_URL
         sync: false
+      # Public RPC, same one the Arc contracts/subgraph were deployed/indexed
+      # against (see Duck-Family-Contract's deploy-arc/deployments/arc.json).
+      # sync:false for consistency with INK_RPC_URL above, not because the
+      # value itself is sensitive.
+      - key: ARC_RPC_URL
+        sync: false
       - key: PORT
         value: "3000"
       - key: PINATA_JWT
@@ -34,8 +40,7 @@ services:
       # testing -- Goldsky only has arc-testnet, a different chain). This
       # points the API at our own self-hosted graph-node instead, reachable
       # over Render's private network by service name (see the three
-      # services below). Empty until that graph-node has actually indexed
-      # something worth querying.
+      # services below) -- live and indexing cleanly as of 2026-09-03.
       - key: ARC_SUBGRAPH_URL
         value: http://duckfun-graph-node:8000/subgraphs/name/duckfun-arc
 

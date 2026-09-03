@@ -40,23 +40,31 @@ async function postJSON(path, body) {
   return res.json();
 }
 
+// Every data route is chain-scoped on the backend now (see
+// backend/src/chain/registry.ts) -- this interface only ever talks to Ink,
+// so every path below is hardcoded under /ink. /health and /upload stay
+// unprefixed on the backend (chain-agnostic), matching the two call sites
+// that don't go through this object (App.jsx's direct API_BASE + "/upload/..."
+// calls).
+const CHAIN = "/ink";
+
 export const api = {
-  tokens: (params = "") => getJSON("/tokens" + params),
-  token: (address) => getJSON(`/tokens/${address}`),
-  trades: (address, limit = 50, offset = 0) => getJSON(`/tokens/${address}/trades?limit=${limit}&offset=${offset}`),
-  holders: (address, limit = 50, offset = 0) => getJSON(`/tokens/${address}/holders?limit=${limit}&offset=${offset}`),
-  comments: (address, limit = 50, offset = 0) => getJSON(`/tokens/${address}/comments?limit=${limit}&offset=${offset}`),
-  postComment: (address, wallet, body) => postJSON(`/tokens/${address}/comments`, { wallet, body }),
+  tokens: (params = "") => getJSON(`${CHAIN}/tokens` + params),
+  token: (address) => getJSON(`${CHAIN}/tokens/${address}`),
+  trades: (address, limit = 50, offset = 0) => getJSON(`${CHAIN}/tokens/${address}/trades?limit=${limit}&offset=${offset}`),
+  holders: (address, limit = 50, offset = 0) => getJSON(`${CHAIN}/tokens/${address}/holders?limit=${limit}&offset=${offset}`),
+  comments: (address, limit = 50, offset = 0) => getJSON(`${CHAIN}/tokens/${address}/comments?limit=${limit}&offset=${offset}`),
+  postComment: (address, wallet, body) => postJSON(`${CHAIN}/tokens/${address}/comments`, { wallet, body }),
   health: () => getJSON("/health"),
-  campaigns: () => getJSON("/campaigns"),
-  campaign: (id) => getJSON(`/campaigns/${id}`),
-  portfolio: (address) => getJSON(`/portfolio/${address}`),
-  quoteTokens: (family = "curve") => getJSON(`/quote-tokens?family=${family}`),
-  quoteAssets: () => getJSON("/quote-assets"),
-  locker: () => getJSON("/locker"),
-  hook: () => getJSON("/hook"),
-  curve: () => getJSON("/curve"),
-  launcher: () => getJSON("/launcher"),
-  raise: () => getJSON("/raise"),
-  stats: () => getJSON("/stats"),
+  campaigns: () => getJSON(`${CHAIN}/campaigns`),
+  campaign: (id) => getJSON(`${CHAIN}/campaigns/${id}`),
+  portfolio: (address) => getJSON(`${CHAIN}/portfolio/${address}`),
+  quoteTokens: (family = "curve") => getJSON(`${CHAIN}/quote-tokens?family=${family}`),
+  quoteAssets: () => getJSON(`${CHAIN}/quote-assets`),
+  locker: () => getJSON(`${CHAIN}/locker`),
+  hook: () => getJSON(`${CHAIN}/hook`),
+  curve: () => getJSON(`${CHAIN}/curve`),
+  launcher: () => getJSON(`${CHAIN}/launcher`),
+  raise: () => getJSON(`${CHAIN}/raise`),
+  stats: () => getJSON(`${CHAIN}/stats`),
 };

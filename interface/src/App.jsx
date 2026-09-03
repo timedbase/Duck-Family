@@ -348,10 +348,14 @@ export default function App() {
       try {
         const res = await api.health();
         if (cancelled) return;
+        // /health now reports per-chain subgraph health (backend also
+        // serves Arc) -- this interface only ever talks to Ink, so that's
+        // the one reading shown here.
+        const ink = res.subgraph?.ink;
         set({ health: {
-          ok: res.ok && res.subgraph?.ok !== false,
+          ok: res.ok && ink?.ok !== false,
           frontendMs: Math.round(performance.now() - start),
-          subgraphMs: res.subgraph?.latencyMs ?? null,
+          subgraphMs: ink?.latencyMs ?? null,
           checkedAt: Date.now(),
         } });
       } catch {

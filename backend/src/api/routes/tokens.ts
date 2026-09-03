@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { querySubgraph } from "../../subgraph/client.js";
-
-const router = Router();
+import type { ChainSlug } from "../../chain/registry.js";
 
 const TOKEN_FIELDS = `
   id family creator quoteToken totalSupply
@@ -32,6 +31,7 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 // saw a price for it"), which is still a real, honest number; only a token
 // with zero trade history at all (no buckets in the window) gets null.
 async function attachDerivedStats<T extends { id: string; lastPrice: string | null; lastPriceUsd: string | null }>(
+  chain: ChainSlug,
   tokens: T[]
 ): Promise<
   (T & { volume24h: string; volume24hUsd: string; priceChange24h: number | null; priceChange24hUsd: number | null })[]
@@ -43,6 +43,7 @@ async function attachDerivedStats<T extends { id: string; lastPrice: string | nu
   const data = await querySubgraph<{
     tokenHourDatas: { token: { id: string }; hourStartUnix: string; volumeQuote: string; volumeUsd: string; closePrice: string | null; closePriceUsd: string | null }[];
   }>(
+    chain,
     `query DerivedStats($tokens: [String!]!, $cutoff: BigInt!) {
       tokenHourDatas(first: 1000, orderBy: hourStartUnix, orderDirection: desc, where: { token_in: $tokens, hourStartUnix_gte: $cutoff }) {
         token { id }
@@ -102,9 +103,10 @@ async function attachDerivedStats<T extends { id: string; lastPrice: string | nu
 // Pool.token -> Token forward), so a poolId can't just be nested onto
 // TOKEN_FIELDS -- batch-fetch pools for the whole page in one extra query
 // and merge poolId onto each token, same shape as attachDerivedStats above.
-async function attachPoolIds<T extends { id: string }>(tokens: T[]): Promise<(T & { poolId: string | null })[]> {
+async function attachPoolIds<T extends { id: string }>(chain: ChainSlug, tokens: T[]): Promise<(T & { poolId: string | null })[]> {
   if (tokens.length === 0) return [];
   const data = await querySubgraph<{ pools: { id: string; token: { id: string } }[] }>(
+    chain,
     `query TokenPools($tokens: [String!]!) {
       pools(where: { token_in: $tokens }, first: 1000) { id token { id } }
     }`,
@@ -174,66 +176,71 @@ async function attachImageUrls<T extends { metaUri: string | null; metaOverrideU
   return tokens.map((t, i) => ({ ...t, ...metas[i] }));
 }
 
-router.get("/", async (req, res) => {
-  const family = typeof req.query.family === "string" ? req.query.family.toUpperCase() : undefined;
-  const limit = Math.min(Number(req.query.limit ?? 50), 200);
-  const offset = Number(req.query.offset ?? 0);
+export default function createTokensRouter(chain: ChainSlug) {
+  const router = Router();
 
-  try {
-    const data = await querySubgraph<{
-      tokens: { id: string; lastPrice: string | null; lastPriceUsd: string | null; metaUri: string | null; metaOverrideUri: string | null }[];
-    }>(
-      `query Tokens($first: Int!, $skip: Int!, $where: Token_filter) {
-        tokens(first: $first, skip: $skip, orderBy: createdAtBlock, orderDirection: desc, where: $where) {
-          ${TOKEN_FIELDS}
-        }
-      }`,
-      { first: limit, skip: offset, where: family ? { family } : {} }
-    );
-    res.json(await attachImageUrls(await attachPoolIds(await attachDerivedStats(data.tokens))));
-  } catch (err) {
-    res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
-  }
-});
+  router.get("/", async (req, res) => {
+    const family = typeof req.query.family === "string" ? req.query.family.toUpperCase() : undefined;
+    const limit = Math.min(Number(req.query.limit ?? 50), 200);
+    const offset = Number(req.query.offset ?? 0);
 
-router.get("/:address", async (req, res) => {
-  const address = req.params.address.toLowerCase();
+    try {
+      const data = await querySubgraph<{
+        tokens: { id: string; lastPrice: string | null; lastPriceUsd: string | null; metaUri: string | null; metaOverrideUri: string | null }[];
+      }>(
+        chain,
+        `query Tokens($first: Int!, $skip: Int!, $where: Token_filter) {
+          tokens(first: $first, skip: $skip, orderBy: createdAtBlock, orderDirection: desc, where: $where) {
+            ${TOKEN_FIELDS}
+          }
+        }`,
+        { first: limit, skip: offset, where: family ? { family } : {} }
+      );
+      res.json(await attachImageUrls(await attachPoolIds(chain, await attachDerivedStats(chain, data.tokens))));
+    } catch (err) {
+      res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
 
-  try {
-    const data = await querySubgraph<{
-      token: Record<string, unknown> | null;
-      position: Record<string, unknown> | null;
-      // Pool.id is the poolId (bytes32), never the token address -- unlike
-      // Position.id, which really is the token address -- so this has to be
-      // a filtered plural query, not pool(id: $id) (that would always
-      // return null; a token address can never equal a poolId).
-      pools: Record<string, unknown>[];
-    }>(
-      `query TokenDetail($id: ID!) {
-        token(id: $id) {
-          ${TOKEN_FIELDS}
-          campaign { id creator name symbol dexQuoteAsset goal startTime deadline totalRaised succeeded failed }
-        }
-        position(id: $id) {
-          tokenId poolId hook positionManager registeredAt registeredAtBlock registeredAtTx totalBurned totalToPlatform
-        }
-        pools(where: { token: $id }, first: 1) { id creator hookFeeBps registeredAt registeredAtBlock swapCount }
-      }`,
-      { id: address }
-    );
+  router.get("/:address", async (req, res) => {
+    const address = req.params.address.toLowerCase();
 
-    if (data.token == null) return res.status(404).json({ error: "not found" });
-    const [withStats] = await attachDerivedStats([
-      data.token as { id: string; lastPrice: string | null; lastPriceUsd: string | null },
-    ]);
-    const [withImage] = await attachImageUrls([
-      withStats as typeof withStats & { metaUri: string | null; metaOverrideUri: string | null },
-    ]);
-    res.json({ ...withImage, position: data.position, pool: data.pools[0] ?? null });
-  } catch (err) {
-    res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
-  }
-});
+    try {
+      const data = await querySubgraph<{
+        token: Record<string, unknown> | null;
+        position: Record<string, unknown> | null;
+        // Pool.id is the poolId (bytes32), never the token address -- unlike
+        // Position.id, which really is the token address -- so this has to be
+        // a filtered plural query, not pool(id: $id) (that would always
+        // return null; a token address can never equal a poolId).
+        pools: Record<string, unknown>[];
+      }>(
+        chain,
+        `query TokenDetail($id: ID!) {
+          token(id: $id) {
+            ${TOKEN_FIELDS}
+            campaign { id creator name symbol dexQuoteAsset goal startTime deadline totalRaised succeeded failed }
+          }
+          position(id: $id) {
+            tokenId poolId hook positionManager registeredAt registeredAtBlock registeredAtTx totalBurned totalToPlatform
+          }
+          pools(where: { token: $id }, first: 1) { id creator hookFeeBps registeredAt registeredAtBlock swapCount }
+        }`,
+        { id: address }
+      );
+
+      if (data.token == null) return res.status(404).json({ error: "not found" });
+      const [withStats] = await attachDerivedStats(chain, [
+        data.token as { id: string; lastPrice: string | null; lastPriceUsd: string | null },
+      ]);
+      const [withImage] = await attachImageUrls([
+        withStats as typeof withStats & { metaUri: string | null; metaOverrideUri: string | null },
+      ]);
+      res.json({ ...withImage, position: data.position, pool: data.pools[0] ?? null });
+    } catch (err) {
+      res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
 
 type SubgraphTrade = {
   id: string; trader: string; side: "BUY" | "SELL"; quoteAmount: string; tokenAmount: string;
@@ -302,6 +309,7 @@ router.get("/:address/trades", async (req, res) => {
       // schema happens to allow more than one row per token.
       position: { poolId: string } | null;
     }>(
+      chain,
       `query TokenTrades($token: String!, $first: Int!) {
         trades(first: $first, orderBy: blockNumber, orderDirection: desc, where: { token: $token }) {
           id trader side quoteAmount tokenAmount tokensToDead raisedQuoteAfter timestamp blockNumber txHash
@@ -317,6 +325,7 @@ router.get("/:address/trades", async (req, res) => {
       const quoteToken = data.token?.quoteToken ?? ZERO_ADDRESS;
       const tokenIsCurrency0 = BigInt(address) < BigInt(quoteToken);
       const swapData = await querySubgraph<{ poolSwaps: PoolSwapRow[] }>(
+        chain,
         `query PoolSwaps($pool: String!, $first: Int!) {
           poolSwaps(first: $first, orderBy: blockNumber, orderDirection: desc, where: { pool: $pool }) {
             id sender amount0 amount1 timestamp blockNumber txHash
@@ -332,31 +341,33 @@ router.get("/:address/trades", async (req, res) => {
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }
-});
+  });
 
-router.get("/:address/holders", async (req, res) => {
-  const address = req.params.address.toLowerCase();
-  const limit = Math.min(Number(req.query.limit ?? 50), 200);
-  const offset = Math.max(Number(req.query.offset ?? 0), 0);
+  router.get("/:address/holders", async (req, res) => {
+    const address = req.params.address.toLowerCase();
+    const limit = Math.min(Number(req.query.limit ?? 50), 200);
+    const offset = Math.max(Number(req.query.offset ?? 0), 0);
 
-  try {
-    // Token.holderCount is a running counter maintained on every
-    // zero-balance crossing (see schema.graphql), so it's already exactly
-    // "accounts with balance > 0" -- the same set this query filters to --
-    // with no separate count query needed.
-    const data = await querySubgraph<{ holders: unknown[]; token: { holderCount: number } | null }>(
-      `query TokenHolders($token: String!, $first: Int!, $skip: Int!) {
-        holders(first: $first, skip: $skip, orderBy: balance, orderDirection: desc, where: { token: $token, balance_gt: "0" }) {
-          account balance updatedAt updatedAtBlock
-        }
-        token(id: $token) { holderCount }
-      }`,
-      { token: address, first: limit, skip: offset }
-    );
-    res.json({ items: data.holders, total: data.token?.holderCount ?? data.holders.length });
-  } catch (err) {
-    res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
-  }
-});
+    try {
+      // Token.holderCount is a running counter maintained on every
+      // zero-balance crossing (see schema.graphql), so it's already exactly
+      // "accounts with balance > 0" -- the same set this query filters to --
+      // with no separate count query needed.
+      const data = await querySubgraph<{ holders: unknown[]; token: { holderCount: number } | null }>(
+        chain,
+        `query TokenHolders($token: String!, $first: Int!, $skip: Int!) {
+          holders(first: $first, skip: $skip, orderBy: balance, orderDirection: desc, where: { token: $token, balance_gt: "0" }) {
+            account balance updatedAt updatedAtBlock
+          }
+          token(id: $token) { holderCount }
+        }`,
+        { token: address, first: limit, skip: offset }
+      );
+      res.json({ items: data.holders, total: data.token?.holderCount ?? data.holders.length });
+    } catch (err) {
+      res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
 
-export default router;
+  return router;
+}

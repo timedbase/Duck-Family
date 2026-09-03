@@ -3,12 +3,13 @@ import express, { type ErrorRequestHandler } from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import multer from "multer";
-import tokensRouter from "./routes/tokens.js";
-import campaignsRouter from "./routes/campaigns.js";
-import portfolioRouter from "./routes/portfolio.js";
-import platformRouter from "./routes/platform.js";
+import createTokensRouter from "./routes/tokens.js";
+import createCampaignsRouter from "./routes/campaigns.js";
+import createPortfolioRouter from "./routes/portfolio.js";
+import createPlatformRouter from "./routes/platform.js";
 import uploadRouter from "./routes/upload.js";
-import commentsRouter from "./routes/comments.js";
+import createCommentsRouter from "./routes/comments.js";
+import { CHAIN_SLUGS } from "../chain/registry.js";
 import { ensureSchema } from "../db/client.js";
 import { startHealthChecks, getSubgraphHealth } from "../health.js";
 
@@ -30,12 +31,18 @@ app.use(rateLimit({
 
 app.get("/health", (_req, res) => res.json({ ok: true, subgraph: getSubgraphHealth() }));
 
-app.use("/tokens", tokensRouter);
-app.use("/tokens", commentsRouter);
-app.use("/campaigns", campaignsRouter);
-app.use("/portfolio", portfolioRouter);
+// Every data route is chain-scoped under /ink or /arc (see chain/registry.ts)
+// -- each factory below is called once per chain, closing over which
+// chain's RPC client/subgraph/addresses it reads from. /upload stays
+// unprefixed: pinning metadata to IPFS has nothing chain-specific about it.
+for (const chain of CHAIN_SLUGS) {
+  app.use(`/${chain}/tokens`, createTokensRouter(chain));
+  app.use(`/${chain}/tokens`, createCommentsRouter(chain));
+  app.use(`/${chain}/campaigns`, createCampaignsRouter(chain));
+  app.use(`/${chain}/portfolio`, createPortfolioRouter(chain));
+  app.use(`/${chain}`, createPlatformRouter(chain));
+}
 app.use("/upload", uploadRouter);
-app.use("/", platformRouter);
 
 // Every route handler's own try/catch returns a uniform { error } JSON body
 // -- but multer's fileFilter/size-limit rejection and express.json()'s

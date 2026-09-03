@@ -27,17 +27,31 @@ let schemaReady: Promise<void> | null = null;
 export function ensureSchema(): Promise<void> {
   if (!pool) return Promise.reject(new Error("DATABASE_URL is not set"));
   if (!schemaReady) {
+    // `chain` defaults to 'ink' for the CREATE TABLE (every comment ever
+    // posted was on Ink, back when it was the only chain) and the same
+    // default covers the ALTER TABLE path for a table that already existed
+    // before this column did -- both leave existing rows correctly attributed
+    // rather than NULL. A real discriminator matters here: token addresses
+    // are NOT guaranteed unique across chains (Arc's deploy landed several
+    // addresses byte-for-byte identical to Ink's, a real, confirmed
+    // coincidence from matching deployer nonces -- see
+    // Duck-Family-Contract's deploy-arc/deployments/arc.json), so without
+    // this a comment thread could silently mix two unrelated tokens'
+    // comments together.
     schemaReady = pool
       .query(`
         CREATE TABLE IF NOT EXISTS comments (
           id BIGSERIAL PRIMARY KEY,
+          chain TEXT NOT NULL DEFAULT 'ink',
           token_address TEXT NOT NULL,
           wallet TEXT NOT NULL,
           tag TEXT NOT NULL DEFAULT 'HOLDER',
           body TEXT NOT NULL,
           created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );
-        CREATE INDEX IF NOT EXISTS comments_token_address_idx ON comments (token_address, created_at DESC, id DESC);
+        ALTER TABLE comments ADD COLUMN IF NOT EXISTS chain TEXT NOT NULL DEFAULT 'ink';
+        DROP INDEX IF EXISTS comments_token_address_idx;
+        CREATE INDEX IF NOT EXISTS comments_chain_token_address_idx ON comments (chain, token_address, created_at DESC, id DESC);
       `)
       .then(() => {});
   }
