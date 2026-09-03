@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { formatEther, formatUnits, parseEther, parseUnits } from "viem";
-import { useAccount, useDisconnect } from "wagmi";
+import { useAccount, useDisconnect, useChainId, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { cs } from "./cs.js";
 import { XIcon, TelegramIcon } from "./MetaChips.jsx";
@@ -26,10 +26,23 @@ import {
 } from "./chain/actions.js";
 import { buyOnPoolWithNative, sellOnPoolForNative } from "./chain/dex.js";
 import { previewCurveBuy, previewCurveSell, previewCurveBuyWithNative, previewPoolBuyWithNative, previewPoolSellForNative, applySlippage } from "./chain/quotes.js";
-import { ZERO_ADDRESS, DEFAULT_QUOTE_TOKENS, CURVE_LAUNCHER_QUOTE_TOKENS, STOCK_QUOTE_TOKENS, RAISE_DEFAULT_QUOTE_ASSETS, LIQUID_QUOTE_TOKEN_SYMBOLS } from "./chain/addresses.js";
+import { ZERO_ADDRESS, CHAINS, CHAIN_SLUGS } from "./chain/addresses.js";
 import { fetchTokenMeta, fetchTokenMetaUri } from "./chain/tokenMeta.js";
 import { findBlockedTerm } from "./moderation.js";
 import { resolveTokenImage, resolveTokenSocials, resolveTokenDescription, resolveTokenNameSymbol } from "./ipfs.js";
+
+const CHAIN_STORAGE_KEY = "duckfun-chain";
+function loadStoredChain() {
+  try {
+    const v = localStorage.getItem(CHAIN_STORAGE_KEY);
+    return v === "arc" ? "arc" : "ink";
+  } catch {
+    return "ink"; // localStorage unavailable (private mode, etc.) -- default, never throw
+  }
+}
+function storeChain(slug) {
+  try { localStorage.setItem(CHAIN_STORAGE_KEY, slug); } catch { /* best-effort */ }
+}
 
 const REFRESH_MS = 15000;
 const PAGE_SIZE = 10; // Trades/Holders tabs page at this size, both server- and client-side.
@@ -42,12 +55,12 @@ function truncateDecimals(numStr, decimals) {
   return frac.length > decimals ? `${whole}.${frac.slice(0, decimals)}` : numStr;
 }
 
-// ETH first (always tradeable directly), then the platform's default-allowed
-// quote tokens, then that family's platformToken() (if the owner has set
-// one) -- fetched live, see getPlatformTokens.
-function quoteOptionsFor(base, platformToken) {
+// Native currency first (always tradeable directly), then the platform's
+// default-allowed quote tokens, then that family's platformToken() (if the
+// owner has set one) -- fetched live, see getPlatformTokens.
+function quoteOptionsFor(chain, base, platformToken) {
   const options = [
-    { label: "ETH", address: ZERO_ADDRESS },
+    { label: chain.nativeSymbol, address: ZERO_ADDRESS },
     ...base.map((t) => ({ label: t.symbol, address: t.address, decimals: t.decimals })),
   ];
   if (platformToken && !options.some((o) => o.address.toLowerCase() === platformToken.address.toLowerCase())) {
@@ -55,9 +68,9 @@ function quoteOptionsFor(base, platformToken) {
   }
   return options;
 }
-function decimalsFor(address, platformTokens = []) {
+function decimalsFor(chain, address, platformTokens = []) {
   if (address.toLowerCase() === ZERO_ADDRESS) return 18;
-  const all = [...DEFAULT_QUOTE_TOKENS, ...STOCK_QUOTE_TOKENS, ...platformTokens.filter(Boolean)];
+  const all = [...chain.DEFAULT_QUOTE_TOKENS, ...chain.STOCK_QUOTE_TOKENS, ...platformTokens.filter(Boolean)];
   const t = all.find((q) => q.address.toLowerCase() === address.toLowerCase());
   return t ? t.decimals : 18;
 }
@@ -135,6 +148,8 @@ export default function App() {
   const { address: account, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { openConnectModal } = useConnectModal();
+  const walletChainId = useChainId();
+  const { switchChainAsync } = useSwitchChain();
 
   // Deep-link support: a static path (/, /create, /portfolio, /stats, /how,
   // /docs) resolves synchronously into the initial screen. A /0x... address
@@ -146,6 +161,7 @@ export default function App() {
   const skipNextPush = useRef(false);
 
   const [s, setS] = useState({
+    chain: loadStoredChain(),
     mobile: false, menuOpen: false, sort: "Last activity",
     layout: "cards", filter: "All", query: "",
     mcapFilter: "any", launchedFilter: "any", quoteFilter: "any",
@@ -156,7 +172,7 @@ export default function App() {
     nativeBalance: 0n, txPending: false, tx: null, toast: "",
     portfolio: EMPTY_PORTFOLIO, coins: [], coinsLoading: true, coinsError: "",
     draftCurve: { name: "", ticker: "", desc: "", quoteToken: ZERO_ADDRESS, startVirtualQuote: "8000", migrationTargetQuote: "60000", earlyBuyAmount: "0", socials: EMPTY_SOCIALS },
-    draftInstant: { name: "", ticker: "", desc: "", quoteToken: ZERO_ADDRESS, launchMarketCap: "10", buyAmountHype: "0", socials: EMPTY_SOCIALS },
+    draftInstant: { name: "", ticker: "", desc: "", quoteToken: ZERO_ADDRESS, launchMarketCap: "10", buyAmountHype: "0", dex: "v4", socials: EMPTY_SOCIALS },
     draftCampaign: { name: "", ticker: "", desc: "", dexQuoteAsset: ZERO_ADDRESS, goalNative: "50", socials: EMPTY_SOCIALS },
     draftImage: EMPTY_IMAGE,
     raiseDefaults: null, platformTokens: { incubation: null, launcher: null, raise: null },
@@ -165,6 +181,37 @@ export default function App() {
     health: { ok: true, frontendMs: null, subgraphMs: null, checkedAt: null },
   });
   const set = useCallback((patch) => setS((st) => ({ ...st, ...(typeof patch === "function" ? patch(st) : patch) })), []);
+  const chain = CHAINS[s.chain];
+
+  // Switching chains is pure app state, independent of the wallet's actual
+  // connected network -- a disconnected user (or one connected to the OTHER
+  // chain) can still browse the new chain's data; the wallet only has to
+  // match at the moment of an actual write (see runTx's guard below). Reset
+  // every address-keyed piece of state and navigate home rather than
+  // leaving a token/campaign/portfolio view open against the OLD chain's
+  // address under the NEW chain's data -- this matters because Ink and Arc
+  // have already been observed to share byte-identical contract addresses
+  // (same deployer nonce sequence), so carrying over a same-string address
+  // across a chain switch could silently resolve to a completely different,
+  // unrelated token/campaign.
+  function setChain(next) {
+    if (next === s.chain) return;
+    storeChain(next);
+    set((st) => ({
+      chain: next, screen: "home", tokenId: null, family: null,
+      campaignDetail: null, creatorData: null, portfolio: EMPTY_PORTFOLIO,
+      coins: [], coinsLoading: true, raiseDefaults: null,
+      platformTokens: { incubation: null, launcher: null, raise: null },
+      // V3 (the "dex" draft field) is Arc-only -- reset back to V4 so a
+      // leftover V3 selection never silently carries into Ink, which has
+      // no V3 dex at all and would just throw launchInstant's "not
+      // available" error on submit instead of the toggle simply not
+      // rendering there.
+      draftInstant: { ...st.draftInstant, dex: "v4" },
+    }));
+    skipNextPush.current = false;
+    window.history.pushState(null, "", "/");
+  }
 
   // ---------- lifecycle ----------
 
@@ -218,20 +265,21 @@ export default function App() {
   }, [s.coins.length]);
 
   useEffect(() => {
-    getPlatformTokens().then((tokens) => set({ platformTokens: tokens })).catch(() => {});
-  }, [set]);
+    getPlatformTokens(chain).then((tokens) => set({ platformTokens: tokens })).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [set, s.chain]);
 
   const loadCoins = useCallback(async () => {
     try {
-      const rows = await api.tokens();
-      let coins = rows.map((t, i) => tokenToCoin(t, i));
+      const rows = await api.tokens(chain);
+      let coins = rows.map((t, i) => tokenToCoin(chain, t, i));
 
       // name/symbol are indexed directly on Token now -- this only fires
       // for a token the subgraph hasn't reindexed yet since that field was
       // added (or one from right before a redeploy), never in steady state.
       const missingMeta = coins.filter((c) => c.family !== "CAMPAIGN" && c.symbol === "???").map((c) => c.id);
       if (missingMeta.length > 0) {
-        const meta = await fetchTokenMeta(missingMeta);
+        const meta = await fetchTokenMeta(chain, missingMeta);
         coins = coins.map((c) => {
           const m = meta[c.id.toLowerCase()];
           if (!m || (!m.name && !m.symbol)) return c;
@@ -263,7 +311,7 @@ export default function App() {
       return null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [chain]);
 
   // A freshly-launched token isn't visible until (a) the tx is actually
   // mined on Ink and (b) the subgraph indexes it -- both take real seconds
@@ -289,7 +337,7 @@ export default function App() {
   // to the create form so they can see the error (surfaced via the tx
   // modal / runTx's own reverted-stage handling) and retry.
   function confirmAndPoll(hash, address) {
-    waitForTx(hash)
+    waitForTx(chain, hash)
       .then((receipt) => {
         if (receipt.status === "success") pollUntilFound(address);
         else { flash("Launch reverted on-chain. Nothing was created."); set({ screen: "createForm" }); }
@@ -314,18 +362,18 @@ export default function App() {
   const refreshBalance = useCallback(async () => {
     if (!account) return;
     try {
-      const bal = await getNativeBalance(account);
+      const bal = await getNativeBalance(chain, account);
       set({ nativeBalance: bal });
     } catch (e) { console.error("failed to fetch balance", e); }
-  }, [account, set]);
+  }, [account, set, chain]);
 
   const loadPortfolio = useCallback(async () => {
     if (!account) return;
     try {
-      const data = await api.portfolio(account);
+      const data = await api.portfolio(chain, account);
       set({ portfolio: data });
     } catch (e) { console.error("failed to load portfolio", e); }
-  }, [account, set]);
+  }, [account, set, chain]);
 
   useEffect(() => { loadCoins(); const t = setInterval(loadCoins, REFRESH_MS); return () => clearInterval(t); }, [loadCoins]);
   useEffect(() => {
@@ -348,14 +396,14 @@ export default function App() {
       try {
         const res = await api.health();
         if (cancelled) return;
-        // /health now reports per-chain subgraph health (backend also
-        // serves Arc) -- this interface only ever talks to Ink, so that's
-        // the one reading shown here.
-        const ink = res.subgraph?.ink;
+        // /health reports per-chain subgraph health -- read the CURRENTLY
+        // SELECTED chain's entry, not a hardcoded one, so the status bar
+        // reflects whichever chain is actually being browsed.
+        const chainHealth = res.subgraph?.[s.chain];
         set({ health: {
-          ok: res.ok && ink?.ok !== false,
+          ok: res.ok && chainHealth?.ok !== false,
           frontendMs: Math.round(performance.now() - start),
-          subgraphMs: ink?.latencyMs ?? null,
+          subgraphMs: chainHealth?.latencyMs ?? null,
           checkedAt: Date.now(),
         } });
       } catch {
@@ -366,7 +414,7 @@ export default function App() {
     checkHealth();
     const t = setInterval(checkHealth, HEALTH_CHECK_MS);
     return () => { cancelled = true; clearInterval(t); };
-  }, [set]);
+  }, [set, s.chain]);
 
   // Shared by loadTokenDetail (CURVE/INSTANT) and loadCampaignDetail (RAISE)
   // -- metaURI() is the same ERC20 field on every family's token clone.
@@ -379,7 +427,7 @@ export default function App() {
   // case, so the non-override path's name/symbol behavior is unchanged.
   const loadTokenMeta = useCallback(async (address, knownUri, overrideUri, knownImageUrl) => {
     try {
-      const originalUri = knownUri || (overrideUri ? null : await fetchTokenMetaUri(address));
+      const originalUri = knownUri || (overrideUri ? null : await fetchTokenMetaUri(chain, address));
       const uri = overrideUri || originalUri;
       if (!uri) return;
       // The backend already resolved this image server-side (see
@@ -401,7 +449,7 @@ export default function App() {
         }),
       }));
     } catch (e) { console.error("failed to load token metadata", e); }
-  }, []);
+  }, [chain]);
 
   const loadTokenDetail = useCallback(async (address, knownMetaUri, overrideUri, knownImageUrl) => {
     loadTokenMeta(address, knownMetaUri, overrideUri, knownImageUrl);
@@ -411,7 +459,8 @@ export default function App() {
     // DB hiccup (or a deployment with DATABASE_URL not set yet) leaves the
     // rest of the page working, not fails it too.
     fetchCommentsPage(address, 1);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadTokenMeta]);
 
   // True numbered pagination, not "load more": every page fetches exactly
   // that page directly (offset computed from the page number), so jumping
@@ -420,7 +469,7 @@ export default function App() {
   // approach this replaced.
   async function fetchTradesPage(address, page) {
     try {
-      const res = await api.trades(address, PAGE_SIZE, (page - 1) * PAGE_SIZE);
+      const res = await api.trades(chain, address, PAGE_SIZE, (page - 1) * PAGE_SIZE);
       setS((st) => {
         const coin = st.coins.find((c) => c.id === address);
         if (!coin) return st;
@@ -430,7 +479,7 @@ export default function App() {
           ...st,
           coins: st.coins.map((c) => c.id === address ? {
             ...c,
-            trades: res.items.map((tr) => tradeToRow(tr, labels, coin.quote)),
+            trades: res.items.map((tr) => tradeToRow(chain, tr, labels, coin.quote)),
             rawTrades: res.items, tradesTotal: res.total,
           } : c),
         };
@@ -440,7 +489,7 @@ export default function App() {
 
   async function fetchHoldersPage(address, page) {
     try {
-      const res = await api.holders(address, PAGE_SIZE, (page - 1) * PAGE_SIZE);
+      const res = await api.holders(chain, address, PAGE_SIZE, (page - 1) * PAGE_SIZE);
       setS((st) => {
         const coin = st.coins.find((c) => c.id === address);
         if (!coin) return st;
@@ -452,7 +501,7 @@ export default function App() {
           ...st,
           coins: st.coins.map((c) => c.id === address ? {
             ...c,
-            holderRows: res.items.map((h, i) => holderToRow(h, startRank + i, totalSupply, labels)),
+            holderRows: res.items.map((h, i) => holderToRow(chain, h, startRank + i, totalSupply, labels)),
             holdersTotal: res.total,
           } : c),
         };
@@ -462,7 +511,7 @@ export default function App() {
 
   async function fetchCommentsPage(address, page) {
     try {
-      const res = await api.comments(address, PAGE_SIZE, (page - 1) * PAGE_SIZE);
+      const res = await api.comments(chain, address, PAGE_SIZE, (page - 1) * PAGE_SIZE);
       setS((st) => {
         const coin = st.coins.find((c) => c.id === address);
         if (!coin) return st;
@@ -472,7 +521,7 @@ export default function App() {
           ...st,
           coins: st.coins.map((c) => c.id === address ? {
             ...c,
-            chat: res.items.map((cm) => commentToRow(cm, labels)),
+            chat: res.items.map((cm) => commentToRow(chain, cm, labels)),
             commentsTotal: res.total,
           } : c),
         };
@@ -489,7 +538,7 @@ export default function App() {
     if (!text) return false;
     set({ chatDraft: "" });
     try {
-      await api.postComment(coin.id, account || "", text);
+      await api.postComment(chain, coin.id, account || "", text);
       await fetchCommentsPage(coin.id, 1);
       return true;
     } catch (e) {
@@ -532,7 +581,7 @@ export default function App() {
       set({ screen: "campaign", tokenId: id, campaignDetail: null });
       if (coin.campaignId) loadCampaignDetail(coin.campaignId);
       loadTokenMeta(id, coin.metaUri, coin.metaOverrideUri, coin.imageUrl);
-      getRaiseDefaults().then((d) => set({ raiseDefaults: d })).catch(() => {});
+      getRaiseDefaults(chain).then((d) => set({ raiseDefaults: d })).catch(() => {});
     } else {
       set({ screen: "token", tokenId: id, tab: "Trades", side: "buy", amount: "250" });
       loadTokenDetail(id, coin?.metaUri, coin?.metaOverrideUri, coin?.imageUrl);
@@ -542,19 +591,32 @@ export default function App() {
 
   const loadCampaignDetail = useCallback(async (campaignId) => {
     try {
-      const data = await api.campaign(campaignId);
+      const data = await api.campaign(chain, campaignId);
       set({ campaignDetail: data });
     } catch (e) { console.error("failed to load campaign detail", e); }
-  }, [set]);
+  }, [set, chain]);
 
   async function runTx(label, fn) {
     if (!requireWallet()) return null;
     if (s.txPending) return null;
+    // Every real write must land on the chain the app has selected -- the
+    // wallet may still be on whatever it was last connected to (a different
+    // chain entirely, or the wrong one after a chain switch here). Prompt
+    // the wallet's own switch-or-add-network flow before ever simulating or
+    // signing anything.
+    if (walletChainId !== chain.chainId) {
+      try {
+        await switchChainAsync({ chainId: chain.chainId });
+      } catch {
+        flash(`Switch your wallet to ${chain.name} to continue.`);
+        return null;
+      }
+    }
     set({ txPending: true, tx: { stage: "pending" } });
     try {
       const hash = await fn();
       set({ tx: { stage: "pending", hash } });
-      waitForTx(hash)
+      waitForTx(chain, hash)
         .then((receipt) => set((st) => (st.tx ? { tx: { stage: receipt.status === "success" ? "success" : "reverted", hash } } : {})))
         .catch(() => set((st) => (st.tx ? { tx: { stage: "reverted", hash } } : {})))
         .finally(refreshBalance);
@@ -574,31 +636,31 @@ export default function App() {
     if (coin.family === "CAMPAIGN") return flash("This token is a campaign. Use Contribute instead of Buy.");
     if (!amtEth || amtEth <= 0) return flash("Enter an amount.");
     const valueWei = parseEther(String(amtEth));
-    if (valueWei > s.nativeBalance) return flash("Not enough ETH. Need " + amtEth + ".");
+    if (valueWei > s.nativeBalance) return flash(`Not enough ${chain.nativeSymbol}. Need ${amtEth}.`);
     const isPool = coin.family === "INSTANT" || (coin.family === "CURVE" && coin.migrated);
     const isNativeQuote = coin.quoteTokenAddress.toLowerCase() === ZERO_ADDRESS;
     let hash;
     try {
       if (isPool) {
-        const expected = await previewPoolBuyWithNative({ token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountInWei: valueWei });
-        if (expected === 0n) return flash("No ETH route available for this pool right now.");
+        const expected = await previewPoolBuyWithNative(chain, { token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountInWei: valueWei });
+        if (expected === 0n) return flash(`No ${chain.nativeSymbol} route available for this pool right now.`);
         const minOut = applySlippage(expected, s.slippageBps);
-        hash = await runTx("Buy", () => buyOnPoolWithNative({ account, token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountInWei: valueWei, minOut }));
+        hash = await runTx("Buy", () => buyOnPoolWithNative(chain, { account, token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountInWei: valueWei, minOut }));
       } else if (isNativeQuote) {
-        const expected = await previewCurveBuy(coin.id, valueWei);
+        const expected = await previewCurveBuy(chain, coin.id, valueWei);
         const minOut = applySlippage(expected, s.slippageBps);
-        hash = await runTx("Buy", () => buyCurve({ account, token: coin.id, quoteToken: ZERO_ADDRESS, amountIn: valueWei, minOut }));
+        hash = await runTx("Buy", () => buyCurve(chain, { account, token: coin.id, quoteToken: ZERO_ADDRESS, amountIn: valueWei, minOut }));
       } else {
-        const { quoteOut, tokensOut } = await previewCurveBuyWithNative(coin.id, coin.quoteTokenAddress, coin.quote, valueWei);
-        if (quoteOut === 0n) return flash("No ETH route available for this token's quote asset (" + coin.quote + ").");
+        const { quoteOut, tokensOut } = await previewCurveBuyWithNative(chain, coin.id, coin.quoteTokenAddress, coin.quote, valueWei);
+        if (quoteOut === 0n) return flash(`No ${chain.nativeSymbol} route available for this token's quote asset (` + coin.quote + ").");
         const minQuoteOut = applySlippage(quoteOut, s.slippageBps);
         const minOut = applySlippage(tokensOut, s.slippageBps);
-        hash = await runTx("Buy", () => buyCurveWithNative({ account, token: coin.id, amountInWei: valueWei, minQuoteOut, minOut }));
+        hash = await runTx("Buy", () => buyCurveWithNative(chain, { account, token: coin.id, amountInWei: valueWei, minQuoteOut, minOut }));
       }
     } catch (e) {
       return flash("Couldn't get a price quote. Try again. (" + errorText(e, "unknown") + ")");
     }
-    if (hash) { await Promise.all([loadPortfolio(), loadTokenDetail(coin.id, coin.metaUri, coin.metaOverrideUri, coin.imageUrl)]); flash("Bought " + coin.ticker + " for " + amtEth + " ETH"); }
+    if (hash) { await Promise.all([loadPortfolio(), loadTokenDetail(coin.id, coin.metaUri, coin.metaOverrideUri, coin.imageUrl)]); flash(`Bought ${coin.ticker} for ${amtEth} ${chain.nativeSymbol}`); }
   }
 
   async function sell(coin, tokenAmount) {
@@ -609,21 +671,21 @@ export default function App() {
     let hash;
     try {
       if (isPool) {
-        const expected = await previewPoolSellForNative({ token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountIn });
-        if (expected === 0n) return flash("No ETH route available for this pool right now.");
+        const expected = await previewPoolSellForNative(chain, { token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountIn });
+        if (expected === 0n) return flash(`No ${chain.nativeSymbol} route available for this pool right now.`);
         const minOut = applySlippage(expected, s.slippageBps);
-        hash = await runTx("Sell", () => sellOnPoolForNative({ account, token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountIn, minOut }));
+        hash = await runTx("Sell", () => sellOnPoolForNative(chain, { account, token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountIn, minOut }));
       } else {
-        const expected = await previewCurveSell(coin.id, amountIn);
+        const expected = await previewCurveSell(chain, coin.id, amountIn);
         const minQuoteOut = applySlippage(expected, s.slippageBps);
-        hash = await runTx("Sell", () => sellCurve({ account, token: coin.id, amountIn, minQuoteOut }));
+        hash = await runTx("Sell", () => sellCurve(chain, { account, token: coin.id, amountIn, minQuoteOut }));
       }
     } catch (e) {
       return flash("Couldn't get a price quote. Try again. (" + errorText(e, "unknown") + ")");
     }
     if (hash) {
       await Promise.all([loadPortfolio(), loadTokenDetail(coin.id, coin.metaUri, coin.metaOverrideUri, coin.imageUrl)]);
-      flash(isPool ? "Sold " + coin.ticker : "Sold " + coin.ticker + (coin.quote !== "ETH" ? " (proceeds landed as " + coin.quote + ")" : ""));
+      flash(isPool ? "Sold " + coin.ticker : "Sold " + coin.ticker + (coin.quote !== chain.nativeSymbol ? " (proceeds landed as " + coin.quote + ")" : ""));
     }
   }
 
@@ -674,7 +736,7 @@ export default function App() {
       if (!d.name.trim() || !d.ticker.trim()) return flash("Name and ticker are required.");
       if (findBlockedTerm(d.name, d.ticker, d.desc)) return flash("That name, ticker, or description isn't allowed.");
       const symbol = d.ticker.trim().toUpperCase().slice(0, 9);
-      const decimals = decimalsFor(d.quoteToken, [s.platformTokens.incubation]);
+      const decimals = decimalsFor(chain, d.quoteToken, [s.platformTokens.incubation]);
       const startVirtualQuote = parseUnits(d.startVirtualQuote || "1", decimals);
       const migrationTargetQuote = parseUnits(d.migrationTargetQuote || "10", decimals);
       if (startVirtualQuote === 0n || migrationTargetQuote <= startVirtualQuote) return flash("Migration target must exceed the start target.");
@@ -683,7 +745,7 @@ export default function App() {
       const earlyBuyAmount = d.earlyBuyAmount && Number(d.earlyBuyAmount) > 0 ? parseUnits(String(d.earlyBuyAmount), decimals) : 0n;
       let createdAddress;
       const hash = await runTx("Launch", async () => {
-        const r = await createCurveToken({
+        const r = await createCurveToken(chain, {
           account: acct, name: d.name.trim(), symbol, totalSupply: parseUnits("1000000000", 18),
           curveBps: 8000n, liquidityBps: 2000n, quoteToken: d.quoteToken, startVirtualQuote, migrationTargetQuote,
           enableAntibot: false, antibotBlocks: 0n, metaURI,
@@ -700,15 +762,16 @@ export default function App() {
       const d = s.draftInstant;
       if (!d.name.trim() || !d.ticker.trim()) return flash("Name and ticker are required.");
       if (findBlockedTerm(d.name, d.ticker, d.desc)) return flash("That name, ticker, or description isn't allowed.");
+      if (d.dex === "v3" && d.quoteToken.toLowerCase() === ZERO_ADDRESS) return flash(`V3 doesn't support a native ${chain.nativeSymbol} quote -- pick a real quote asset.`);
       const symbol = d.ticker.trim().toUpperCase().slice(0, 9);
       const metaURI = await buildMetaURI(d.name.trim(), symbol, d.desc.trim(), d.socials);
-      const decimals = decimalsFor(d.quoteToken, [s.platformTokens.launcher]);
+      const decimals = decimalsFor(chain, d.quoteToken, [s.platformTokens.launcher]);
       const launchMarketCap = parseUnits(d.launchMarketCap || "10", decimals);
       const buyWei = d.buyAmountHype && Number(d.buyAmountHype) > 0 ? parseEther(String(d.buyAmountHype)) : 0n;
       let createdAddress;
       const hash = await runTx("Launch", async () => {
-        const r = await launchInstant({
-          account: acct, name: d.name.trim(), symbol, metaURI, quoteToken: d.quoteToken, launchMarketCap, quoteAmountWei: buyWei,
+        const r = await launchInstant(chain, {
+          account: acct, name: d.name.trim(), symbol, metaURI, quoteToken: d.quoteToken, launchMarketCap, quoteAmountWei: buyWei, dex: d.dex,
         });
         createdAddress = r.tokenAddress.toLowerCase();
         return r.hash;
@@ -727,7 +790,7 @@ export default function App() {
       if (goalNativeWei === 0n) return flash("Enter a funding goal greater than zero.");
       let createdAddress, createdCampaignId;
       const hash = await runTx("Create campaign", async () => {
-        const r = await createCampaign({
+        const r = await createCampaign(chain, {
           account: acct, name: d.name.trim(), symbol, metaURI, dexQuoteAsset: d.dexQuoteAsset, goalNativeWei,
         });
         createdAddress = r.tokenAddress.toLowerCase(); createdCampaignId = r.campaignId;
@@ -756,14 +819,14 @@ export default function App() {
         if (!d.name.trim() || !d.ticker.trim()) return flash("Name and ticker are required.");
         if (findBlockedTerm(d.name, d.ticker, d.desc)) return flash("That name, ticker, or description isn't allowed.");
         const symbol = d.ticker.trim().toUpperCase().slice(0, 9);
-        const decimals = decimalsFor(d.quoteToken, [s.platformTokens.incubation]);
+        const decimals = decimalsFor(chain, d.quoteToken, [s.platformTokens.incubation]);
         const startVirtualQuote = parseUnits(d.startVirtualQuote || "1", decimals);
         const migrationTargetQuote = parseUnits(d.migrationTargetQuote || "10", decimals);
         if (startVirtualQuote === 0n || migrationTargetQuote <= startVirtualQuote) return flash("Migration target must exceed the start target.");
         const metaURI = await buildMetaURI(d.name.trim(), symbol, d.desc.trim(), d.socials);
         const isNativeQuoted = d.quoteToken.toLowerCase() === ZERO_ADDRESS;
         const earlyBuyAmount = d.earlyBuyAmount && Number(d.earlyBuyAmount) > 0 ? parseUnits(String(d.earlyBuyAmount), decimals) : 0n;
-        await createCurveToken({
+        await createCurveToken(chain, {
           account, name: d.name.trim(), symbol, totalSupply: parseUnits("1000000000", 18),
           curveBps: 8000n, liquidityBps: 2000n, quoteToken: d.quoteToken, startVirtualQuote, migrationTargetQuote,
           enableAntibot: false, antibotBlocks: 0n, metaURI,
@@ -774,13 +837,14 @@ export default function App() {
         const d = s.draftInstant;
         if (!d.name.trim() || !d.ticker.trim()) return flash("Name and ticker are required.");
         if (findBlockedTerm(d.name, d.ticker, d.desc)) return flash("That name, ticker, or description isn't allowed.");
+        if (d.dex === "v3" && d.quoteToken.toLowerCase() === ZERO_ADDRESS) return flash(`V3 doesn't support a native ${chain.nativeSymbol} quote -- pick a real quote asset.`);
         const symbol = d.ticker.trim().toUpperCase().slice(0, 9);
         const metaURI = await buildMetaURI(d.name.trim(), symbol, d.desc.trim(), d.socials);
-        const decimals = decimalsFor(d.quoteToken, [s.platformTokens.launcher]);
+        const decimals = decimalsFor(chain, d.quoteToken, [s.platformTokens.launcher]);
         const launchMarketCap = parseUnits(d.launchMarketCap || "10", decimals);
         const buyWei = d.buyAmountHype && Number(d.buyAmountHype) > 0 ? parseEther(String(d.buyAmountHype)) : 0n;
-        await launchInstant({
-          account, name: d.name.trim(), symbol, metaURI, quoteToken: d.quoteToken, launchMarketCap, quoteAmountWei: buyWei,
+        await launchInstant(chain, {
+          account, name: d.name.trim(), symbol, metaURI, quoteToken: d.quoteToken, launchMarketCap, quoteAmountWei: buyWei, dex: d.dex,
           dryRun: true,
         });
       } else {
@@ -791,7 +855,7 @@ export default function App() {
         const metaURI = await buildMetaURI(d.name.trim(), symbol, d.desc.trim(), d.socials);
         const goalNativeWei = parseEther(d.goalNative || "1");
         if (goalNativeWei === 0n) return flash("Enter a funding goal greater than zero.");
-        await createCampaign({
+        await createCampaign(chain, {
           account, name: d.name.trim(), symbol, metaURI, dexQuoteAsset: d.dexQuoteAsset, goalNativeWei,
           dryRun: true,
         });
@@ -809,27 +873,27 @@ export default function App() {
   async function contribute(coin, amtEth) {
     if (!amtEth || amtEth <= 0) return flash("Enter an amount.");
     const valueWei = parseEther(String(amtEth));
-    const hash = await runTx("Contribute", () => contributeCampaign({ account, campaignId: BigInt(coin.campaignId), amountWei: valueWei }));
-    if (hash) { await Promise.all([loadPortfolio(), loadCoins()]); flash("Contributed " + amtEth + " ETH"); }
+    const hash = await runTx("Contribute", () => contributeCampaign(chain, { account, campaignId: BigInt(coin.campaignId), amountWei: valueWei }));
+    if (hash) { await Promise.all([loadPortfolio(), loadCoins()]); flash(`Contributed ${amtEth} ${chain.nativeSymbol}`); }
   }
   async function claimCampaignTokens(coin) {
-    const hash = await runTx("Claim", () => claimCampaign({ account, campaignId: BigInt(coin.campaignId) }));
+    const hash = await runTx("Claim", () => claimCampaign(chain, { account, campaignId: BigInt(coin.campaignId) }));
     if (hash) { await loadPortfolio(); flash("Claimed."); }
   }
   async function claimCampaignRefundAction(coin) {
-    const hash = await runTx("Refund", () => claimCampaignRefund({ account, campaignId: BigInt(coin.campaignId) }));
+    const hash = await runTx("Refund", () => claimCampaignRefund(chain, { account, campaignId: BigInt(coin.campaignId) }));
     if (hash) { await loadPortfolio(); flash("Refunded."); }
   }
   async function finalizeCampaignAction(coin) {
-    const hash = await runTx("Finalize", () => finalizeCampaign({ account, campaignId: BigInt(coin.campaignId) }));
+    const hash = await runTx("Finalize", () => finalizeCampaign(chain, { account, campaignId: BigInt(coin.campaignId) }));
     if (hash) { await loadCoins(); flash("Finalized."); }
   }
   async function claimCreatorFees(tokenAddress) {
-    const hash = await runTx("Claim fees", () => claimFees({ account, token: tokenAddress }));
+    const hash = await runTx("Claim fees", () => claimFees(chain, { account, token: tokenAddress }));
     if (hash) { await loadPortfolio(); flash("Fees claimed."); }
   }
   async function claimAllCreatorFees() {
-    const hash = await runTx("Claim all fees", () => claimAllFees({ account }));
+    const hash = await runTx("Claim all fees", () => claimAllFees(chain, { account }));
     if (hash) { await loadPortfolio(); flash("All fees claimed."); }
   }
 
@@ -839,7 +903,7 @@ export default function App() {
     if (!coin || coin.family === "CAMPAIGN") return;
     set({ creatorLoading: true });
     try {
-      const [position, creator] = await Promise.all([getPosition(coin.id), getPositionCreator(coin.id).catch(() => null)]);
+      const [position, creator] = await Promise.all([getPosition(chain, coin.id), getPositionCreator(chain, coin.id).catch(() => null)]);
       const tokenId = position?.[0] ?? 0n;
       const poolId = position?.[3] ?? null;
       const hasPool = !!poolId && poolId !== "0x0000000000000000000000000000000000000000000000000000000000000";
@@ -847,9 +911,9 @@ export default function App() {
       if (hasPool) {
         let hookAccruedResult;
         [pool, ctoApp, hookAccruedResult, hookSplits, ctoFee] = await Promise.all([
-          getPool(poolId, coin.hook).catch(() => null), getCtoApplication(poolId, coin.hook).catch(() => null),
-          getHookAccruedFees(poolId, coin.hook).then((v) => ({ ok: true, v })).catch(() => ({ ok: false, v: 0n })),
-          getHookFeeSplits(poolId, coin.hook).catch(() => []), getCtoFee(coin.hook).catch(() => null),
+          getPool(chain, poolId, coin.hook).catch(() => null), getCtoApplication(chain, poolId, coin.hook).catch(() => null),
+          getHookAccruedFees(chain, poolId, coin.hook).then((v) => ({ ok: true, v })).catch(() => ({ ok: false, v: 0n })),
+          getHookFeeSplits(chain, poolId, coin.hook).catch(() => []), getCtoFee(chain, coin.hook).catch(() => null),
         ]);
         hookAccrued = hookAccruedResult.v;
         hookAccruedFailed = !hookAccruedResult.ok;
@@ -859,7 +923,7 @@ export default function App() {
       console.error("failed to load creator data", e);
       set({ creatorData: null, creatorLoading: false });
     }
-  }, [set]);
+  }, [set, chain]);
 
   const selectedCoin = s.coins.find((x) => x.id === s.tokenId);
   useEffect(() => {
@@ -886,18 +950,18 @@ export default function App() {
         if (buying) {
           const valueWei = parseEther(String(amt));
           if (isPool) {
-            out = await previewPoolBuyWithNative({ token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountInWei: valueWei });
+            out = await previewPoolBuyWithNative(chain, { token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountInWei: valueWei });
           } else if (coin.quoteTokenAddress.toLowerCase() === ZERO_ADDRESS) {
-            out = await previewCurveBuy(coin.id, valueWei);
+            out = await previewCurveBuy(chain, coin.id, valueWei);
           } else {
-            const r = await previewCurveBuyWithNative(coin.id, coin.quoteTokenAddress, coin.quote, valueWei);
+            const r = await previewCurveBuyWithNative(chain, coin.id, coin.quoteTokenAddress, coin.quote, valueWei);
             out = r.tokensOut;
           }
         } else {
           const amountIn = parseUnits(String(amt), 18);
           out = isPool
-            ? await previewPoolSellForNative({ token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountIn })
-            : await previewCurveSell(coin.id, amountIn);
+            ? await previewPoolSellForNative(chain, { token: coin.id, hook: coin.hook, quoteAsset: coin.quoteTokenAddress, quoteSymbol: coin.quote, amountIn })
+            : await previewCurveSell(chain, coin.id, amountIn);
         }
         if (!cancelled) set({ previewOut: out, previewLoading: false });
       } catch {
@@ -906,7 +970,7 @@ export default function App() {
     }, 400);
     return () => { cancelled = true; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.screen, s.tokenId, s.side, s.amount]);
+  }, [s.screen, s.tokenId, s.side, s.amount, chain]);
 
   // Triggers DuckLocker.claimFees, which collects the LP-position's trading
   // fee and (same call, best-effort) the hook's separate creator fee --
@@ -916,29 +980,29 @@ export default function App() {
   // _collectAndDistribute -- the creator is just the address permitted to
   // trigger the collection, not a recipient of that side.
   async function claimCreatorAndHookFees(coin) {
-    const hash = await runTx("Claim fees", () => claimFees({ account, token: coin.id }));
+    const hash = await runTx("Claim fees", () => claimFees(chain, { account, token: coin.id }));
     if (hash) { await Promise.all([loadPortfolio(), loadCreatorData(coin)]); flash("Fees claimed."); }
   }
   // Separate from the above: DuckIncubation's own 1% curve-trading fee,
   // accrued pre-migration but only claimable once migrated.
   async function claimCurveFeeAction(coin) {
-    const hash = await runTx("Claim curve fee", () => claimCurveFee({ account, token: coin.id }));
+    const hash = await runTx("Claim curve fee", () => claimCurveFee(chain, { account, token: coin.id }));
     if (hash) { await Promise.all([loadPortfolio(), loadCreatorData(coin)]); flash("Curve fee claimed."); }
   }
   async function saveFeeSplits(coin, poolId, splits) {
     let hash;
-    if (poolId) hash = await runTx("Save fee settings", () => setHookFeeSplits({ account, poolId, splits, hook: coin.hook }));
+    if (poolId) hash = await runTx("Save fee settings", () => setHookFeeSplits(chain, { account, poolId, splits, hook: coin.hook }));
     if (hash) { await loadCreatorData(coin); flash("Fee settings saved."); }
   }
   async function buyTakeover(coin, poolId, newCreator) {
-    const hash = await runTx("Buy takeover", () => applyForCTO({ account, poolId, newCreator: newCreator || account, hook: coin.hook }));
+    const hash = await runTx("Buy takeover", () => applyForCTO(chain, { account, poolId, newCreator: newCreator || account, hook: coin.hook }));
     if (hash) { await loadCreatorData(coin); flash("CTO application submitted."); }
   }
 
   // ---------- render ----------
 
   const v = buildViewModel({
-    s, set, account, isConnected, disconnect, openConnectModal,
+    s, chain, set, account, isConnected, disconnect, openConnectModal, setChain,
     loadCoins, loadPortfolio, loadTokenDetail, fetchTradesPage, fetchHoldersPage, fetchCommentsPage, postComment, openToken, flash, requireWallet,
     buy, sell, submitCreate, simulateCreate, onImagePick, clearImage, setSocial,
     contribute, claimCampaignTokens, claimCampaignRefundAction, finalizeCampaignAction,
@@ -997,6 +1061,11 @@ export default function App() {
                 <input value={v.query} onChange={v.setQuery} placeholder="Search name, symbol or address" style={cs("border:0;outline:0;background:transparent;font-size:13px;width:100%")} />
               </div>
             )}
+            <div style={cs("display:flex;align-items:center;height:36px;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex:none")}>
+              {v.chainOptions.map((o) => (
+                <button key={o.slug} onClick={o.go} style={cs(`height:100%;padding:0 ${m ? "10px" : "13px"};border:0;background:${o.bg};color:${o.fg};font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer`)}>{o.label}</button>
+              ))}
+            </div>
             <button onClick={v.toggleWallet} style={cs(`height:36px;padding:0 14px;border:1px solid var(--line);border-radius:6px;background:${v.walletBg};color:${v.walletFg};font-family:${v.walletFont};font-size:13px;font-weight:500;white-space:nowrap;flex:none;cursor:pointer`)}>{v.walletLabel}</button>
             {m && (
               <button onClick={v.openMenu} aria-label="Menu" style={cs("display:flex;width:36px;height:36px;align-items:center;justify-content:center;flex-direction:column;gap:4px;border:1px solid var(--line);border-radius:6px;background:var(--card);cursor:pointer;padding:0;flex:none")}>
@@ -1029,7 +1098,7 @@ export default function App() {
       <div style={cs(`position:fixed;left:${m ? "0" : "236px"};right:0;bottom:0;z-index:55;display:flex;align-items:center;gap:10px;height:44px;padding:0 ${m ? "12px" : "20px"};border-top:1px solid var(--line);background:rgba(23,23,23,.92);backdrop-filter:blur(8px);font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--mute)`)}>
         <span style={cs(`width:6px;height:6px;border-radius:99px;background:${v.health.checkedAt && !v.health.ok ? "var(--neg)" : "var(--lime)"};flex:none`)}></span>
         <span title={v.health.checkedAt ? `API ${v.health.frontendMs}ms · Subgraph ${v.health.subgraphMs != null ? v.health.subgraphMs + "ms" : "—"}` : "Checking system status…"}>
-          {m ? "INK 57073" : "Ink 57073"}{v.health.frontendMs != null && ` · ${v.health.frontendMs}ms`}
+          {m ? v.chainName.toUpperCase() : v.chainName} {v.chainId}{v.health.frontendMs != null && ` · ${v.health.frontendMs}ms`}
         </span>
         <div style={cs("margin-left:auto;display:flex;gap:6px")}>
           <button onClick={v.goDocs} title="Docs" style={cs("width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);cursor:pointer;padding:0")}>
@@ -1071,7 +1140,9 @@ export default function App() {
             </div>
             <div style={cs("padding:14px 18px;border-bottom:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute);word-break:break-all;line-height:1.5")}>{v.tx.hash}</div>
             <div style={cs("display:flex")}>
-              <a href={v.tx.explorerUrl} target="_blank" rel="noreferrer" style={cs("flex:1;padding:14px;text-align:center;font-size:13.5px;font-weight:600;border:0;border-right:1px solid var(--line)")}>Explorer ↗</a>
+              {v.tx.explorerUrl && (
+                <a href={v.tx.explorerUrl} target="_blank" rel="noreferrer" style={cs("flex:1;padding:14px;text-align:center;font-size:13.5px;font-weight:600;border:0;border-right:1px solid var(--line)")}>Explorer ↗</a>
+              )}
               <button onClick={v.closeTx} style={cs("flex:1;padding:14px;border:0;background:var(--ink);color:var(--card);font-size:13.5px;font-weight:600;cursor:pointer")}>{v.tx.cta}</button>
             </div>
           </div>
@@ -1091,7 +1162,9 @@ export default function App() {
 // ---------- view-model ----------
 
 function buildViewModel(ctx) {
-  const { s, set, account, isConnected, disconnect, openConnectModal } = ctx;
+  const { s, chain, set, account, isConnected, disconnect, openConnectModal } = ctx;
+  const chainOptions = CHAIN_SLUGS.map((slug) =>
+    Object.assign({ slug, label: CHAINS[slug].name, go: () => ctx.setChain(slug) }, block(s.chain === slug)));
   const scr = s.screen;
 
   const nav = [["Discover", "home"], ["Launch", "create"], ["Stats", "stats"], ["Portfolio", "portfolio"], ["How it works", "how"], ["Docs", "docs"]].map(([label, key]) => {
@@ -1173,7 +1246,7 @@ function buildViewModel(ctx) {
   const myBalanceTokens = myBalance ? Number(myBalance) / 1e18 : 0;
   const myContribution = c ? s.portfolio.contributions.find((ct) => ct.campaign?.id === c.campaignId) : null;
 
-  const walletTx = buildTxModel(s, account);
+  const walletTx = buildTxModel(chain, s, account);
 
   // Candle RESOLUTION (bucket size) applied across the token's whole trade
   // history -- like a real exchange's timeframe picker, not a "how far back"
@@ -1212,7 +1285,7 @@ function buildViewModel(ctx) {
   // desktop. Real data where it exists (token/campaign symbol+name), a
   // short honest description everywhere else -- never a fabricated one.
   const PAGE_META = {
-    home: { title: "Discover", sub: "Every token live on Ink" },
+    home: { title: "Discover", sub: `Every token live on ${chain.name}` },
     create: { title: "Launch a token", sub: "Bonding curve, instant V4 or crowdlaunch" },
     createForm: { title: "Launch a token", sub: "" },
     portfolio: { title: "Portfolio", sub: "Your holdings, launches and claims" },
@@ -1312,7 +1385,7 @@ function buildViewModel(ctx) {
     } : null,
     cto: c && s.creatorData?.hasPool ? {
       status: s.creatorData.ctoApp?.newCreator && s.creatorData.ctoApp.newCreator !== ZERO_ADDRESS ? "PENDING" : "OPEN",
-      price: s.creatorData.ctoFee != null ? formatEther(s.creatorData.ctoFee) + " ETH" : "…",
+      price: s.creatorData.ctoFee != null ? formatEther(s.creatorData.ctoFee) + " " + chain.nativeSymbol : "…",
       creator: s.creatorData.creator ? shortAddress(s.creatorData.creator) : "—",
       applicant: s.creatorData.ctoApp?.applicant && s.creatorData.ctoApp.applicant !== ZERO_ADDRESS ? shortAddress(s.creatorData.ctoApp.applicant) : null,
       blurb: "Anyone can pay the CTO fee to take over the creator fee stream. Post the transaction on X tagging @duckfunfamily for review; the owner approves or rejects from there. Only the fee claim moves, never supply, pool or metadata.",
@@ -1340,7 +1413,7 @@ function buildViewModel(ctx) {
         set({ amount: buying ? String(label) : String(myBalanceTokens * (label / 250)) });
       },
     })),
-    payAsset: buying ? "ETH" : (c ? c.ticker.replace("$", "") : ""),
+    payAsset: buying ? chain.nativeSymbol : (c ? c.ticker.replace("$", "") : ""),
     payBalance: buying ? Number(formatEther(s.nativeBalance)).toFixed(4) : myBalanceTokens.toLocaleString(undefined, { maximumFractionDigits: 2 }),
     submitTx: () => (!account ? (openConnectModal && openConnectModal()) : buying ? ctx.buy(c, amt) : ctx.sell(c, amt)),
     ctaLabel: !account ? "Connect wallet to trade" : s.txPending ? "Confirming…" : (buying ? "Buy " + (c ? c.ticker.replace("$", "") : "") : "Sell " + (c ? c.ticker.replace("$", "") : "")),
@@ -1348,7 +1421,7 @@ function buildViewModel(ctx) {
     previewLoading: s.previewLoading,
     previewText: (() => {
       if (!c || s.previewOut == null) return null;
-      const decimals = buying ? 18 : decimalsFor(c.quoteTokenAddress, [s.platformTokens.incubation, s.platformTokens.launcher, s.platformTokens.raise]);
+      const decimals = buying ? 18 : decimalsFor(chain, c.quoteTokenAddress, [s.platformTokens.incubation, s.platformTokens.launcher, s.platformTokens.raise]);
       const symbol = buying ? c.ticker.replace("$", "") : c.quote;
       const val = Number(formatUnits(s.previewOut, decimals));
       return "~" + val.toLocaleString(undefined, { maximumFractionDigits: val < 1 ? 6 : 4 }) + " " + symbol;
@@ -1389,14 +1462,15 @@ function buildViewModel(ctx) {
     raiseDefaults: s.raiseDefaults,
     loadRaiseDefaults: () => {
       if (s.raiseDefaults) return;
-      getRaiseDefaults().then((d) => set({ raiseDefaults: d })).catch(() => {});
+      getRaiseDefaults(chain).then((d) => set({ raiseDefaults: d })).catch(() => {});
     },
-    quoteOptions: quoteOptionsFor(CURVE_LAUNCHER_QUOTE_TOKENS, s.platformTokens[s.family === "launcher" ? "launcher" : "incubation"]),
-    raiseQuoteOptions: quoteOptionsFor(RAISE_DEFAULT_QUOTE_ASSETS, s.platformTokens.raise),
-    // ETH ("") always has a route by definition; a platform token isn't in
-    // LIQUID_QUOTE_TOKEN_SYMBOLS either, so it correctly falls to false too
-    // until this platform actually wires a route for its own token.
-    quoteHasEthRoute: (label) => label === "ETH" || LIQUID_QUOTE_TOKEN_SYMBOLS.includes(label),
+    quoteOptions: quoteOptionsFor(chain, chain.CURVE_LAUNCHER_QUOTE_TOKENS, s.platformTokens[s.family === "launcher" ? "launcher" : "incubation"]),
+    raiseQuoteOptions: quoteOptionsFor(chain, chain.RAISE_DEFAULT_QUOTE_ASSETS, s.platformTokens.raise),
+    // Native currency ("") always has a route by definition; a platform
+    // token isn't in LIQUID_QUOTE_TOKEN_SYMBOLS either, so it correctly
+    // falls to false too until this platform actually wires a route for
+    // its own token.
+    quoteHasEthRoute: (label) => label === chain.nativeSymbol || chain.LIQUID_QUOTE_TOKEN_SYMBOLS.includes(label),
     createCta: !account ? "Connect wallet to launch" : s.txPending ? "Confirming…" : "Launch",
     submitCreate: ctx.submitCreate,
     simulating: s.simulating, simulateCreate: ctx.simulateCreate,
@@ -1414,7 +1488,7 @@ function buildViewModel(ctx) {
       }
       return c.campaignSucceeded ? ctx.claimCampaignTokens(c) : ctx.claimCampaignRefundAction(c);
     },
-    camp: c && c.family === "CAMPAIGN" ? buildCampaignModel(c, s, myContribution) : null,
+    camp: c && c.family === "CAMPAIGN" ? buildCampaignModel(chain, c, s, myContribution) : null,
 
     portfolio: s.portfolio, claimCreatorFees: ctx.claimCreatorFees, claimAllCreatorFees: ctx.claimAllCreatorFees,
     coins: s.coins, openToken: ctx.openToken,
@@ -1422,6 +1496,7 @@ function buildViewModel(ctx) {
     tx: walletTx, txOpen: !!s.tx, closeTx: () => set({ tx: null }),
     toast: s.toast,
     health: s.health,
+    chain, chainOptions, chainSlug: s.chain, chainName: chain.name, chainId: chain.chainId, nativeSymbol: chain.nativeSymbol,
   };
 }
 
@@ -1439,7 +1514,7 @@ function PendingLaunchPanel({ v }) {
   );
 }
 
-function buildCampaignModel(c, s, myContribution) {
+function buildCampaignModel(chain, c, s, myContribution) {
   const detail = s.campaignDetail;
   const goal = Number(c.campaignGoal || 0) / 1e18;
   const raised = Number(c.campaignRaised || 0) / 1e18;
@@ -1483,7 +1558,7 @@ function buildCampaignModel(c, s, myContribution) {
     noteBg: c.campaignSucceeded ? LIME : c.campaignFailed ? ORANGE : "var(--paper)",
     noteFg: c.campaignFailed ? "#fff" : c.campaignSucceeded ? "var(--on)" : INK,
     facts: [
-      { k: "GOAL", v: goal.toFixed(2) + " ETH" },
+      { k: "GOAL", v: goal.toFixed(2) + " " + chain.nativeSymbol },
       { k: "QUOTE AT FINALIZE", v: c.quote },
       { k: "TOKEN STATUS", v: resolved && c.campaignSucceeded ? "released" : "escrowed" },
       { k: "TRADEABLE", v: c.campaignSucceeded ? "yes" : "no" },
@@ -1493,14 +1568,14 @@ function buildCampaignModel(c, s, myContribution) {
       // get (Creator, DuckRaise, DuckLocker, Burned, Liquidity Pool, etc.)
       // -- a contributor CAN be the campaign's own creator, or (post-
       // success, once claims/refunds route through it) the contract itself.
-      const label = labelFor(ct.contributor, { [c.creator?.toLowerCase()]: "Creator" });
+      const label = labelFor(chain, ct.contributor, { [c.creator?.toLowerCase()]: "Creator" });
       return {
         wallet: label || shortAddress(ct.contributor), full: ct.contributor, eth: (Number(ct.amount) / 1e18).toFixed(4),
         status: ct.claimed ? "claimed" : ct.refunded ? "refunded" : "pending", age: "",
       };
     }),
     custody: [
-      { k: "ESCROWED ETH", v: raised.toFixed(4) + " ETH", c: INK },
+      { k: "ESCROWED " + chain.nativeSymbol, v: raised.toFixed(4) + " " + chain.nativeSymbol, c: INK },
       { k: "ESCROWED SUPPLY", v: contributorSupply != null ? compactNumber(contributorSupply) : "—", c: INK },
       { k: "HELD BY", v: "DuckRaise", c: INK },
       { k: "TRANSFERS", v: c.campaignSucceeded ? "enabled" : "disabled", c: c.campaignSucceeded ? "var(--pos)" : "var(--neg)" },
@@ -1517,24 +1592,28 @@ function buildCampaignModel(c, s, myContribution) {
   };
 }
 
-function buildTxModel(s, account) {
+// explorerUrl is null when the chain has none yet (Arc, today) -- the
+// modal hides the "Explorer" link entirely in that case rather than
+// pointing it at a guessed or nonexistent URL.
+function buildTxModel(chain, s, account) {
   if (!s.tx) return null;
+  const explorerTxUrl = (hash) => (chain.blockExplorerUrl ? `${chain.blockExplorerUrl}/tx/${hash}` : null);
   if (s.tx.stage === "success") {
     return {
-      title: "Confirmed", sub: "Included on Ink.", glyph: "✓", headBg: LIME, headFg: "var(--on)", ringTop: "var(--on)", anim: "none", cta: "Done",
-      hash: s.tx.hash, explorerUrl: `https://explorer.inkonchain.com/tx/${s.tx.hash}`,
+      title: "Confirmed", sub: `Included on ${chain.name}.`, glyph: "✓", headBg: LIME, headFg: "var(--on)", ringTop: "var(--on)", anim: "none", cta: "Done",
+      hash: s.tx.hash, explorerUrl: explorerTxUrl(s.tx.hash),
     };
   }
   if (s.tx.stage === "reverted") {
     return {
-      title: "Transaction reverted", sub: "Included on Ink, but it reverted on-chain. Nothing happened.", glyph: "✕", headBg: "var(--neg)", headFg: "#fff", ringTop: INK, anim: "none", cta: "Dismiss",
-      hash: s.tx.hash, explorerUrl: `https://explorer.inkonchain.com/tx/${s.tx.hash}`,
+      title: "Transaction reverted", sub: `Included on ${chain.name}, but it reverted on-chain. Nothing happened.`, glyph: "✕", headBg: "var(--neg)", headFg: "#fff", ringTop: INK, anim: "none", cta: "Dismiss",
+      hash: s.tx.hash, explorerUrl: explorerTxUrl(s.tx.hash),
     };
   }
   return {
-    title: "Confirm in your wallet", sub: "Broadcasting to Ink (57073).", glyph: "", headBg: CARD, headFg: INK, ringTop: LIME,
+    title: "Confirm in your wallet", sub: `Broadcasting to ${chain.name} (${chain.chainId}).`, glyph: "", headBg: CARD, headFg: INK, ringTop: LIME,
     anim: "spin .9s linear infinite", cta: "Hide",
     hash: s.tx.hash || "awaiting hash…",
-    explorerUrl: s.tx.hash ? `https://explorer.inkonchain.com/tx/${s.tx.hash}` : "https://explorer.inkonchain.com",
+    explorerUrl: s.tx.hash ? explorerTxUrl(s.tx.hash) : chain.blockExplorerUrl,
   };
 }

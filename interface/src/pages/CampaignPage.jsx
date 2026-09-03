@@ -24,7 +24,7 @@ export default function CampaignPage({ v }) {
                 </div>
                 <div style={cs("display:flex;gap:7px;margin-top:10px;flex-wrap:wrap")}>
                   <AddressChip address={camp.token} full={camp.tokenAddress} />
-                  <LinkChip href={`https://explorer.inkonchain.com/address/${camp.tokenAddress}`}>Explorer</LinkChip>
+                  {v.chain.blockExplorerUrl && <LinkChip href={`${v.chain.blockExplorerUrl}/address/${camp.tokenAddress}`}>Explorer</LinkChip>}
                   {camp.socials?.website && <LinkChip href={camp.socials.website}>Website</LinkChip>}
                   {camp.socials?.twitter && <LinkChip href={camp.socials.twitter}>X</LinkChip>}
                   {camp.socials?.telegram && <LinkChip href={camp.socials.telegram}>Telegram</LinkChip>}
@@ -39,7 +39,7 @@ export default function CampaignPage({ v }) {
                 <div style={cs(`height:100%;border-radius:6px;width:${camp.progWidth}%;background:${camp.progFill}`)}></div>
               </div>
               <div style={cs("display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:12.5px;margin-top:11px")}>
-                <span style={cs("font-weight:500")}>{camp.raised} / {camp.goal} ETH</span>
+                <span style={cs("font-weight:500")}>{camp.raised} / {camp.goal} {v.nativeSymbol}</span>
                 <span style={cs("color:var(--mute)")}>{camp.backers} BACKERS</span>
                 <span style={cs(`color:${camp.deadlineC}`)}>{camp.deadline}</span>
               </div>
@@ -61,13 +61,15 @@ export default function CampaignPage({ v }) {
               <span style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute)")}>pro-rata · nothing transfers until finalize</span>
             </div>
             <div style={cs("display:grid;min-width:520px;grid-template-columns:1.4fr 1fr 1fr;gap:14px;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--paper);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--mute)")}>
-              <span>WALLET</span><span style={cs("text-align:right")}>ETH IN</span><span style={cs("text-align:right")}>STATUS</span>
+              <span>WALLET</span><span style={cs("text-align:right")}>{v.nativeSymbol} IN</span><span style={cs("text-align:right")}>STATUS</span>
             </div>
             {camp.contribs.length === 0 && <div style={cs("padding:24px 18px;font-size:13px;color:var(--mute)")}>No contributions yet.</div>}
             {camp.contribs.map((c, i) => (
               <div key={i} style={cs("display:grid;min-width:520px;grid-template-columns:1.4fr 1fr 1fr;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px;align-items:center")}>
-                <a href={`https://explorer.inkonchain.com/address/${c.full}`} target="_blank" rel="noreferrer">{c.wallet}</a>
-                <span style={cs("text-align:right;font-weight:500")}>{c.eth} ETH</span>
+                {v.chain.blockExplorerUrl
+                  ? <a href={`${v.chain.blockExplorerUrl}/address/${c.full}`} target="_blank" rel="noreferrer">{c.wallet}</a>
+                  : <span>{c.wallet}</span>}
+                <span style={cs("text-align:right;font-weight:500")}>{c.eth} {v.nativeSymbol}</span>
                 <span style={cs("text-align:right;color:var(--mute)")}>{c.status}</span>
               </div>
             ))}
@@ -84,7 +86,7 @@ export default function CampaignPage({ v }) {
               {camp.canContribute && (
                 <div style={cs("display:flex;align-items:stretch;border:1px solid var(--line);border-radius:9px;background:var(--paper);margin-bottom:16px;overflow:hidden")}>
                   <input value={v.contribAmount} onChange={v.setContrib} style={cs("flex:1;min-width:0;border:0;outline:0;background:transparent;font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:500;letter-spacing:-.03em;padding:13px 14px")} />
-                  <span style={cs("padding:0 14px;border-left:1px solid var(--line);display:flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:13px")}>ETH</span>
+                  <span style={cs("padding:0 14px;border-left:1px solid var(--line);display:flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:13px")}>{v.nativeSymbol}</span>
                 </div>
               )}
               <button onClick={v.submitCampaignAction} disabled={v.txPending} style={cs(`width:100%;padding:16px;border:1px solid var(--line);border-radius:6px;background:${camp.ctaBg};color:${camp.ctaFg};font-size:15.5px;font-weight:700;cursor:pointer`)}>{v.txPending ? "Confirming…" : camp.cta}</button>

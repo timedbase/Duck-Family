@@ -1,4 +1,4 @@
-import { publicClient } from "./client.js";
+import { getPublicClient } from "./client.js";
 import { ERC20_ABI } from "./abis.js";
 
 // The subgraph doesn't index name/symbol for CURVE/INSTANT tokens -- neither
@@ -7,8 +7,9 @@ import { ERC20_ABI } from "./abis.js";
 // symbol are chosen before the token itself exists). Every token clone is a
 // real ERC20 with its own name()/symbol() though, so this reads them
 // directly, batched into as few RPC round-trips as possible via multicall.
-export async function fetchTokenMeta(addresses) {
+export async function fetchTokenMeta(chain, addresses) {
   if (addresses.length === 0) return {};
+  const publicClient = getPublicClient(chain);
 
   const contracts = addresses.flatMap((address) => [
     { address, abi: ERC20_ABI, functionName: "name" },
@@ -32,9 +33,9 @@ export async function fetchTokenMeta(addresses) {
 // metaURI() isn't indexed either (same reason -- no launcher event carries
 // it), and is only worth fetching per-token (a detail-page concern, not a
 // whole-list one).
-export async function fetchTokenMetaUri(address) {
+export async function fetchTokenMetaUri(chain, address) {
   try {
-    return await publicClient.readContract({ address, abi: ERC20_ABI, functionName: "metaURI" });
+    return await getPublicClient(chain).readContract({ address, abi: ERC20_ABI, functionName: "metaURI" });
   } catch {
     return null;
   }

@@ -100,6 +100,9 @@ export default function TokenPage({ v }) {
   const [commentPage, setCommentPage] = useState(1);
   useEffect(() => { setTradePage(1); setHolderPage(1); setCommentPage(1); }, [tok?.id]);
   if (!sel || !tok) return null;
+  // null when the selected chain has no verified explorer yet (Arc, today)
+  // -- callers render a plain span instead of a link in that case.
+  const explorerAddr = (addr) => (v.chain.blockExplorerUrl ? `${v.chain.blockExplorerUrl}/address/${addr}` : null);
 
   const pageSize = v.pageSize;
   // tok.trades/holderRows/chat each hold exactly the current page's rows
@@ -156,13 +159,17 @@ export default function TokenPage({ v }) {
         {tok.desc && <div style={cs("font-size:12.5px;color:var(--mute);max-width:70ch;line-height:1.5")}>{tok.desc}</div>}
         <div style={cs("display:flex;gap:6px;flex-wrap:wrap")}>
           <AddressChip address={sel.address} full={tok.id} />
-          <IconLinkChip href={`https://explorer.inkonchain.com/address/${tok.id}`} title="Explorer">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2.2 5.8-5.8 2.2 2.2-5.8z" /></svg>
-          </IconLinkChip>
-          <IconLinkChip href={`https://basedbot.app/token/ink/${tok.id}`} title="BasedBot">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="5" y="9" width="14" height="10" rx="2.5" /><path d="M12 9V5.5" /><circle cx="12" cy="3.5" r="1.2" fill="currentColor" stroke="none" /><circle cx="9" cy="14" r="1.1" fill="currentColor" stroke="none" /><circle cx="15" cy="14" r="1.1" fill="currentColor" stroke="none" /></svg>
-          </IconLinkChip>
-          {tok.poolId && (
+          {v.chain.blockExplorerUrl && (
+            <IconLinkChip href={`${v.chain.blockExplorerUrl}/address/${tok.id}`} title="Explorer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2.2 5.8-5.8 2.2 2.2-5.8z" /></svg>
+            </IconLinkChip>
+          )}
+          {v.chainSlug === "ink" && (
+            <IconLinkChip href={`https://basedbot.app/token/ink/${tok.id}`} title="BasedBot">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="5" y="9" width="14" height="10" rx="2.5" /><path d="M12 9V5.5" /><circle cx="12" cy="3.5" r="1.2" fill="currentColor" stroke="none" /><circle cx="9" cy="14" r="1.1" fill="currentColor" stroke="none" /><circle cx="15" cy="14" r="1.1" fill="currentColor" stroke="none" /></svg>
+            </IconLinkChip>
+          )}
+          {tok.poolId && v.chainSlug === "ink" && (
             <IconLinkChip href={`https://www.dextools.io/app/ink/pair-explorer/${tok.poolId}`} title="DEXTools">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><line x1="5.5" y1="3" x2="5.5" y2="21" stroke="currentColor" strokeWidth="1.4" /><rect x="3.5" y="7" width="4" height="7" /><line x1="12" y1="1.5" x2="12" y2="22.5" stroke="currentColor" strokeWidth="1.4" /><rect x="10" y="10" width="4" height="5" /><line x1="18.5" y1="5" x2="18.5" y2="19" stroke="currentColor" strokeWidth="1.4" /><rect x="16.5" y="8" width="4" height="8" /></svg>
             </IconLinkChip>
@@ -200,14 +207,16 @@ export default function TokenPage({ v }) {
                 </>
               )}
             </div>
-            {tok.poolId ? (
+            {tok.poolId && v.chainSlug === "ink" ? (
               // A real V4 pool exists (post-migration / instant-launch / a
               // finalized raise) -- DEXTools indexes Ink's V4 pools by their
               // raw poolId (there's no separate pool *contract* in V4, just
               // this hash), so its chart is strictly more capable here than
               // ours (order flow, liquidity, multi-venue context). Curve-
               // phase tokens have no pool yet -- nothing for DEXTools to
-              // show -- so they keep our own chart below instead.
+              // show -- so they keep our own chart below instead. DEXTools
+              // has no confirmed Arc coverage, so Arc always keeps our own
+              // chart too, even once a real pool exists there.
               <iframe
                 key={tok.poolId}
                 title={`${sel.symbol} chart on DEXTools`}
@@ -269,7 +278,9 @@ export default function TokenPage({ v }) {
                       </div>
                       <div style={cs("display:flex;align-items:center;gap:8px;color:var(--mute);font-size:11.5px;padding-left:29px")}>
                         <span>{r.quote} {sel.quote}</span><span>·</span>
-                        <a href={`https://explorer.inkonchain.com/address/${r.full}`} target="_blank" rel="noreferrer" title={r.full}>{r.who}</a>
+                        {explorerAddr(r.full)
+                          ? <a href={explorerAddr(r.full)} target="_blank" rel="noreferrer" title={r.full}>{r.who}</a>
+                          : <span title={r.full}>{r.who}</span>}
                       </div>
                     </div>
                   ))
@@ -283,7 +294,9 @@ export default function TokenPage({ v }) {
                         <span><span title={r.side} style={cs(`width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;background:${r.bg};color:${r.fg};font-size:10.5px;font-weight:500;border-radius:999px`)}>{r.sideLabel}</span></span>
                         <span style={cs("text-align:right")}>{r.quote}</span>
                         <span style={cs("text-align:right")}>{r.amount}</span>
-                        <a href={`https://explorer.inkonchain.com/address/${r.full}`} target="_blank" rel="noreferrer" title={r.full}>{r.who}</a>
+                        {explorerAddr(r.full)
+                          ? <a href={explorerAddr(r.full)} target="_blank" rel="noreferrer" title={r.full}>{r.who}</a>
+                          : <span title={r.full}>{r.who}</span>}
                         <span style={cs("text-align:right;color:var(--mute)")}>{r.ago}</span>
                       </div>
                     ))}
@@ -301,7 +314,9 @@ export default function TokenPage({ v }) {
                     <div key={i} style={cs("display:flex;flex-direction:column;gap:6px;padding:12px 16px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px")}>
                       <div style={cs("display:flex;align-items:center;gap:9px")}>
                         <span style={cs("color:var(--mute);width:20px;flex:none")}>{h.rank}</span>
-                        <a href={`https://explorer.inkonchain.com/address/${h.full}`} target="_blank" rel="noreferrer" title={h.full} style={cs("flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap")}>{h.who}</a>
+                        {explorerAddr(h.full)
+                          ? <a href={explorerAddr(h.full)} target="_blank" rel="noreferrer" title={h.full} style={cs("flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap")}>{h.who}</a>
+                          : <span title={h.full} style={cs("flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap")}>{h.who}</span>}
                         <span style={cs(`flex:none;font-size:10px;letter-spacing:.08em;padding:2px 8px;border-radius:999px;border:${h.tagBd};background:${h.tagBg};color:${h.tagFg}`)}>{h.tag}</span>
                       </div>
                       <div style={cs("display:flex;align-items:center;gap:8px;color:var(--mute);font-size:11.5px;padding-left:29px")}>
@@ -317,7 +332,9 @@ export default function TokenPage({ v }) {
                     {tok.holderRows.map((h, i) => (
                       <div key={i} style={cs("display:grid;min-width:460px;grid-template-columns:44px 1.4fr 1fr .8fr 90px;gap:14px;padding:11px 18px;border-bottom:1px solid var(--soft);font-family:'JetBrains Mono',monospace;font-size:12.5px;align-items:center")}>
                         <span style={cs("color:var(--mute)")}>{h.rank}</span>
-                        <a href={`https://explorer.inkonchain.com/address/${h.full}`} target="_blank" rel="noreferrer" title={h.full}>{h.who}</a>
+                        {explorerAddr(h.full)
+                          ? <a href={explorerAddr(h.full)} target="_blank" rel="noreferrer" title={h.full}>{h.who}</a>
+                          : <span title={h.full}>{h.who}</span>}
                         <span style={cs("text-align:right")}>{h.balance}</span>
                         <span style={cs("text-align:right;font-weight:500")}>{h.share}</span>
                         <div style={cs("text-align:right")}><span style={cs(`font-size:10px;letter-spacing:.08em;padding:2px 8px;border-radius:999px;border:${h.tagBd};background:${h.tagBg};color:${h.tagFg}`)}>{h.tag}</span></div>

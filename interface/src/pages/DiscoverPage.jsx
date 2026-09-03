@@ -87,7 +87,7 @@ function KingOfDucksCard({ v }) {
 function IntroCard({ v }) {
   return (
     <div style={cs("flex:1;min-width:240px;border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh);padding:18px;display:flex;flex-direction:column;gap:10px;justify-content:center")}>
-      <div style={cs("font-size:18px;font-weight:700;letter-spacing:-.03em")}>Launch a token on Ink</div>
+      <div style={cs("font-size:18px;font-weight:700;letter-spacing:-.03em")}>Launch a token on {v.chainName}</div>
       <div style={cs("font-size:12.5px;color:var(--mute);line-height:1.5")}>Bonding curve, instant V4 pool, or a crowdlaunch you set the terms for.</div>
       <div style={cs("display:flex;gap:8px;flex-wrap:wrap")}>
         <button onClick={v.goCreate} style={cs("padding:10px 16px;border:1px solid var(--line);border-radius:6px;background:var(--lime);color:var(--on);font-size:13px;font-weight:700;cursor:pointer")}>Launch a coin</button>

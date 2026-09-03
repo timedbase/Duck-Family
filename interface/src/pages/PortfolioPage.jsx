@@ -19,7 +19,7 @@ export default function PortfolioPage({ v }) {
   const contributions = v.portfolio.contributions;
 
   const pfStats = [
-    { label: "WALLET", value: v.balance + " ETH", sub: v.accountShort, bg: "var(--card)", fg: "var(--ink)", labelFg: "var(--mute)" },
+    { label: "WALLET", value: v.balance + " " + v.nativeSymbol, sub: v.accountShort, bg: "var(--card)", fg: "var(--ink)", labelFg: "var(--mute)" },
     { label: "TOKENS HELD", value: String(held.length), sub: "positions", bg: "var(--card)", fg: "var(--ink)", labelFg: "var(--mute)" },
     { label: "TOKENS CREATED", value: String(created.length), sub: "launches", bg: "var(--lime)", fg: "var(--on)", labelFg: "var(--acc)" },
     { label: "CONTRIBUTIONS", value: String(contributions.length), sub: "campaigns backed", bg: "var(--card)", fg: "var(--ink)", labelFg: "var(--mute)" },
@@ -32,7 +32,7 @@ export default function PortfolioPage({ v }) {
       const resolved = camp.succeeded || camp.failed;
       if (!resolved) return null;
       if (camp.succeeded && !ct.claimed) return { title: camp.name + " allocation", sub: "DuckRaise · succeeded", cta: "Claim", bg: "var(--lime)", fg: "var(--on)", open: camp.token ? () => v.openToken(camp.token.id) : null };
-      if (camp.failed && !ct.refunded) return { title: camp.name + " refund", sub: (Number(ct.amount) / 1e18).toFixed(4) + " ETH · goal missed", cta: "Refund", bg: "var(--orange)", fg: "#fff", open: camp.token ? () => v.openToken(camp.token.id) : null };
+      if (camp.failed && !ct.refunded) return { title: camp.name + " refund", sub: (Number(ct.amount) / 1e18).toFixed(4) + " " + v.nativeSymbol + " · goal missed", cta: "Refund", bg: "var(--orange)", fg: "#fff", open: camp.token ? () => v.openToken(camp.token.id) : null };
       return null;
     })
     .filter(Boolean);

@@ -1,8 +1,8 @@
 import { encodeAbiParameters, encodePacked, maxUint160 } from "viem";
-import { publicClient } from "./client.js";
+import { getPublicClient } from "./client.js";
 import { simulateAndSend } from "./tx.js";
 import { ERC20_ABI, PERMIT2_ABI, UNIVERSAL_ROUTER_ABI, V4_QUOTER_ABI } from "./abis.js";
-import { UNIVERSAL_ROUTER, PERMIT2, V4_QUOTER, V4_FEE_TIER, V4_TICK_SPACING, ZERO_ADDRESS } from "./addresses.js";
+import { ZERO_ADDRESS } from "./addresses.js";
 
 // Trading on a token's REAL, live Uniswap V4 pool -- applies once a CURVE
 // token has migrated, or always for INSTANT tokens. Verified directly
@@ -11,16 +11,19 @@ import { UNIVERSAL_ROUTER, PERMIT2, V4_QUOTER, V4_FEE_TIER, V4_TICK_SPACING, ZER
 // V4Router.sol, DeltaResolver.sol, CalldataDecoder.sol) before writing a
 // single line here -- real funds move through this, no guessed encoding.
 //
+// Every function here takes the resolved CHAINS[slug] config (see
+// chain/addresses.js) as its first `chain` param. Arc's UNIVERSAL_ROUTER/
+// V4_QUOTER are null (unconfirmed -- Uniswap's own v4 deployment docs don't
+// list Arc at all) -- every function checks and throws a clear "not
+// available on this chain yet" instead of calling with a null address.
+//
 // Our own pools are always token<->quoteAsset directly (single-hop). A
-// buyer/seller who only holds native ETH but the pool's quote asset is an
-// ERC20 needs a second hop first -- ETH<->quoteAsset on a REAL external
-// pool. Only USDC and USDT0 have one on Ink today (verified on-chain: the
-// real liquidity sits in the native-ETH-paired, hookless V4 pool at
-// fee=3000/tickSpacing=60 -- the exact same route DuckIncubation/
-// DuckLauncher/DuckRaise's own contracts seed for buyWithNative). Any other
-// ERC20 quote asset has no known route -- there is genuinely nowhere to
-// swap ETH into it on Ink right now, so this throws a clear error rather
-// than a router revert with no explanation.
+// buyer/seller who only holds native currency but the pool's quote asset is
+// an ERC20 needs a second hop first -- native<->quoteAsset on a REAL
+// external pool. Only Ink has one (see addresses.js's NATIVE_EXTERNAL_ROUTE)
+// -- any other ERC20 quote asset, or any quote asset at all on a chain with
+// no external route, has genuinely nowhere to source it from, so this
+// throws a clear error rather than a router revert with no explanation.
 
 const V4_SWAP_COMMAND = "0x10"; // Commands.V4_SWAP
 const ACTION_SWAP_EXACT_IN_SINGLE = 0x06;
@@ -28,23 +31,24 @@ const ACTION_SWAP_EXACT_IN = 0x07;
 const ACTION_SETTLE_ALL = 0x0c;
 const ACTION_TAKE_ALL = 0x0f;
 
-// Same external venue DuckIncubationMigration.seedDefaultRoutes wires up on
-// the contract side -- see contracts/common/DuckIncubationMigration.sol.
-const EXTERNAL_ETH_ROUTE_FEE = 3000;
-const EXTERNAL_ETH_ROUTE_TICK_SPACING = 60;
-const EXTERNAL_ETH_ROUTE_HOOK = ZERO_ADDRESS;
-const LIQUID_QUOTE_SYMBOLS_LOWER = new Set(["usdc", "usd₮0"]);
-
 function isNative(currency) {
   return currency.toLowerCase() === ZERO_ADDRESS.toLowerCase();
 }
 
-// null if there's no known external liquidity to route ETH into this quote
-// asset -- callers must fall back to requiring the asset be held directly.
-function externalEthRouteFor(quoteAsset, quoteSymbol) {
+// null if there's no known external liquidity to route native currency into
+// this quote asset -- callers must fall back to requiring the asset be held
+// directly.
+function externalRouteFor(chain, quoteAsset, quoteSymbol) {
   if (isNative(quoteAsset)) return null; // no second hop needed at all
-  if (!LIQUID_QUOTE_SYMBOLS_LOWER.has((quoteSymbol || "").toLowerCase())) return null;
-  return { fee: EXTERNAL_ETH_ROUTE_FEE, tickSpacing: EXTERNAL_ETH_ROUTE_TICK_SPACING, hooks: EXTERNAL_ETH_ROUTE_HOOK };
+  if (!chain.NATIVE_EXTERNAL_ROUTE) return null; // this chain has no external bridge at all
+  if (!chain.LIQUID_QUOTE_TOKEN_SYMBOLS.includes(quoteSymbol)) return null;
+  return chain.NATIVE_EXTERNAL_ROUTE;
+}
+
+function requireRouterAndQuoter(chain) {
+  if (!chain.UNIVERSAL_ROUTER || !chain.V4_QUOTER) {
+    throw new Error(`Pool trading isn't available on ${chain.name} yet (Universal Router / V4 Quoter unconfirmed on this chain).`);
+  }
 }
 
 const PATH_KEY_ABI_COMPONENTS = [
@@ -88,9 +92,9 @@ const EXACT_IN_PARAMS_ABI = [
   },
 ];
 
-function buildPoolKey(currencyA, currencyB, hook) {
+function buildPoolKey(chain, currencyA, currencyB, hook) {
   const [currency0, currency1] = BigInt(currencyA) < BigInt(currencyB) ? [currencyA, currencyB] : [currencyB, currencyA];
-  return { currency0, currency1, fee: V4_FEE_TIER, tickSpacing: V4_TICK_SPACING, hooks: hook };
+  return { currency0, currency1, fee: chain.V4_FEE_TIER, tickSpacing: chain.V4_TICK_SPACING, hooks: hook };
 }
 
 function actionsAndTail(...actions) {
@@ -126,148 +130,154 @@ function buildMultiHopSwapInput({ currencyIn, path, amountIn, minOut }) {
   return encodeAbiParameters([{ type: "bytes" }, { type: "bytes[]" }], [actions, [swapParams, settleParams, takeParams]]);
 }
 
-async function ensurePermit2Allowance({ account, token, amount }) {
+async function ensurePermit2Allowance(chain, { account, token, amount }) {
+  const publicClient = getPublicClient(chain);
   const erc20Allowance = await publicClient.readContract({
-    address: token, abi: ERC20_ABI, functionName: "allowance", args: [account, PERMIT2],
+    address: token, abi: ERC20_ABI, functionName: "allowance", args: [account, chain.PERMIT2],
   });
   if (erc20Allowance < amount) {
-    await simulateAndSend({ address: token, abi: ERC20_ABI, functionName: "approve", args: [PERMIT2, maxUint160], account });
+    await simulateAndSend(chain, { address: token, abi: ERC20_ABI, functionName: "approve", args: [chain.PERMIT2, maxUint160], account });
   }
 
   const [permit2Amount, expiration] = await publicClient.readContract({
-    address: PERMIT2, abi: PERMIT2_ABI, functionName: "allowance", args: [account, token, UNIVERSAL_ROUTER],
+    address: chain.PERMIT2, abi: PERMIT2_ABI, functionName: "allowance", args: [account, token, chain.UNIVERSAL_ROUTER],
   });
   const expired = expiration !== 0 && BigInt(expiration) < BigInt(Math.floor(Date.now() / 1000));
   if (permit2Amount < amount || expired) {
     const oneYear = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60;
-    await simulateAndSend({
-      address: PERMIT2, abi: PERMIT2_ABI, functionName: "approve",
-      args: [token, UNIVERSAL_ROUTER, maxUint160, oneYear], account,
+    await simulateAndSend(chain, {
+      address: chain.PERMIT2, abi: PERMIT2_ABI, functionName: "approve",
+      args: [token, chain.UNIVERSAL_ROUTER, maxUint160, oneYear], account,
     });
   }
 }
 
-async function executeRouterSwap({ account, input, valueIn }) {
+async function executeRouterSwap(chain, { account, input, valueIn }) {
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800);
-  return simulateAndSend({
-    address: UNIVERSAL_ROUTER, abi: UNIVERSAL_ROUTER_ABI, functionName: "execute",
+  return simulateAndSend(chain, {
+    address: chain.UNIVERSAL_ROUTER, abi: UNIVERSAL_ROUTER_ABI, functionName: "execute",
     args: [V4_SWAP_COMMAND, [input], deadline],
     value: valueIn,
     account,
   });
 }
 
-// Buys `token` on its live V4 pool, paid in native ETH. If the pool's quote
-// asset isn't native, routes ETH -> quoteAsset -> token in one call when a
-// real external ETH<->quoteAsset venue is known (USDC/USDT0 today);
-// otherwise throws, since there is nowhere to source the quote asset from.
-export async function buyOnPoolWithNative({ account, token, hook, quoteAsset, quoteSymbol, amountInWei, minOut = 0n }) {
+// Buys `token` on its live V4 pool, paid in native currency. If the pool's
+// quote asset isn't native, routes native -> quoteAsset -> token in one call
+// when a real external route is known (Ink's USDC/USDT0 today); otherwise
+// throws, since there is nowhere to source the quote asset from.
+export async function buyOnPoolWithNative(chain, { account, token, hook, quoteAsset, quoteSymbol, amountInWei, minOut = 0n }) {
+  requireRouterAndQuoter(chain);
   if (isNative(quoteAsset)) {
-    const poolKey = buildPoolKey(token, ZERO_ADDRESS, hook);
+    const poolKey = buildPoolKey(chain, token, ZERO_ADDRESS, hook);
     const zeroForOne = true; // address(0) is always numerically smallest
     const input = buildSwapInput({
       currencyIn: ZERO_ADDRESS, currencyOut: token, amountIn: amountInWei, minOut,
       singleHop: { poolKey, zeroForOne },
     });
-    return executeRouterSwap({ account, input, valueIn: amountInWei });
+    return executeRouterSwap(chain, { account, input, valueIn: amountInWei });
   }
 
-  const route = externalEthRouteFor(quoteAsset, quoteSymbol);
+  const route = externalRouteFor(chain, quoteAsset, quoteSymbol);
   if (!route) {
-    throw new Error(`No ETH route available for this token's quote asset (${quoteSymbol || quoteAsset}) -- you'd need to already hold it to trade this pool.`);
+    throw new Error(`No ${chain.nativeSymbol} route available for this token's quote asset (${quoteSymbol || quoteAsset}) -- you'd need to already hold it to trade this pool.`);
   }
   const path = [
-    { intermediateCurrency: quoteAsset, fee: route.fee, tickSpacing: route.tickSpacing, hooks: route.hooks },
-    { intermediateCurrency: token, fee: V4_FEE_TIER, tickSpacing: V4_TICK_SPACING, hooks: hook },
+    { intermediateCurrency: quoteAsset, fee: route.fee, tickSpacing: route.tickSpacing, hooks: route.hook },
+    { intermediateCurrency: token, fee: chain.V4_FEE_TIER, tickSpacing: chain.V4_TICK_SPACING, hooks: hook },
   ];
   const input = buildMultiHopSwapInput({ currencyIn: ZERO_ADDRESS, path, amountIn: amountInWei, minOut });
-  return executeRouterSwap({ account, input, valueIn: amountInWei });
+  return executeRouterSwap(chain, { account, input, valueIn: amountInWei });
 }
 
-// Sells `token` on its live V4 pool, proceeds landing as native ETH. Same
-// routing logic as buyOnPoolWithNative, reversed.
-export async function sellOnPoolForNative({ account, token, hook, quoteAsset, quoteSymbol, amountIn, minOut = 0n }) {
-  await ensurePermit2Allowance({ account, token, amount: amountIn });
+// Sells `token` on its live V4 pool, proceeds landing as native currency.
+// Same routing logic as buyOnPoolWithNative, reversed.
+export async function sellOnPoolForNative(chain, { account, token, hook, quoteAsset, quoteSymbol, amountIn, minOut = 0n }) {
+  requireRouterAndQuoter(chain);
+  await ensurePermit2Allowance(chain, { account, token, amount: amountIn });
 
   if (isNative(quoteAsset)) {
-    const poolKey = buildPoolKey(token, ZERO_ADDRESS, hook);
+    const poolKey = buildPoolKey(chain, token, ZERO_ADDRESS, hook);
     const zeroForOne = false; // token is never address(0), so token is always currency1 here
     const input = buildSwapInput({
       currencyIn: token, currencyOut: ZERO_ADDRESS, amountIn, minOut,
       singleHop: { poolKey, zeroForOne },
     });
-    return executeRouterSwap({ account, input, valueIn: 0n });
+    return executeRouterSwap(chain, { account, input, valueIn: 0n });
   }
 
-  const route = externalEthRouteFor(quoteAsset, quoteSymbol);
+  const route = externalRouteFor(chain, quoteAsset, quoteSymbol);
   if (!route) {
-    throw new Error(`No ETH route available for this token's quote asset (${quoteSymbol || quoteAsset}) -- proceeds would need to stay in that asset.`);
+    throw new Error(`No ${chain.nativeSymbol} route available for this token's quote asset (${quoteSymbol || quoteAsset}) -- proceeds would need to stay in that asset.`);
   }
   const path = [
-    { intermediateCurrency: quoteAsset, fee: V4_FEE_TIER, tickSpacing: V4_TICK_SPACING, hooks: hook },
-    { intermediateCurrency: ZERO_ADDRESS, fee: route.fee, tickSpacing: route.tickSpacing, hooks: route.hooks },
+    { intermediateCurrency: quoteAsset, fee: chain.V4_FEE_TIER, tickSpacing: chain.V4_TICK_SPACING, hooks: hook },
+    { intermediateCurrency: ZERO_ADDRESS, fee: route.fee, tickSpacing: route.tickSpacing, hooks: route.hook },
   ];
   const input = buildMultiHopSwapInput({ currencyIn: token, path, amountIn, minOut });
-  return executeRouterSwap({ account, input, valueIn: 0n });
+  return executeRouterSwap(chain, { account, input, valueIn: 0n });
 }
 
-// Read-only preview via Ink's real deployed V4Quoter -- technically a
+// Read-only preview via the chain's real deployed V4Quoter -- technically a
 // `nonpayable` function (it reverts internally to capture the simulated
 // result, a standard V4 quoter pattern), but safe and correct to call via
 // a plain eth_call / readContract since it's never actually broadcast.
-async function quoteSingleHop({ tokenIn, tokenOut, hook, amountIn }) {
-  const poolKey = buildPoolKey(tokenIn, tokenOut, hook);
+async function quoteSingleHop(chain, { tokenIn, tokenOut, hook, amountIn }) {
+  const poolKey = buildPoolKey(chain, tokenIn, tokenOut, hook);
   const zeroForOne = BigInt(tokenIn) < BigInt(tokenOut);
-  const [amountOut] = await publicClient.readContract({
-    address: V4_QUOTER, abi: V4_QUOTER_ABI, functionName: "quoteExactInputSingle",
+  const [amountOut] = await getPublicClient(chain).readContract({
+    address: chain.V4_QUOTER, abi: V4_QUOTER_ABI, functionName: "quoteExactInputSingle",
     args: [{ poolKey, zeroForOne, exactAmount: amountIn, hookData: "0x" }],
   });
   return amountOut;
 }
 
-export async function previewBuyWithNative({ token, hook, quoteAsset, quoteSymbol, amountInWei }) {
+export async function previewBuyWithNative(chain, { token, hook, quoteAsset, quoteSymbol, amountInWei }) {
+  if (!chain.V4_QUOTER) return 0n;
   try {
     if (isNative(quoteAsset)) {
-      return await quoteSingleHop({ tokenIn: ZERO_ADDRESS, tokenOut: token, hook, amountIn: amountInWei });
+      return await quoteSingleHop(chain, { tokenIn: ZERO_ADDRESS, tokenOut: token, hook, amountIn: amountInWei });
     }
-    const route = externalEthRouteFor(quoteAsset, quoteSymbol);
+    const route = externalRouteFor(chain, quoteAsset, quoteSymbol);
     if (!route) return 0n;
-    const quoteOut = await quoteSingleHop({ tokenIn: ZERO_ADDRESS, tokenOut: quoteAsset, hook: route.hooks, amountIn: amountInWei });
-    return await quoteSingleHop({ tokenIn: quoteAsset, tokenOut: token, hook, amountIn: quoteOut });
+    const quoteOut = await quoteSingleHop(chain, { tokenIn: ZERO_ADDRESS, tokenOut: quoteAsset, hook: route.hook, amountIn: amountInWei });
+    return await quoteSingleHop(chain, { tokenIn: quoteAsset, tokenOut: token, hook, amountIn: quoteOut });
   } catch {
     return 0n;
   }
 }
 
-export async function previewSellForNative({ token, hook, quoteAsset, quoteSymbol, amountIn }) {
+export async function previewSellForNative(chain, { token, hook, quoteAsset, quoteSymbol, amountIn }) {
+  if (!chain.V4_QUOTER) return 0n;
   try {
     if (isNative(quoteAsset)) {
-      return await quoteSingleHop({ tokenIn: token, tokenOut: ZERO_ADDRESS, hook, amountIn });
+      return await quoteSingleHop(chain, { tokenIn: token, tokenOut: ZERO_ADDRESS, hook, amountIn });
     }
-    const route = externalEthRouteFor(quoteAsset, quoteSymbol);
+    const route = externalRouteFor(chain, quoteAsset, quoteSymbol);
     if (!route) return 0n;
-    const quoteOut = await quoteSingleHop({ tokenIn: token, tokenOut: quoteAsset, hook, amountIn });
-    return await quoteSingleHop({ tokenIn: quoteAsset, tokenOut: ZERO_ADDRESS, hook: route.hooks, amountIn: quoteOut });
+    const quoteOut = await quoteSingleHop(chain, { tokenIn: token, tokenOut: quoteAsset, hook, amountIn });
+    return await quoteSingleHop(chain, { tokenIn: quoteAsset, tokenOut: ZERO_ADDRESS, hook: route.hook, amountIn: quoteOut });
   } catch {
     return 0n;
   }
 }
 
-export function hasEthRoute(quoteAsset, quoteSymbol) {
-  return isNative(quoteAsset) || externalEthRouteFor(quoteAsset, quoteSymbol) !== null;
+export function hasNativeRoute(chain, quoteAsset, quoteSymbol) {
+  return isNative(quoteAsset) || externalRouteFor(chain, quoteAsset, quoteSymbol) !== null;
 }
 
-// Just the ETH -> quoteAsset hop (the same external venue used above), with
-// no second hop onto any platform pool -- used to preview/execute buying an
-// ERC20-quoted bonding-curve token with native ETH (see
+// Just the native -> quoteAsset hop (the same external venue used above),
+// with no second hop onto any platform pool -- used to preview/execute
+// buying an ERC20-quoted bonding-curve token with native currency (see
 // actions.js's buyCurveWithNative), where the "pool" for the second leg is
 // the curve contract itself, not a V4 pool.
-export async function previewEthToQuote({ quoteAsset, quoteSymbol, amountInWei }) {
+export async function previewNativeToQuote(chain, { quoteAsset, quoteSymbol, amountInWei }) {
   if (isNative(quoteAsset)) return amountInWei;
-  const route = externalEthRouteFor(quoteAsset, quoteSymbol);
+  if (!chain.V4_QUOTER) return 0n;
+  const route = externalRouteFor(chain, quoteAsset, quoteSymbol);
   if (!route) return 0n;
   try {
-    return await quoteSingleHop({ tokenIn: ZERO_ADDRESS, tokenOut: quoteAsset, hook: route.hooks, amountIn: amountInWei });
+    return await quoteSingleHop(chain, { tokenIn: ZERO_ADDRESS, tokenOut: quoteAsset, hook: route.hook, amountIn: amountInWei });
   } catch {
     return 0n;
   }

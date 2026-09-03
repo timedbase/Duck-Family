@@ -17,16 +17,18 @@ export default function StatsPage({ v }) {
   const loadingRef = useRef(false);
 
   useEffect(() => {
+    setStats(null);
     const load = () => {
       if (loadingRef.current) return;
       loadingRef.current = true;
-      api.stats().then((d) => { setStats(d); setFetchedAt(Date.now()); setError(""); }).catch((e) => setError(String(e.message || e))).finally(() => { loadingRef.current = false; });
+      api.stats(v.chain).then((d) => { setStats(d); setFetchedAt(Date.now()); setError(""); }).catch((e) => setError(String(e.message || e))).finally(() => { loadingRef.current = false; });
     };
     load();
     const poll = setInterval(load, 30000);
     const tick = setInterval(() => setNowTick(Date.now()), 1000);
     return () => { clearInterval(poll); clearInterval(tick); };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [v.chainSlug]);
 
   const money = (n) => n >= 1e6 ? "$" + (n / 1e6).toFixed(2) + "M" : n >= 1e3 ? "$" + (n / 1e3).toFixed(1) + "K" : "$" + n.toFixed(0);
   const updatedSecondsAgo = fetchedAt ? Math.max(0, Math.round((nowTick - fetchedAt) / 1000)) : null;
@@ -96,8 +98,8 @@ export default function StatsPage({ v }) {
                 <span style={cs("width:11px;height:11px;border-radius:3px;background:var(--orange);flex:none;margin-top:4px")}></span>
                 <div style={cs("min-width:0")}>
                   <div style={cs("font-size:13.5px;font-weight:600;letter-spacing:-.01em")}>Crowdlaunch</div>
-                  <div style={cs("font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500;margin-top:4px")}>{stats.raiseContributedEth.toFixed(4)} ETH</div>
-                  <div style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute);margin-top:3px")}>ETH contributed, not trading volume</div>
+                  <div style={cs("font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500;margin-top:4px")}>{stats.raiseContributedEth.toFixed(4)} {v.nativeSymbol}</div>
+                  <div style={cs("font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute);margin-top:3px")}>{v.nativeSymbol} contributed, not trading volume</div>
                 </div>
               </div>
             </div>

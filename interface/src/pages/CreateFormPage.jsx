@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { cs } from "../cs.js";
+import { ZERO_ADDRESS } from "../chain/addresses.js";
 
 function labelFor(options, address) {
   return (options.find((o) => o.address.toLowerCase() === address.toLowerCase()) || {}).label || "?";
@@ -80,7 +81,7 @@ const ON_SUBMIT = {
 
 export default function CreateFormPage({ v }) {
   const family = v.family || "incubation";
-  useEffect(() => { if (family === "raise") v.loadRaiseDefaults(); }, [family]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (family === "raise") v.loadRaiseDefaults(); }, [family, v.chainSlug]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const draft = family === "incubation" ? v.draftCurve : family === "launcher" ? v.draftInstant : v.draftCampaign;
   const setDraft = family === "incubation" ? v.setCurve : family === "launcher" ? v.setInstant : v.setCampaign;
@@ -99,7 +100,7 @@ export default function CreateFormPage({ v }) {
     incubation: [{ k: "TRADING FEE", v: "1.00% (curve trading fee, charged on both buys and sells)" }],
     launcher: [{ k: "POOL FEE / TICK SPACING", v: "10000 / 200 (1%)" }],
     raise: [
-      { k: "CREATION FEE", v: v.raiseDefaults ? `${Number(v.raiseDefaults.campaignFee) / 1e18} ETH, paid on launch (waived if quoted in the platform token)` : "loading…" },
+      { k: "CREATION FEE", v: v.raiseDefaults ? `${Number(v.raiseDefaults.campaignFee) / 1e18} ${v.nativeSymbol}, paid on launch (waived if quoted in the platform token)` : "loading…" },
       { k: "REFUND IF MISSED", v: "100%" },
     ],
   }[family];
@@ -146,7 +147,7 @@ export default function CreateFormPage({ v }) {
 
             {family === "incubation" && (
               <>
-                <Field label="QUOTE ASSET" hint="Only USDC/USDT0 have a real ETH route for buyWithNative; pick ETH if unsure">
+                <Field label="QUOTE ASSET" hint={`Only USDC/USDT0 have a real ${v.nativeSymbol} route for buyWithNative; pick ${v.nativeSymbol} if unsure`}>
                   <QuoteChips options={v.quoteOptions} value={v.draftCurve.quoteToken} onPick={(a) => v.setCurve({ quoteToken: a, earlyBuyAmount: "0" })} />
                 </Field>
                 <div style={cs(`display:grid;grid-template-columns:${v.isMobile ? "1fr" : "1fr 1fr"};gap:18px`)}>
@@ -165,29 +166,53 @@ export default function CreateFormPage({ v }) {
               </>
             )}
 
-            {family === "launcher" && (
-              <>
-                <Field label="QUOTE ASSET" hint="Paired side of the V4 pool">
-                  <QuoteChips options={v.quoteOptions} value={v.draftInstant.quoteToken} onPick={(a) => v.setInstant({ quoteToken: a, buyAmountHype: "0" })} />
-                </Field>
-                <Field label={`LAUNCH MARKET CAP (${labelFor(v.quoteOptions, v.draftInstant.quoteToken)})`} hint="Virtual FDV the pool is seeded at">
-                  <TextInput value={v.draftInstant.launchMarketCap} onChange={(e) => v.setInstant({ launchMarketCap: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="10" />
-                </Field>
-                {v.quoteHasEthRoute(labelFor(v.quoteOptions, v.draftInstant.quoteToken)) && (
-                  <Field label="OPTIONAL INSTANT BUY (ETH)" hint="Swapped into the quote asset and used to buy the new pool immediately">
-                    <TextInput value={v.draftInstant.buyAmountHype} onChange={(e) => v.setInstant({ buyAmountHype: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="0" />
+            {family === "launcher" && (() => {
+              const hasV3 = !!v.chain.V3_POSITION_MANAGER;
+              const dex = hasV3 ? v.draftInstant.dex : "v4";
+              // V3 forbids a native-currency quote (DuckLauncherArc reverts
+              // NativeNotSupportedOnV3) -- only real ERC20 options are valid.
+              const erc20QuoteOptions = v.quoteOptions.filter((o) => o.address !== ZERO_ADDRESS);
+              const quoteOptions = dex === "v3" ? erc20QuoteOptions : v.quoteOptions;
+              return (
+                <>
+                  {hasV3 && (
+                    <Field label="DEX" hint={dex === "v3" ? "Full Uniswap V3 pool. No native-currency quote; a real quote asset is required." : "Uniswap V4 pool (this platform's default)."}>
+                      <div style={cs("display:grid;grid-template-columns:1fr 1fr;gap:8px")}>
+                        {[{ k: "v4", label: "V4" }, { k: "v3", label: "V3" }].map((o) => (
+                          <button key={o.k} onClick={() => v.setInstant({ dex: o.k, quoteToken: o.k === "v3" ? (erc20QuoteOptions[0]?.address || ZERO_ADDRESS) : ZERO_ADDRESS, buyAmountHype: "0" })}
+                            style={cs(`border:1px solid var(--line);border-radius:8px;cursor:pointer;padding:9px 10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;background:${dex === o.k ? "var(--ink)" : "var(--card)"};color:${dex === o.k ? "var(--card)" : "var(--ink)"}`)}>
+                            {o.label}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+                  )}
+                  <Field label="QUOTE ASSET" hint={dex === "v3" ? "Paired side of the V3 pool -- must be a real asset, not native currency" : "Paired side of the V4 pool"}>
+                    {quoteOptions.length === 0 ? (
+                      <div style={cs("padding:12px;border:1px dashed var(--line);font-size:12.5px;color:var(--mute)")}>No quote assets are seeded on this chain yet -- ask the owner to add one via setQuoteTokenAllowed before launching on V3.</div>
+                    ) : (
+                      <QuoteChips options={quoteOptions} value={v.draftInstant.quoteToken} onPick={(a) => v.setInstant({ quoteToken: a, buyAmountHype: "0" })} />
+                    )}
                   </Field>
-                )}
-                <Field label="FEE / TICK SPACING"><LockedInput value="10000 / 200 (this platform's 1% pool convention)" /></Field>
-              </>
-            )}
+                  <Field label={`LAUNCH MARKET CAP (${labelFor(quoteOptions, v.draftInstant.quoteToken)})`} hint="Virtual FDV the pool is seeded at">
+                    <TextInput value={v.draftInstant.launchMarketCap} onChange={(e) => v.setInstant({ launchMarketCap: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="10" />
+                  </Field>
+                  {dex === "v4" && v.quoteHasEthRoute(labelFor(quoteOptions, v.draftInstant.quoteToken)) && (
+                    <Field label={`OPTIONAL INSTANT BUY (${v.nativeSymbol})`} hint="Swapped into the quote asset and used to buy the new pool immediately">
+                      <TextInput value={v.draftInstant.buyAmountHype} onChange={(e) => v.setInstant({ buyAmountHype: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="0" />
+                    </Field>
+                  )}
+                  <Field label="FEE / TICK SPACING"><LockedInput value={dex === "v3" ? "10000 (1% fee tier, real Uniswap V3 ticks)" : "10000 / 200 (this platform's 1% pool convention)"} /></Field>
+                </>
+              );
+            })()}
 
             {family === "raise" && (
               <>
-                <Field label="GOAL (ETH)" hint="Native ETH only; no quote asset during the raise">
+                <Field label={`GOAL (${v.nativeSymbol})`} hint={`Native ${v.nativeSymbol} only; no quote asset during the raise`}>
                   <TextInput value={v.draftCampaign.goalNative} onChange={(e) => v.setCampaign({ goalNative: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="50" />
                 </Field>
-                <Field label="QUOTE AT FINALIZE" hint="Raised ETH swaps into this to seed the pool">
+                <Field label="QUOTE AT FINALIZE" hint={`Raised ${v.nativeSymbol} swaps into this to seed the pool`}>
                   <QuoteChips options={v.raiseQuoteOptions} value={v.draftCampaign.dexQuoteAsset} onPick={(a) => v.setCampaign({ dexQuoteAsset: a })} />
                 </Field>
                 <Field label="DEADLINE (PLATFORM SETTING)"><LockedInput value={v.raiseDefaults ? Math.round(Number(v.raiseDefaults.duration) / 3600) + " hours from launch" : "loading…"} /></Field>

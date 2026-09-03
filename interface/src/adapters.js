@@ -3,17 +3,17 @@
 // equivalent yet (chg, chat) are left at honest defaults (0 / empty), not
 // fabricated.
 import { quoteSymbol, shortAddress } from "./api.js";
-import { DUCK_INCUBATION, DUCK_LAUNCHER, DUCK_RAISE, DUCK_LOCKER, DUCK_HOOK, V4_POOL_MANAGER, DEFAULT_QUOTE_TOKENS } from "./chain/addresses.js";
 
 // RAW subgraph amounts (raisedQuote, volumeAllTime, volume24h) are never
 // decimal-normalized by the subgraph -- same convention as Trade.quoteAmount
-// etc. -- so dividing by a flat 1e18 is only correct for a native-ETH-quoted
-// token; USDC/USDT0 are 6 decimals. lastPrice/lastPriceUsd, by contrast,
-// ARE already normalized by the subgraph (a real human-readable ratio), so
-// nothing derived from those needs this.
-function quoteDecimalsFor(address) {
+// etc. -- so dividing by a flat 1e18 is only correct for a native-quoted
+// token; Ink's USDC/USDT0 are 6 decimals (Arc has no seeded quote tokens
+// yet). lastPrice/lastPriceUsd, by contrast, ARE already normalized by the
+// subgraph (a real human-readable ratio), so nothing derived from those
+// needs this.
+function quoteDecimalsFor(chain, address) {
   if (!address || address.toLowerCase() === "0x0000000000000000000000000000000000000000") return 18;
-  const t = DEFAULT_QUOTE_TOKENS.find((q) => q.address.toLowerCase() === address.toLowerCase());
+  const t = chain.DEFAULT_QUOTE_TOKENS.find((q) => q.address.toLowerCase() === address.toLowerCase());
   return t ? t.decimals : 18;
 }
 
@@ -25,23 +25,29 @@ export const FAM_COLORS = {
   CAMPAIGN: { bg: "var(--orange)", fg: "#fff" },
 };
 
+const BURN_ADDRESS = "0x000000000000000000000000000000000000dead";
+
 // Platform contracts and the standard burn address show up constantly as
 // "holders"/traders (curve reserves, LP-lock custody, migration penalty
 // burns) — labeling them beats a wall of unrecognizable 0x addresses.
-const STATIC_LABELS = {
-  [DUCK_INCUBATION.toLowerCase()]: "DuckIncubation (bonding curve)",
-  [DUCK_LAUNCHER.toLowerCase()]: "DuckLauncher (instant DEX)",
-  [DUCK_RAISE.toLowerCase()]: "DuckRaise (campaigns)",
-  [DUCK_LOCKER.toLowerCase()]: "DuckLocker (LP lock)",
-  [DUCK_HOOK.toLowerCase()]: "DuckHookV4",
-  [V4_POOL_MANAGER.toLowerCase()]: "Liquidity Pool",
-  "0x000000000000000000000000000000000000dead": "Burned",
-};
+// Chain-aware since Ink/Arc have different (and sometimes, by coincidence,
+// byte-identical) contract addresses -- see chain/addresses.js.
+function staticLabelsFor(chain) {
+  return {
+    [chain.DUCK_INCUBATION.toLowerCase()]: "DuckIncubation (bonding curve)",
+    [chain.DUCK_LAUNCHER.toLowerCase()]: "DuckLauncher (instant DEX)",
+    [chain.DUCK_RAISE.toLowerCase()]: "DuckRaise (campaigns)",
+    [chain.DUCK_LOCKER.toLowerCase()]: "DuckLocker (LP lock)",
+    [chain.DUCK_HOOK.toLowerCase()]: "DuckHookV4",
+    [chain.V4_POOL_MANAGER.toLowerCase()]: "Liquidity Pool",
+    [BURN_ADDRESS]: "Burned",
+  };
+}
 
-export function labelFor(address, extraLabels) {
+export function labelFor(chain, address, extraLabels) {
   if (!address) return null;
   const key = address.toLowerCase();
-  return (extraLabels && extraLabels[key]) || STATIC_LABELS[key] || null;
+  return (extraLabels && extraLabels[key]) || staticLabelsFor(chain)[key] || null;
 }
 
 // Compact "leading zero count" notation for small decimals -- the same
@@ -106,7 +112,7 @@ export function usdOrQuote(usd, quote, symbol) {
 // neither TokenCreated nor TokenLaunched carries name/symbol). CAMPAIGN
 // tokens don't need it: DuckRaise's CampaignCreated does carry them, so
 // t.campaign.name/symbol are already populated by the backend.
-export function tokenToCoin(t, i, meta) {
+export function tokenToCoin(chain, t, i, meta) {
   const ageMin = Math.max(0, Math.round((Date.now() / 1000 - Number(t.createdAt)) / 60));
   // Minutes since the most recent real trade -- null (not "same as ageMin")
   // when the token has never traded, so "most recently active" can be told
@@ -121,7 +127,7 @@ export function tokenToCoin(t, i, meta) {
   // Cumulative quote-asset inflow -- NOT market cap, a different number.
   // CURVE's quoteToken varies (ETH/USDC/USDT0); CAMPAIGN is always native
   // ETH (contribute() takes no other asset), handled in its own branch below.
-  let raised = t.raisedQuote ? Number(t.raisedQuote) / 10 ** quoteDecimalsFor(t.quoteToken) : 0;
+  let raised = t.raisedQuote ? Number(t.raisedQuote) / 10 ** quoteDecimalsFor(chain, t.quoteToken) : 0;
   if (t.family === "CURVE" && t.migrationTarget && Number(t.migrationTarget) > 0) {
     pct = Math.min(100, (Number(t.raisedQuote || 0) / Number(t.migrationTarget)) * 100);
   } else if (t.family === "CAMPAIGN") {
@@ -181,9 +187,9 @@ export function tokenToCoin(t, i, meta) {
     price, mc, raised,
     priceUsd: t.lastPriceUsd != null ? Number(t.lastPriceUsd) : null,
     mcUsd: t.lastPriceUsd != null ? Number(t.lastPriceUsd) * supplyTokens : null,
-    vol: Number(t.volume24h || 0) / 10 ** quoteDecimalsFor(t.quoteToken),
+    vol: Number(t.volume24h || 0) / 10 ** quoteDecimalsFor(chain, t.quoteToken),
     volUsd: t.volume24hUsd != null ? Number(t.volume24hUsd) : null,
-    volumeAllTime: Number(t.volumeAllTime || 0) / 10 ** quoteDecimalsFor(t.quoteToken),
+    volumeAllTime: Number(t.volumeAllTime || 0) / 10 ** quoteDecimalsFor(chain, t.quoteToken),
     volumeAllTimeUsd: t.volumeAllTimeUsd != null ? Number(t.volumeAllTimeUsd) : null,
     // Real 24h change from the subgraph's hourly close-price snapshots --
     // null (not 0) when there's no prior bucket to compare against yet
@@ -193,7 +199,7 @@ export function tokenToCoin(t, i, meta) {
     chgUsd: t.priceChange24hUsd != null ? t.priceChange24hUsd : null,
     ageMin, lastActiveMin, pct,
     desc: "",
-    quote: quoteSymbol(t.quoteToken),
+    quote: quoteSymbol(chain, t.quoteToken),
     holders: Number(t.holderCount || 0),
     mint: shortAddress(t.id),
     metaUri: t.metaUri || null, // indexed directly now; loadTokenMeta falls back to an on-chain read if still empty (e.g. a token created moments ago, ahead of the subgraph)
@@ -256,7 +262,7 @@ export function buildTicks(count, pct, onColor, offColor = "var(--paper)") {
   return Array.from({ length: count }, (_, i) => (i < filled ? onColor : offColor));
 }
 
-export function tradeToRow(tr, labels, quoteSymbolLabel = "ETH") {
+export function tradeToRow(chain, tr, labels, quoteSymbolLabel) {
   const quoteAmt = Number(tr.quoteAmount) / 1e18;
   const tokenAmt = Number(tr.tokenAmount) / 1e18;
   const buy = tr.side === "BUY";
@@ -264,12 +270,12 @@ export function tradeToRow(tr, labels, quoteSymbolLabel = "ETH") {
     side: tr.side, sideLabel: buy ? "B" : "S",
     bg: buy ? "var(--lime)" : "var(--orange)",
     fg: buy ? "var(--on)" : "#fff",
-    who: labelFor(tr.trader, labels) || shortAddress(tr.trader),
+    who: labelFor(chain, tr.trader, labels) || shortAddress(tr.trader),
     full: tr.trader,
     ago: ageAgo(tr.timestamp),
     quote: quoteAmt.toFixed(4),
     amount: tokenAmt >= 1000 ? compactNumber(tokenAmt) : tokenAmt.toFixed(2),
-    quoteSymbol: quoteSymbolLabel,
+    quoteSymbol: quoteSymbolLabel || chain.nativeSymbol,
   };
 }
 
@@ -338,10 +344,10 @@ export function buildCurveSeedPoint(t) {
   return price > 0 ? { time: Number(t.createdAt), price } : null;
 }
 
-export function holderToRow(h, i, totalSupply, labels) {
+export function holderToRow(chain, h, i, totalSupply, labels) {
   const balance = Number(h.balance) / 1e18;
   const share = totalSupply > 0 ? ((balance / totalSupply) * 100).toFixed(1) : "0.0";
-  const label = labelFor(h.account, labels);
+  const label = labelFor(chain, h.account, labels);
   const tag = label ? label.split(" ")[0].toUpperCase() : (i < 3 ? "TOP 10" : "—");
   const tagged = !!label || i < 3;
   return {
@@ -375,8 +381,8 @@ function holdPctLabel(pct) {
   return pct.toFixed(1) + "%";
 }
 
-export function commentToRow(c, labels) {
-  const label = c.wallet !== "anon" ? labelFor(c.wallet, labels) : null;
+export function commentToRow(chain, c, labels) {
+  const label = c.wallet !== "anon" ? labelFor(chain, c.wallet, labels) : null;
   return {
     wallet: c.wallet === "anon" ? "anon" : (label || shortAddress(c.wallet)),
     tag: label ? label.split(" ")[0].toUpperCase() : "HOLDER",
