@@ -1532,8 +1532,8 @@ function buildViewModel(ctx) {
       if (s.raiseDefaults) return;
       getRaiseDefaults(chain).then((d) => set({ raiseDefaults: d })).catch(() => {});
     },
-    quoteOptions: quoteOptionsFor(chain, chain.CURVE_LAUNCHER_QUOTE_TOKENS, s.platformTokens[s.family === "launcher" ? "launcher" : "incubation"]),
-    raiseQuoteOptions: quoteOptionsFor(chain, chain.RAISE_DEFAULT_QUOTE_ASSETS, s.platformTokens.raise),
+    quoteOptions: quoteOptionsFor(chain, s.family === "launcher" ? chain.LAUNCHER_QUOTE_TOKENS : chain.INCUBATION_QUOTE_TOKENS, s.platformTokens[s.family === "launcher" ? "launcher" : "incubation"]),
+    raiseQuoteOptions: quoteOptionsFor(chain, chain.RAISE_QUOTE_TOKENS, s.platformTokens.raise),
     // Native currency ("") always has a route by definition; a platform
     // token isn't in LIQUID_QUOTE_TOKEN_SYMBOLS either, so it correctly
     // falls to false too until this platform actually wires a route for

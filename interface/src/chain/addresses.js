@@ -107,14 +107,21 @@ const ink = {
   // since Arc's native currency already IS the stablecoin.
   NATIVE_EXTERNAL_ROUTE: { fee: 3000, tickSpacing: 60, hook: ZERO_ADDRESS },
 };
+// Per-family create-form quote-asset options. On Ink, DuckIncubation and
+// DuckLauncher happen to have been seeded with the exact same allow-list,
+// so both share this -- but that's a fact about Ink's specific on-chain
+// state, not a platform-wide guarantee (Arc's three families already
+// diverge -- see below), so each chain sets these independently rather
+// than the frontend assuming families stay in sync.
 // Incubation/Launcher can quote in any of the above, liquid or not -- their
 // "optional instant buy" is just skipped client-side for the illiquid ones
 // (see LIQUID_QUOTE_TOKEN_SYMBOLS). Raise has no such fallback: finalize()
 // always swaps the raised native currency into the quote asset to seed the
 // pool, so an illiquid quote asset would make the raise permanently
 // unfinalizable. Keep this one strictly to assets with a real route.
-ink.CURVE_LAUNCHER_QUOTE_TOKENS = [...ink.DEFAULT_QUOTE_TOKENS, ...ink.STOCK_QUOTE_TOKENS];
-ink.RAISE_DEFAULT_QUOTE_ASSETS = ink.DEFAULT_QUOTE_TOKENS;
+ink.INCUBATION_QUOTE_TOKENS = [...ink.DEFAULT_QUOTE_TOKENS, ...ink.STOCK_QUOTE_TOKENS];
+ink.LAUNCHER_QUOTE_TOKENS = ink.INCUBATION_QUOTE_TOKENS;
+ink.RAISE_QUOTE_TOKENS = ink.DEFAULT_QUOTE_TOKENS;
 
 const arc = {
   slug: "arc",
@@ -162,19 +169,35 @@ const arc = {
   V3_POSITION_MANAGER: getAddress("0x39654A85A4C05127f5Fd6ED22CAeC077A0fB1377"),
   V3_ROUTER: getAddress("0x53BF6B0684Ec7eF91e1387Da3D1a1769bC5A6F77"),
 
-  // Nothing seeded yet -- Arc's contracts don't default-allow any quote
-  // tokens on deploy (see deploy-arc/deployments/arc.json's notes). No
+  // Arc's contracts don't default-allow any quote tokens on deploy (see
+  // deploy-arc/deployments/arc.json's notes) -- every entry below reflects a
+  // real, individually verified owner call, not a fabricated default. No
   // curated STOCK_QUOTE_TOKENS-equivalent exists for Arc either -- unlike
   // Ink's list, those are individually verified real assets, not something
-  // to fabricate. Populate this once the owner seeds real Arc quote assets
-  // on-chain.
-  DEFAULT_QUOTE_TOKENS: [],
+  // to fabricate.
+  //
+  // DEFAULT_QUOTE_TOKENS here is the UNION of every quote asset seeded on
+  // ANY of the three families -- used for decimal/symbol lookups against
+  // arbitrary indexed token/trade data (see adapters.js, api.js), which
+  // don't care which specific family a given token came from. The create
+  // form's per-family pickers use the more specific *_QUOTE_TOKENS fields
+  // below instead, since Arc's three families do NOT share one allow-list
+  // the way Ink's do -- confirmed live via cast: the native USDC mirror is
+  // allowed on DuckLauncherArc only (added 2026-09-03 via addQuoteToken),
+  // still false on DuckIncubationArc/DuckRaiseArc.
+  DEFAULT_QUOTE_TOKENS: [
+    { address: getAddress("0x3600000000000000000000000000000000000000"), symbol: "USDC", decimals: 6 },
+  ],
   STOCK_QUOTE_TOKENS: [],
   LIQUID_QUOTE_TOKEN_SYMBOLS: [],
   NATIVE_EXTERNAL_ROUTE: null,
 };
-arc.CURVE_LAUNCHER_QUOTE_TOKENS = arc.DEFAULT_QUOTE_TOKENS;
-arc.RAISE_DEFAULT_QUOTE_ASSETS = arc.DEFAULT_QUOTE_TOKENS;
+// Only DuckLauncherArc has a seeded quote token (the native USDC mirror) --
+// DuckIncubationArc/DuckRaiseArc have none yet. Never assume these three
+// stay in sync on Arc the way they happen to on Ink.
+arc.INCUBATION_QUOTE_TOKENS = [];
+arc.LAUNCHER_QUOTE_TOKENS = arc.DEFAULT_QUOTE_TOKENS;
+arc.RAISE_QUOTE_TOKENS = [];
 
 export const CHAINS = { ink, arc };
 export const CHAIN_SLUGS = ["ink", "arc"];
